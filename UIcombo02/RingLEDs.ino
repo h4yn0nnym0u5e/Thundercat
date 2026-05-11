@@ -29,7 +29,26 @@ byte drawingMemory[numled*3];         //  3 bytes per LED
 DMAMEM byte displayMemory[numled*12]; // 12 bytes per LED
 
 WS2812Serial leds(numled, displayMemory, drawingMemory, pin, WS2812_GRB);
-RingLEDs rings(leds, drawingMemory, 8,20,8);
+RingLEDs<8> rings(leds, drawingMemory, 20,8);
+
+int rainbow1[20] = {
+    // straight order: first entry is highest value
+    0x070000, 0x080100, 0x070200, 0x060200,
+    0x060200, 0x060300, 0x060400, 0x060500,
+    0x050500, 0x030600, 0x010600, 0x000700,
+    0x000601, 0x000402, 0x000204, 0x000007,
+    0x010007, 
+    0x020007, 0x030005, 0x040005
+  };
+int cold2hot1[20]   = {
+    0x050000, 0x060000, 0x070000, 0x070101,
+    0x070202, 0x060303, 0x050404, 0x040404,
+    0x030304, 0x020204, 0x020206, 0x010108,
+    0x010109, 0x000007, 0x010009, 0x010006,
+    0x020006, 
+    0x000100, 0x000100, 0x000100
+  };
+int rainbow[20], cold2hot[20];
 
 //*
 #define xRED    0xFF0000
@@ -56,17 +75,30 @@ RingLEDs rings(leds, drawingMemory, 8,20,8);
 int colours[]{RED, ORANGE, YELLOW, GREEN, BLUE, PURPLE, PINK, WHITE};
 int colours2[]{xRED, xORANGE, xYELLOW, xGREEN, xBLUE, xPURPLE, xPINK, xWHITE};
 #define BLACK  0x000000
-uint32_t ringColours[]{RED, ORANGE, YELLOW, GREEN, BLUE, PURPLE, PINK, WHITE};
+#define PATTERN -1
+uint32_t ringColours[]{RED, ORANGE, YELLOW, GREEN, BLUE, PURPLE, PATTERN, PATTERN};
 
 
 void initLEDs(void) 
 {
-  leds.begin();
-  for (int i=0;i<numled;i++)
-    leds.setPixel(i, BLACK);
+  // set up multicoloured patterns
+  for (int i=0;i<20;i++)
+  {
+    int dst = 8-i;
+    if (dst < 0) dst += 20;
+    rainbow[dst] = rainbow1[i];
+    cold2hot[dst]= cold2hot1[i];
+  }
+
+  rings.setPattern(7,rainbow);
+  rings.setPattern(6,cold2hot);
+
+  // starting colours
+  rings.begin();
+  rings.clear();
   for (int i=0;i<NUM_POTS; i++)
-    leds.setPixel((NUM_POTS - 1 - i)*LEDS_PER_RING+18,ringColours[i]);
-  leds.show();
+    rings.setPixel(i,10,colours[i]);
+  rings.show();
 }
 
 
@@ -75,21 +107,6 @@ void initLEDs(void)
  the given value (which should have a range of ±1.0)
  */
 extern uint8_t keyStatuses[NUM_POTS];
-void setDotx(int ringNum, float value, uint32_t colour)
-{
-//Serial.printf("%3d:%06X  ", base+offi, colour);
-  if (value < -1.0f) value = -1.0f;
-  if (value > +1.0f) value = +1.0f;
-
-  value = value*8*18; // angle
-  if (value < 0.0f)
-    value += 360.0f;
-  rings.clear(ringNum);
-  rings.setPixel(ringNum, value, colour);
-
-  if (keyStatuses[ringNum])
-      rings.setPixel(ringNum, 10, WHITE);
-}
 
 void setDot(int ringNum, float value, uint32_t colour)
 {

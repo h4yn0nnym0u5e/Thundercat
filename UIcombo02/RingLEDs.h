@@ -1,13 +1,21 @@
 #include <WS2812Serial.h>
 
+template<int NUM_RINGS>
 class RingLEDs
 {
     WS2812Serial& ledString;
     uint8_t* ledMemory;
+    int* patterns[NUM_RINGS];
+
     const int numRings;
     const int ledsPerRing;
     const int topOffset;
-    const float step;    
+    const float step;
+    
+    void fixRingNum(int& ring)
+    {
+        ring = numRings - 1 - ring;
+    }
 
     // scale colour intensity, 0-255
     int scaleIntensity(int colour, int intensity)
@@ -17,6 +25,14 @@ class RingLEDs
         g = g * intensity / 255;
         b = b * intensity / 255;
         return (r<<16) | (g<<8) | b;
+    }
+
+    // see if we're using a colour pattern, and
+    // pick relevant colour from it if so
+    void fixColour(int ring, int led, int& colour)
+    {
+        if (colour < 0 && nullptr != patterns[ring])
+            colour = patterns[ring][led];
     }
 
     // Return which LED corresponds to the given angle.
@@ -60,8 +76,9 @@ class RingLEDs
     }
 
   public:
-    RingLEDs(WS2812Serial& _string, uint8_t* mem, int r, int n, int o)
-        : ledString{_string}, ledMemory{mem}, numRings{r}, ledsPerRing{n}, topOffset{o},
+    RingLEDs(WS2812Serial& _string, uint8_t* mem, int n, int o)
+        : ledString{_string}, ledMemory{mem}, patterns{{nullptr}},
+          numRings{NUM_RINGS}, ledsPerRing{n}, topOffset{o},
           step{360.0f / ledsPerRing}
           {}
 
@@ -82,7 +99,7 @@ class RingLEDs
     void getRGB(int ring, int led, int& r, int& g, int& b)
     {
         uint8_t* pColour = ledMemory;
-        ring = numRings - 1 - ring;
+        fixRingNum(ring);
         led += topOffset;
         if (led >= ledsPerRing)
             led -= ledsPerRing;
@@ -91,15 +108,24 @@ class RingLEDs
         b = pColour[0]; g = pColour[1]; r = pColour[2];
     }
 
+    void setPattern(int ring, int* colours)
+    {
+        fixRingNum(ring);
+        patterns[ring] = colours;
+    }
+
     // set a pixel in a ring to a colour
     // we count LEDs from the top=0, going clockwise
     void setPixel(int ring, int led, int colour, int intensity = -1)
     {
         // start counting from the left; the hardware
         // actually starts from the right, for hysterical raisins
-        ring = numRings - 1 - ring;
+        fixRingNum(ring);
         int dbgLED = led;
-        
+
+        // adjust colour if using pattern
+        fixColour(ring, led, colour);
+
         if (intensity >= 0)
             colour = scaleIntensity(colour, intensity);
 
@@ -123,6 +149,9 @@ class RingLEDs
         getRGB(ring,led, r,g,b); // get stored value
         if (0 == r && 0 == g && 0 == b) // led is black: set to minimum visible intensity
         {
+            // adjust colour if using pattern
+            fixColour(ring, led, colour);
+            
             r = colour >> 16; g = (colour >> 8) & 0xFF; b = colour & 0xFF;
             int max = r;
             max = g>max?g:max;
