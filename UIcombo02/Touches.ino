@@ -8,9 +8,16 @@ TwoWire& theWire{TOUCH_WIRE};
 
 uint8_t initTouch() 
 {
+  // access touch chip via I²C
   theWire.begin();
   theWire.beginTransmission(TOUCH_ADDR);
-  return theWire.endTransmission();
+  uint8_t result = theWire.endTransmission();
+
+  // change interrupt
+  pinMode(CHANGE_PIN,INPUT_PULLUP);
+  attachInterrupt(CHANGE_PIN, isrTouch, FALLING);
+
+  return result;
 }
 
 
@@ -73,10 +80,16 @@ void calibrateTouch(void)
 
 
 bool checkChange = true;
+void isrTouch(void)
+{
+  checkChange = true;
+}
+
 void updateTouch() 
 {
-  if (!checkChange)
+  if (checkChange)
   {
+    //*
     theWire.beginTransmission(TOUCH_ADDR);
     theWire.write(0);
     theWire.endTransmission();
@@ -84,25 +97,9 @@ void updateTouch()
     const int reqNum = 6;
     theWire.requestFrom(TOUCH_ADDR,reqNum,1);
 
-    /*
-    Serial.printf("%d: ",millis());
-    for (int i=0;i<reqNum;i++)
-        Serial.printf("%02X ", status[i] = theWire.read());
-    //*/
     theWire.endTransmission();
-    //Serial.println();
-    checkChange = true;
-  }
-    
-  if (checkChange && !digitalRead(CHANGE_PIN))
-  {
-    /*
-    Serial.print("change: ");
-    readKeys();
-    Serial.println();
-    /*/
-    readKeys();
     //*/
+    readKeys();
     checkChange = false;
   }
 }

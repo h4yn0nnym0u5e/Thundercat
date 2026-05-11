@@ -15,3 +15,4 @@
 // LED rings
 #define LEDS_PER_RING 20
 #define LED_DRIVE_PIN 20
+#define LED_TOP_OFFSET 8

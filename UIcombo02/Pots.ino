@@ -66,27 +66,11 @@ void updateADCs() {
     std::vector<float> ADCBuffer1 = bank.ReturnADC_EMG();
     std::vector<float> ADCBuffer2 = bank.ReturnADC_FSR();
 
-    //Serial.printf("%d: ", millis());
-
-    /*
-
-    for (int row = 0; row < 2; row++)
-    {
-        for (byte i=0;i<4;i++)
-        Serial.printf("%.3f ", ADCBuffer1[potMap[i]+row]); // print ADC1 Voltage
-        for (byte i=0;i<4;i++)
-        Serial.printf("%.3f ", ADCBuffer2[potMap[i]+row]); // print ADC1 Voltage
-        Serial.println();
-    }
-
-    /*/
-
     for (byte i=0;i<4;i++)
     {
         allPots[i+0].update(ADCBuffer1[potMap[i]], ADCBuffer1[potMap[i]+1]);
         allPots[i+4].update(ADCBuffer2[potMap[i]], ADCBuffer2[potMap[i]+1]);
     }
-    //*/
   }
 }
 
