@@ -79,6 +79,55 @@ int colours2[]{xRED, xORANGE, xYELLOW, xGREEN, xBLUE, xPURPLE, xPINK, xWHITE};
 int ringColours[]{RED, ORANGE, YELLOW, GREEN, BLUE, PURPLE, PATTERN, PATTERN};
 
 
+/*
+ Simplest possible UI - a dot at the nearest position to 
+ the given value (which should have a range of ±1.0)
+ */
+extern uint8_t keyStatuses[NUM_POTS];
+
+void setDot(int ringNum, float value, uint32_t colour)
+{
+  const int firstLED = 12;
+
+  if (value < -1.0f) value = -1.0f;
+  if (value > +1.0f) value = +1.0f;
+
+  value = value*(17*18 / 2 - 0.02f); // angle: ±152.8
+  if (value < 0.0f)
+    value += 360.0f; // 207.2 minimum
+  //rings.clear(ringNum);
+
+  if (echoOnce && 0 == ringNum)
+  {
+    rings.debug = true;
+    echoOnce = false;
+  }
+
+  rings.setArc(ringNum, 18.0f*firstLED - 8.99f, 8*18+8.99f, BLACK);
+  rings.setArc(ringNum, 18.0f*firstLED - 8.99f, value, colour);
+  rings.ensurePixelVisible(ringNum,firstLED,colour);
+  if (rings.debug)
+    Serial.println();
+  rings.debug = false;
+
+  rings.setPixel(ringNum, 10, keyStatuses[ringNum]?WHITE:BLACK);
+}
+
+extern ContinuousPot allPots[NUM_POTS];
+void updateLEDs(void)
+{
+    static elapsedMillis em = 0;
+
+    if (em >= 5)
+    {
+        em = 0;
+        for (int i=0;i<NUM_POTS;i++)
+            setDot(i, allPots[i].getCurrent(), ringColours[i]);
+        rings.show();
+//Serial.println();        
+    }
+}
+
 TaskHandle_t handleRings;
 void taskRings(void*)
 {
@@ -91,8 +140,11 @@ void taskRings(void*)
     uint8_t mask = bits++;
     for (int i=0;i<NUM_POTS;i++,mask<<=1)
       rings.setPixel(i,9,(mask&0x80)?BLUE:BLACK);
-    /*
-    vTaskDelay(100);
+
+    updateLEDs();
+
+    //*
+    vTaskDelay(10);
     /*/
     // hog until next time to run - see if pre-emption works
     uint32_t until = xTaskGetTickCount()+100;
@@ -125,53 +177,4 @@ void initLEDs(void)
   rings.show();
 
   xTaskCreate(taskRings, "Rings", 1024, nullptr, 2, &handleRings);
-}
-
-
-/*
- Simplest possible UI - a dot at the nearest position to 
- the given value (which should have a range of ±1.0)
- */
-extern uint8_t keyStatuses[NUM_POTS];
-
-void setDot(int ringNum, float value, uint32_t colour)
-{
-  const int firstLED = 12;
-
-  if (value < -1.0f) value = -1.0f;
-  if (value > +1.0f) value = +1.0f;
-
-  value = value*(17*18 / 2 - 0.02f); // angle: ±152.8
-  if (value < 0.0f)
-    value += 360.0f; // 207.2 minimum
-  //rings.clear(ringNum);
-
-  if (echoOnce && 0 == ringNum)
-  {
-    rings.debug = true;
-    echoOnce = false;
-  }
-
-  rings.setArc(ringNum, 18.0f*firstLED - 8.99f, value, colour);
-  rings.ensurePixelVisible(ringNum,firstLED,colour);
-  if (rings.debug)
-    Serial.println();
-  rings.debug = false;
-
-  rings.setPixel(ringNum, 10, keyStatuses[ringNum]?WHITE:BLACK);
-}
-
-extern ContinuousPot allPots[NUM_POTS];
-void updateLEDs(void)
-{
-    static elapsedMillis em = 0;
-
-    if (em >= 5)
-    {
-        em = 0;
-        for (int i=0;i<NUM_POTS;i++)
-            setDot(i, allPots[i].getCurrent(), ringColours[i]);
-        rings.show();
-//Serial.println();        
-    }
 }

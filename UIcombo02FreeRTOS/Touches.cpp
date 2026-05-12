@@ -78,9 +78,21 @@ static void isrTouch(void)
 
 void updateTouch() 
 {
+  if (1)
+  {
+    static int dots = 0;
+    Serial.print('.');
+    dots++;
+    if (dots > 30)
+    {
+      Serial.println();
+      dots = 0;
+    }
+  }
+
   if (checkChange)
   {
-    Serial.println("touch");
+    //Serial.println("touch");
     //*
     theWire.beginTransmission(TOUCH_ADDR);
     theWire.write(0);
@@ -116,7 +128,7 @@ uint8_t initTouch()
   pinMode(CHANGE_PIN,arduino::INPUT_PULLUP);
   attachInterrupt(CHANGE_PIN, isrTouch, arduino::FALLING);
 
-  xTaskCreate(taskTouch, "Touch", 256, nullptr, 2, &handleTouch);
+  xTaskCreate(taskTouch, "Touch", 256, nullptr, 7, &handleTouch);
 
   return result;
 }

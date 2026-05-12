@@ -57,9 +57,9 @@ static void loopFn(void)
     if (enableADCprint)
       printADCs();
   }
-  updateADCs();
+  //updateADCs();
   //updateTouch();
-  updateLEDs();
+  //updateLEDs();
 
   int ch = Serial.read();
 
