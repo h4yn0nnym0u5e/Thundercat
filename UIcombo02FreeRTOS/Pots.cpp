@@ -54,25 +54,21 @@ void printADCs(void)
 }
 
 
-void updateADCs() {
-  //static elapsedMillis em = 0;
+void updateADCs() 
+{
+  // Trigger ADCs to sample analog ports: 
+  // (16+16*N)*8 clock cycles, so 384 for 2 ADCs, or 512 for 3 ADCs
+  // At 12MHz this will take 5.3µs per channel, so 42.7µs for all 8
+  // across 3 ADCs.
+  bank.noOpDaisy();   
 
-  //if (em >= 10)
+  std::vector<float> ADCBuffer1 = bank.ReturnADC_EMG();
+  std::vector<float> ADCBuffer2 = bank.ReturnADC_FSR();
+
+  for (byte i=0;i<4;i++)
   {
-    // Trigger ADCs to sample analog ports: 
-    // (16+16*N)*8 clock cycles, so 384 for 2 ADCs, or 512 for 3 ADCs
-    // At 12MHz this will take 5.3µs per channel, so 42.7µs for all 8
-    // across 3 ADCs.
-    bank.noOpDaisy();   
-
-    std::vector<float> ADCBuffer1 = bank.ReturnADC_EMG();
-    std::vector<float> ADCBuffer2 = bank.ReturnADC_FSR();
-
-    for (byte i=0;i<4;i++)
-    {
-        allPots[i+0].update(ADCBuffer1[potMap[i]], ADCBuffer1[potMap[i]+1]);
-        allPots[i+4].update(ADCBuffer2[potMap[i]], ADCBuffer2[potMap[i]+1]);
-    }
+      allPots[i+0].update(ADCBuffer1[potMap[i]], ADCBuffer1[potMap[i]+1]);
+      allPots[i+4].update(ADCBuffer2[potMap[i]], ADCBuffer2[potMap[i]+1]);
   }
 }
 
@@ -99,7 +95,6 @@ void initADCs(void)
   }
 
   xTaskCreate(taskADCs, "ADCs", 256, nullptr, 3, &handleADCs);
-
 }
 
 

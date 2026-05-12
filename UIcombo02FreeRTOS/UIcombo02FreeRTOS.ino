@@ -21,7 +21,7 @@ void setup()
 {
   while (!Serial)
     ;
-  Serial.println("started"); Serial.flush();
+  Serial.println("\n\nstarted");
 
   // initialise hardware
   doReset();
@@ -57,9 +57,6 @@ static void loopFn(void)
     if (enableADCprint)
       printADCs();
   }
-  //updateADCs();
-  //updateTouch();
-  //updateLEDs();
 
   int ch = Serial.read();
 

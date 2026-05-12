@@ -116,16 +116,8 @@ void setDot(int ringNum, float value, uint32_t colour)
 extern ContinuousPot allPots[NUM_POTS];
 void updateLEDs(void)
 {
-    static elapsedMillis em = 0;
-
-    if (em >= 5)
-    {
-        em = 0;
-        for (int i=0;i<NUM_POTS;i++)
-            setDot(i, allPots[i].getCurrent(), ringColours[i]);
-        rings.show();
-//Serial.println();        
-    }
+    for (int i=0;i<NUM_POTS;i++)
+        setDot(i, allPots[i].getCurrent(), ringColours[i]);
 }
 
 TaskHandle_t handleRings;
@@ -142,15 +134,9 @@ void taskRings(void*)
       rings.setPixel(i,9,(mask&0x80)?BLUE:BLACK);
 
     updateLEDs();
+    rings.show();
 
-    //*
     vTaskDelay(10);
-    /*/
-    // hog until next time to run - see if pre-emption works
-    uint32_t until = xTaskGetTickCount()+100;
-    while (xTaskGetTickCount() < until)
-      ;
-    //*/
   }
 }
 
