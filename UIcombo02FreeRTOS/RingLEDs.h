@@ -238,3 +238,26 @@ class RingLEDs
 
     bool debug;
 };
+
+template <int NUM_RINGS>
+class LEDring 
+{
+        RingLEDs<NUM_RINGS>& rings;
+    public:
+        LEDring(RingLEDs<NUM_RINGS>& r, int n)
+        : rings{r}, debug{r.debug}, ring{n}
+        {}
+
+        void setPattern(int* colours) { rings.setPattern(ring, colours); }
+        void show(void)  { rings.show(); }
+        void clear(void) { rings.clear(ring); }
+        void setPixel(int led, int colour, int intensity = -1)
+            { rings.setPixel(ring, led, colour, intensity); }
+        void setArc(float start, float end, int colour, int intensity = -1)
+            { rings.setArc(ring, start, end, colour, intensity); }
+        void ensurePixelVisible(int led, int colour)
+            { rings.ensurePixelVisible(ring, led, colour); }
+
+        bool& debug;
+        int ring;        
+};

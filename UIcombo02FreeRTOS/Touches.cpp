@@ -6,7 +6,7 @@
 #include "config.h"
 
 TwoWire& theWire{TOUCH_WIRE};
-static TaskHandle_t handleTouch;
+TaskHandle_t handleTouch;
 
 static void isrTouch(void);
 

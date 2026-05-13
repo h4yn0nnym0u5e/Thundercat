@@ -2,7 +2,6 @@
 #include "headers.h"
 #include "arduino_freertos.h"
 
-//namespace arduino {
 void doReset()
 {
   // reset ADCs and touch chip
@@ -17,6 +16,7 @@ void doReset()
 
 static void mainLoop(void*);
 
+TaskHandle_t handleSuper;
 void setup() 
 {
   while (!Serial)
@@ -33,7 +33,7 @@ void setup()
   }
   initADCs();
 
-  xTaskCreate(mainLoop, "Super", 1024, nullptr, 2, nullptr);
+  xTaskCreate(mainLoop, "Super", 512, nullptr, 2, &handleSuper);
 
   delay(1000);
 
@@ -47,6 +47,31 @@ bool echoOnce, enableADCprint;
 
 void loop() // dummy to keep Arduino happy
 {
+}
+
+extern TaskHandle_t handleSuper, handleADCs, handleRing0, handleTouch;
+extern TaskHandle_t handlesRings[];
+TaskHandle_t* handles[]{nullptr, &handleSuper, &handleADCs, &handleRing0, &handleTouch, handlesRings+1};
+void printTaskStates(void)
+{
+  TaskHandle_t handleIdle = xTaskGetIdleTaskHandle();
+  handles[0] = &handleIdle;
+  configRUN_TIME_COUNTER_TYPE idlePercent = ulTaskGetIdleRunTimePercent(),
+                              idleCount = ulTaskGetIdleRunTimeCounter();
+  float pct = idleCount * 100.0f / idlePercent; // 100% of counts to date
+  Serial.println();
+  for (int i = 0;i < COUNT_OF(handles);i++)
+  {
+    TaskStatus_t s;
+    vTaskGetInfo(*(handles[i]), &s, pdTRUE, eInvalid);
+    Serial.printf("Name '%s'; priority: %d; unused stack: %d; runtime %d (%.3f%%)\n",
+              s.pcTaskName,
+              s.uxCurrentPriority,
+              s.usStackHighWaterMark,
+              s.ulRunTimeCounter,
+              (float) s.ulRunTimeCounter / pct * 100.0f
+            );
+  }
 }
 
 static void loopFn(void)
@@ -80,6 +105,10 @@ static void loopFn(void)
       initTouch();
       break;
 
+    case 't':
+      printTaskStates();
+      break;
+
     case 'y':
       potsToRaw();
       break;
@@ -90,13 +119,13 @@ static void loopFn(void)
   }
 }
 
+extern uint8_t bits;
 static void mainLoop(void*)
 {
   while (1)
   {
     loopFn();
+    bits++;
+    vTaskDelay(20);
   }
 }
-
-
-//} // namespace

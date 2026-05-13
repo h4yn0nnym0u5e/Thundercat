@@ -94,7 +94,7 @@ void initADCs(void)
     //allPots[i].setAccel(0.05f, 4.0f);
   }
 
-  xTaskCreate(taskADCs, "ADCs", 256, nullptr, 3, &handleADCs);
+  xTaskCreate(taskADCs, "ADCs", 128, nullptr, 3, &handleADCs);
 }
 
 

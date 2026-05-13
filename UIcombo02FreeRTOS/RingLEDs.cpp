@@ -78,14 +78,32 @@ int colours2[]{xRED, xORANGE, xYELLOW, xGREEN, xBLUE, xPURPLE, xPINK, xWHITE};
 #define PATTERN -1
 int ringColours[]{RED, ORANGE, YELLOW, GREEN, BLUE, PURPLE, PATTERN, PATTERN};
 
+extern ContinuousPot allPots[NUM_POTS];
 
+struct ringConfig_t
+{
+  LEDring<NUM_POTS> ring;
+  ContinuousPot& myPot;
+  int colour;
+  int* pattern;
+} ringConfigs[NUM_POTS]
+{
+  {{rings, 0}, allPots[0],RED},
+  {{rings, 1}, allPots[1],ORANGE},
+  {{rings, 2}, allPots[2],YELLOW},
+  {{rings, 3}, allPots[3],GREEN},
+  {{rings, 4}, allPots[4],BLUE},
+  {{rings, 5}, allPots[5],PURPLE},
+  {{rings, 6}, allPots[6],PINK,cold2hot},
+  {{rings, 7}, allPots[7],WHITE,rainbow}
+};
 /*
  Simplest possible UI - a dot at the nearest position to 
  the given value (which should have a range of ±1.0)
  */
 extern uint8_t keyStatuses[NUM_POTS];
 
-void setDot(int ringNum, float value, uint32_t colour)
+void setDot(LEDring<NUM_POTS>& ring, float value, uint32_t colour)
 {
   const int firstLED = 12;
 
@@ -97,44 +115,50 @@ void setDot(int ringNum, float value, uint32_t colour)
     value += 360.0f; // 207.2 minimum
   //rings.clear(ringNum);
 
-  if (echoOnce && 0 == ringNum)
+  if (echoOnce && 0 == ring.ring)
   {
-    rings.debug = true;
+    ring.debug = true;
     echoOnce = false;
   }
 
-  rings.setArc(ringNum, 18.0f*firstLED - 8.99f, 8*18+8.99f, BLACK);
-  rings.setArc(ringNum, 18.0f*firstLED - 8.99f, value, colour);
-  rings.ensurePixelVisible(ringNum,firstLED,colour);
-  if (rings.debug)
+  ring.setArc(18.0f*firstLED - 8.99f, 8*18+8.99f, BLACK);
+  ring.setArc(18.0f*firstLED - 8.99f, value, colour);
+  ring.ensurePixelVisible(firstLED,colour);
+  if (ring.debug)
     Serial.println();
-  rings.debug = false;
+  ring.debug = false;
 
-  rings.setPixel(ringNum, 10, keyStatuses[ringNum]?WHITE:BLACK);
+  ring.setPixel(10, keyStatuses[ring.ring]?WHITE:BLACK);
 }
 
-extern ContinuousPot allPots[NUM_POTS];
-void updateLEDs(void)
-{
-    for (int i=0;i<NUM_POTS;i++)
-        setDot(i, allPots[i].getCurrent(), ringColours[i]);
-}
 
-TaskHandle_t handleRings;
-void taskRings(void*)
+
+/*
+ * This task will actually end up handling the whole strip UI,
+ * not just the rings and touches. We will also need to devise
+ * a mechanism for generating the relevant MIDI output in a 
+ * timely manner (the UI can get updated afterwards).
+ */
+TaskHandle_t handlesRings[NUM_POTS];
+TaskHandle_t handleRing0;
+uint8_t bits = 0;
+void taskRing(void* pcfg)
 {
-  uint8_t bits = 0;
-  rings.clear();
+  ringConfig_t& cfg = *((ringConfig_t*) pcfg);
+
+  cfg.ring.clear();
+  cfg.ring.setPattern(cfg.pattern); // null pointer is OK here
 
   while (1)
   {
     // Serial.printf("%u: ring task; bits: %02X\n", xTaskGetTickCount(), bits);
-    uint8_t mask = bits++;
-    for (int i=0;i<NUM_POTS;i++,mask<<=1)
-      rings.setPixel(i,9,(mask&0x80)?BLUE:BLACK);
+    uint8_t mask = bits & (1<<(NUM_POTS - 1 - cfg.ring.ring));
+    cfg.ring.setPixel(9,mask?cfg.colour:BLACK);
 
-    updateLEDs();
-    rings.show();
+    setDot(cfg.ring, cfg.myPot.getCurrent(), nullptr == cfg.pattern?cfg.colour:PATTERN);
+
+    if (0 == cfg.ring.ring)
+      rings.show();
 
     vTaskDelay(10);
   }
@@ -152,15 +176,22 @@ void initLEDs(void)
     cold2hot[dst]= cold2hot1[i];
   }
 
-  rings.setPattern(7,rainbow);
-  rings.setPattern(6,cold2hot);
-
   // starting colours
   rings.begin();
   rings.clear();
   for (int i=0;i<NUM_POTS; i++)
-    rings.setPixel(i,10,colours[i]);
+    rings.setPixel(i,10,ringConfigs[i].colour);
   rings.show();
 
-  xTaskCreate(taskRings, "Rings", 1024, nullptr, 2, &handleRings);
+  // xTaskCreate(taskRings, "Rings", 1024, nullptr, 2, &handleRings);
+
+  // create one task per ring
+  // the task name gets copied, so we can create it dynamically
+  for (int i=0;i<NUM_POTS;i++)
+  {
+    char buf[configMAX_TASK_NAME_LEN+1]; // from FreeRTOSconfig.h
+    sprintf(buf,"Ring%d",i);
+    xTaskCreate(taskRing, buf, 512, ringConfigs+i, 2, handlesRings+i);
+  }
+  handleRing0 = handlesRings[0];
 }

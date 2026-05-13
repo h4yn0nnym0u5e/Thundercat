@@ -6,6 +6,8 @@
 #include "config.h"
 #include "arduino_freertos.h"
 
+#define COUNT_OF(a) (int)(sizeof a / sizeof a[0])
+
 extern bool echoOnce;
 
 extern void initADCs(void);
