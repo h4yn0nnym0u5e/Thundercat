@@ -22,7 +22,7 @@ ContinuousPot allPots[NUM_POTS]
     {4.096f, CH1_POL, CH2_POL, 0.1f}
   };
 
-const int potMap[] = {4,2,0,6};
+const int potMap[] = POT_MAP;
 extern uint8_t keyStatuses[NUM_POTS];
 TaskHandle_t handleADCs;
 
@@ -76,13 +76,22 @@ void getOneADCchannelSet(uint16_t* buf, int numADCs)
   _spi.endTransaction();
 }
 
+float raw2volts(uint16_t raw)
+{
+  return (float) raw / 65535.0f * 5.0f;
+}
 
+uint32_t ADCupdateMicros;
 void updateADCs() 
 {
+  uint32_t now = micros();
+
   // Trigger ADCs to sample analog ports: 
   // (16+16*N)*8 clock cycles, so 384 for 2 ADCs, or 512 for 3 ADCs
   // At 12MHz this will take 5.3µs per channel, so 42.7µs for all 8
   // across 3 ADCs.
+
+  /*
   bank.noOpDaisy();   
 
   std::vector<float> ADCBuffer1 = bank.ReturnADC_EMG();
@@ -93,6 +102,24 @@ void updateADCs()
       allPots[i+0].update(ADCBuffer1[potMap[i]], ADCBuffer1[potMap[i]+1]);
       allPots[i+4].update(ADCBuffer2[potMap[i]], ADCBuffer2[potMap[i]+1]);
   }
+  /*/
+  {
+    const int numADCs = 2;
+    uint16_t buffer[NUM_POTS*numADCs]; // each pot has 2 channels
+
+    for (int i=0;i<NUM_POTS;i++)
+      getOneADCchannelSet(buffer+i*numADCs, numADCs);
+
+    // Given a potMap[] of {4,2,0,6}, we get a buffer of 16 values thus
+    // 2A, 6A,  2B, 6B,   1A, 5A,  1B, 5B,   0A, 4A,  0B, 4B,   3A, 7A,  3B, 7B
+    for (int i=0;i<NUM_POTS/2;i++) // each ADC hosts 4 pots
+    {
+      allPots[i+0].update(raw2volts(buffer[potMap[i]*2  ]), raw2volts(buffer[potMap[i]*2+2]));
+      allPots[i+4].update(raw2volts(buffer[potMap[i]*2+1]), raw2volts(buffer[potMap[i]*2+3]));
+    }
+  }
+  //*/
+  ADCupdateMicros = micros() - now;
 }
 
 void taskADCs(void*)

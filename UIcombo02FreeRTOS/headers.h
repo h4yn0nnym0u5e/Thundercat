@@ -10,6 +10,7 @@
 
 extern bool echoOnce;
 extern bool supplyValid;
+extern uint32_t ADCupdateMicros;
 
 extern void initADCs(void);
 extern void updateADCs(void);

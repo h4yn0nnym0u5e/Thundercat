@@ -68,6 +68,7 @@ void printTaskStates(void)
               (float) s.ulRunTimeCounter / pct * 100.0f
             );
   }
+  Serial.printf("ADC updates take %uµs\n", ADCupdateMicros);
 }
 
 static void loopFn(void)
