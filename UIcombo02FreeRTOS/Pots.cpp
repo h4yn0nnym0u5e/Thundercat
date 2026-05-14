@@ -8,7 +8,7 @@
 #include "contPot.h"
 
 static uint8_t NmbOfADC = 2;            // Number of ADCs in series. This can only be two as of right now (03/09/19)
-static ADS8688 bank = ADS8688(ADC_CS);  // Instantiate ADS8688 with PIN 7 as CS, default to SPI
+static ADS8688 bank = ADS8688(ADC_CS, ADC_SPI);  // Instantiate ADS8688 with PIN 7 as CS, default to SPI
 
 ContinuousPot allPots[NUM_POTS]
   {
@@ -53,6 +53,29 @@ void printADCs(void)
   Serial.println();          
 }
 
+/*
+ * Get all readings from one channel of a set of ADCs
+ */
+void getOneADCchannelSet(uint16_t* buf, int numADCs)
+{
+  SPIClass& _spi  = ADC_SPI;
+  const int _cs   = ADC_CS;
+  const int _sclk = ADC_CLK;
+
+  _spi.beginTransaction(SPISettings(_sclk, arduino::MSBFIRST, SPI_MODE1));
+  digitalWrite(_cs, arduino::LOW);
+  _spi.transfer16(0x0000); // NO_OP (p45 table 6)
+  _spi.endTransaction();
+
+  _spi.beginTransaction(SPISettings(_sclk, arduino::MSBFIRST, SPI_MODE0)); // Necessary for ESP32
+
+  for (int i=0; i< numADCs; i++)
+    *buf++ = _spi.transfer16(0);
+
+  digitalWrite(_cs, arduino::HIGH); // we need 30ns after this - should be OK (p11 section 7.6 tPH_CS)
+  _spi.endTransaction();
+}
+
 
 void updateADCs() 
 {
@@ -74,15 +97,9 @@ void updateADCs()
 
 void taskADCs(void*)
 {
-  while (1)
-  {
-    updateADCs();
-    vTaskDelay(1);
-  }
-}
+  while (!supplyValid)
+    vTaskDelay(10);
 
-void initADCs(void)
-{
   bank.setChannelSPD(0b11111111);       // bitwise channel selection 
   bank.setDaisyChainsNmb(NmbOfADC);     // Specify number of ADCs in series
   bank.setGlobalRange(R6);              // set range for all channels (R1 = +- 1.25 * Vref, R6 = 0 ... 1.25*Vref)
@@ -94,6 +111,15 @@ void initADCs(void)
     //allPots[i].setAccel(0.05f, 4.0f);
   }
 
+  while (1)
+  {
+    updateADCs();
+    vTaskDelay(1);
+  }
+}
+
+void initADCs(void)
+{
   xTaskCreate(taskADCs, "ADCs", 128, nullptr, 3, &handleADCs);
 }
 

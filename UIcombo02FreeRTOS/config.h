@@ -10,7 +10,9 @@
 #define CHANGE_PIN 15
 
 // ADCs
+#define ADC_SPI SPI
 #define ADC_CS  7
+#define ADC_CLK 12'000'000
 #define CH1_POL -1.0f
 #define CH2_POL +1.0f
 #define NUM_POTS 8

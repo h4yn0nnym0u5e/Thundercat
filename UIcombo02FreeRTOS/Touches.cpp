@@ -58,10 +58,17 @@ void readKeys(void)
   status[4] = newKeys[1];
 }
 
-
+static bool calibrateRequested;
 void calibrateTouch(void)
 {
+  calibrateRequested = true;
+  vTaskResume(handleTouch);
+}
+
+static void doCalibrateTouch(void)
+{
     uint8_t calibrate[]{6,1};
+    calibrateRequested = false;
     Serial.println("Calibrate touch");
     theWire.beginTransmission(TOUCH_ADDR);
     theWire.write(calibrate,2);
@@ -108,28 +115,37 @@ void updateTouch()
   }
 }
 
+bool supplyValid;
 static void taskTouch(void*)
 {
+  // access touch chip via I²C
   while (1)
   {
-    updateTouch();
-    vTaskSuspend(nullptr);
+    theWire.begin();
+    theWire.beginTransmission(TOUCH_ADDR);
+    if (0 == theWire.endTransmission())
+      break;
+    Serial.println("Waiting for 6V supply...");
+    delay(500);
   }
-}
 
-uint8_t initTouch() 
-{
-  // access touch chip via I²C
-  theWire.begin();
-  theWire.beginTransmission(TOUCH_ADDR);
-  uint8_t result = theWire.endTransmission();
+  supplyValid = true;
 
   // change interrupt
   pinMode(CHANGE_PIN,arduino::INPUT_PULLUP);
   attachInterrupt(CHANGE_PIN, isrTouch, arduino::FALLING);
 
-  xTaskCreate(taskTouch, "Touch", 256, nullptr, 7, &handleTouch);
+  while (1)
+  {
+    if (calibrateRequested)
+      doCalibrateTouch();
+    updateTouch();
+    vTaskSuspend(nullptr);
+  }
+}
 
-  return result;
+void initTouch() 
+{
+  xTaskCreate(taskTouch, "Touch", 256, nullptr, 7, &handleTouch);
 }
 

@@ -26,11 +26,7 @@ void setup()
   // initialise hardware
   doReset();
   initLEDs();
-  while (0 != initTouch())
-  {
-    Serial.println("Waiting for 6V supply...");
-    delay(500);
-  }
+  initTouch();
   initADCs();
 
   xTaskCreate(mainLoop, "Super", 512, nullptr, 2, &handleSuper);
