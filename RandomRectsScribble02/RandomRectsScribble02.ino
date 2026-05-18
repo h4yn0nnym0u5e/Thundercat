@@ -1,5 +1,9 @@
 /*
  * Random rectangle test - scribble board
+ * 
+ * Mostly OK with https://github.com/h4yn0nnym0u5e/TFT_eSPI/commit/09b91e2d0c1b15d87a19b1d1492efb7b84170f63
+ *            and https://github.com/h4yn0nnym0u5e/FlexIO_t4/commit/406facb39919ece30699909d0c3a6ee15944adf9
+ * but there's an issue with SPIClass + DMA use            
  */
 //#include <TeensyDebug.h> 
 
@@ -60,7 +64,15 @@ const char* libString = "TFT_eSPI";
 #if defined(USE_FLEXIO_SPI) //------------------------------
 #include <FlexIOSPI.h>
 FlexIOSPI SPIflex{11,12,13,-1}; // mosi / miso / sck / cs
-TFT_eSPI tft{240,240,SPIflex,ST7789_CS};
+//TFT_eSPI tft{240,240,SPIflex,ST7789_CS};
+TFT_eSPI tft1{240,240,SPIflex,-1, [](bool negate) { CSfn(0, negate); }};
+TFT_eSPI tft2{240,240,SPIflex,-1, [](bool negate) { CSfn(1, negate); }};
+TFT_eSPI tft3{240,240,SPIflex,-1, [](bool negate) { CSfn(2, negate); }};
+TFT_eSPI tft4{240,240,SPIflex,-1, [](bool negate) { CSfn(3, negate); }};
+TFT_eSPI tft5{240,240,SPIflex,-1, [](bool negate) { CSfn(4, negate); }};
+TFT_eSPI tft6{240,240,SPIflex,-1, [](bool negate) { CSfn(5, negate); }};
+TFT_eSPI tft7{240,240,SPIflex,-1, [](bool negate) { CSfn(6, negate); }};
+TFT_eSPI tft8{240,240,SPIflex,-1, [](bool negate) { CSfn(7, negate); }};
 const char* busString = "FlexIOSPI";
 #else //----------------------------------------------------
 //TFT_eSPI tft{240,240,SPI,ST7789_CS};
@@ -249,7 +261,7 @@ void setup()
   //tft.setSPISpeed(60'000'000);
   
 #if defined(USE_DMA)  
-  tft.initDMA();
+  ALL_TFTS.initDMA();
 #endif // defined(USE_DMA)  
 }
 
@@ -289,6 +301,9 @@ void randomRect(
 #else
 
   tft.fillRect(x,y,w,h,colour);
+  
+#endif // defined(USE_DMA)  
+
 #define SZ 4  
   //tft.setFreeFont(&FreeSans18pt7b);
   tft.setFreeFont(&FreeSansBold24pt7b);
@@ -297,14 +312,12 @@ void randomRect(
   //tft.setCursor(120-SZ*3,120-SZ*4);
   tft.setCursor(120-SZ*3,120);
   tft.print(i+1);
-  
-#endif // defined(USE_DMA)  
 }
 
 int rectCount;
 void loop() 
 {
-  if (0 == rectCount % 10000)
+  if (0 == rectCount % 9600)
     Serial.printf("\n%d: ", millis());
 //*    
   FN_TFTS(randomRect);
@@ -312,8 +325,8 @@ void loop()
   for (int i=0;i<8;i++)
     randomRect(*tfts[i]);
 //*/  
-  rectCount++;
-  if (0 == rectCount % 100)
+  rectCount += 8;
+  if (0 == rectCount % 96)
   {
     Serial.print('.');
   }
@@ -328,6 +341,9 @@ void startup_late_hook(void)
 #if !defined(USER_SETUP_INFO)
 #define USER_SETUP_INFO "ST7789_t3"
 #endif // !defined(USER_SETUP_INFO)
+
+  if (CrashReport)
+    Serial.println(CrashReport);
     
   Serial.printf("\nLate hook\nLibrary: %s; bus: %s; settings: " USER_SETUP_INFO "; %s",libString, busString, DMAuse);
 #if defined(ARDUINO_TEENSY41)
