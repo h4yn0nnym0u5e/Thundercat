@@ -10,10 +10,13 @@
 #define CHANGE_PIN 15
 
 // ADCs
+#define ADC_SPI SPI
 #define ADC_CS  7
+#define ADC_CLK 15'000'000
 #define CH1_POL -1.0f
 #define CH2_POL +1.0f
 #define NUM_POTS 8
+#define POT_MAP {4,2,0,6}
 
 // LED rings
 #define LEDS_PER_RING 20

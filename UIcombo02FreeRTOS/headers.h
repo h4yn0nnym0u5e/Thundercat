@@ -9,6 +9,8 @@
 #define COUNT_OF(a) (int)(sizeof a / sizeof a[0])
 
 extern bool echoOnce;
+extern bool supplyValid;
+extern uint32_t ADCupdateMicros;
 
 extern void initADCs(void);
 extern void updateADCs(void);
@@ -19,7 +21,7 @@ extern void printADCs(void);
 extern void initLEDs(void);
 extern void updateLEDs(void);
 
-extern uint8_t initTouch(void);
+extern void initTouch(void);
 extern void updateTouch(void);
 extern void calibrateTouch(void);
 

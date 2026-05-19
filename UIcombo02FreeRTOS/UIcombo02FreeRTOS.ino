@@ -26,11 +26,7 @@ void setup()
   // initialise hardware
   doReset();
   initLEDs();
-  while (0 != initTouch())
-  {
-    Serial.println("Waiting for 6V supply...");
-    delay(500);
-  }
+  initTouch();
   initADCs();
 
   xTaskCreate(mainLoop, "Super", 512, nullptr, 2, &handleSuper);
@@ -72,6 +68,7 @@ void printTaskStates(void)
               (float) s.ulRunTimeCounter / pct * 100.0f
             );
   }
+  Serial.printf("ADC updates take %uµs\n", ADCupdateMicros);
 }
 
 static void loopFn(void)

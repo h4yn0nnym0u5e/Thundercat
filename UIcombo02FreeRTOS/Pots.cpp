@@ -8,7 +8,7 @@
 #include "contPot.h"
 
 static uint8_t NmbOfADC = 2;            // Number of ADCs in series. This can only be two as of right now (03/09/19)
-static ADS8688 bank = ADS8688(ADC_CS);  // Instantiate ADS8688 with PIN 7 as CS, default to SPI
+static ADS8688 bank = ADS8688(ADC_CS, ADC_SPI);  // Instantiate ADS8688 with PIN 7 as CS, default to SPI
 
 ContinuousPot allPots[NUM_POTS]
   {
@@ -22,7 +22,7 @@ ContinuousPot allPots[NUM_POTS]
     {4.096f, CH1_POL, CH2_POL, 0.1f}
   };
 
-const int potMap[] = {4,2,0,6};
+const int potMap[] = POT_MAP;
 extern uint8_t keyStatuses[NUM_POTS];
 TaskHandle_t handleADCs;
 
@@ -53,13 +53,45 @@ void printADCs(void)
   Serial.println();          
 }
 
+/*
+ * Get all readings from one channel of a set of ADCs
+ */
+void getOneADCchannelSet(uint16_t* buf, int numADCs)
+{
+  SPIClass& _spi  = ADC_SPI;
+  const int _cs   = ADC_CS;
+  const int _sclk = ADC_CLK;
 
+  _spi.beginTransaction(SPISettings(_sclk, arduino::MSBFIRST, SPI_MODE1));
+  digitalWrite(_cs, arduino::LOW);
+  _spi.transfer16(0x0000); // NO_OP (p45 table 6)
+  _spi.endTransaction();
+
+  _spi.beginTransaction(SPISettings(_sclk, arduino::MSBFIRST, SPI_MODE0)); // Necessary for ESP32
+
+  for (int i=0; i< numADCs; i++)
+    *buf++ = _spi.transfer16(0);
+
+  digitalWrite(_cs, arduino::HIGH); // we need 30ns after this - should be OK (p11 section 7.6 tPH_CS)
+  _spi.endTransaction();
+}
+
+float raw2volts(uint16_t raw)
+{
+  return (float) raw / 65535.0f * 5.0f;
+}
+
+uint32_t ADCupdateMicros;
 void updateADCs() 
 {
+  uint32_t now = micros();
+
   // Trigger ADCs to sample analog ports: 
   // (16+16*N)*8 clock cycles, so 384 for 2 ADCs, or 512 for 3 ADCs
   // At 12MHz this will take 5.3µs per channel, so 42.7µs for all 8
   // across 3 ADCs.
+
+  /*
   bank.noOpDaisy();   
 
   std::vector<float> ADCBuffer1 = bank.ReturnADC_EMG();
@@ -70,19 +102,31 @@ void updateADCs()
       allPots[i+0].update(ADCBuffer1[potMap[i]], ADCBuffer1[potMap[i]+1]);
       allPots[i+4].update(ADCBuffer2[potMap[i]], ADCBuffer2[potMap[i]+1]);
   }
+  /*/
+  {
+    const int numADCs = 2;
+    uint16_t buffer[NUM_POTS*numADCs]; // each pot has 2 channels
+
+    for (int i=0;i<NUM_POTS;i++)
+      getOneADCchannelSet(buffer+i*numADCs, numADCs);
+
+    // Given a potMap[] of {4,2,0,6}, we get a buffer of 16 values thus
+    // 2A, 6A,  2B, 6B,   1A, 5A,  1B, 5B,   0A, 4A,  0B, 4B,   3A, 7A,  3B, 7B
+    for (int i=0;i<NUM_POTS/2;i++) // each ADC hosts 4 pots
+    {
+      allPots[i+0].update(raw2volts(buffer[potMap[i]*2  ]), raw2volts(buffer[potMap[i]*2+2]));
+      allPots[i+4].update(raw2volts(buffer[potMap[i]*2+1]), raw2volts(buffer[potMap[i]*2+3]));
+    }
+  }
+  //*/
+  ADCupdateMicros = micros() - now;
 }
 
 void taskADCs(void*)
 {
-  while (1)
-  {
-    updateADCs();
-    vTaskDelay(1);
-  }
-}
+  while (!supplyValid)
+    vTaskDelay(10);
 
-void initADCs(void)
-{
   bank.setChannelSPD(0b11111111);       // bitwise channel selection 
   bank.setDaisyChainsNmb(NmbOfADC);     // Specify number of ADCs in series
   bank.setGlobalRange(R6);              // set range for all channels (R1 = +- 1.25 * Vref, R6 = 0 ... 1.25*Vref)
@@ -94,6 +138,15 @@ void initADCs(void)
     //allPots[i].setAccel(0.05f, 4.0f);
   }
 
+  while (1)
+  {
+    updateADCs();
+    vTaskDelay(1);
+  }
+}
+
+void initADCs(void)
+{
   xTaskCreate(taskADCs, "ADCs", 128, nullptr, 3, &handleADCs);
 }
 
