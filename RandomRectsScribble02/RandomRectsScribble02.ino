@@ -3,7 +3,9 @@
  * 
  * Mostly OK with https://github.com/h4yn0nnym0u5e/TFT_eSPI/commit/09b91e2d0c1b15d87a19b1d1492efb7b84170f63
  *            and https://github.com/h4yn0nnym0u5e/FlexIO_t4/commit/406facb39919ece30699909d0c3a6ee15944adf9
- * but there's an issue with SPIClass + DMA use            
+ * but there's an issue with SPIClass + DMA ...            
+ * ... no longer - use 
+ *                https://github.com/h4yn0nnym0u5e/TFT_eSPI/commit/1116178d526b1f66e20ba2931b856fa7b1d080ad
  */
 //#include <TeensyDebug.h> 
 
@@ -11,7 +13,7 @@
 #define noUSE_FLEXIO_SPI
 
 // define this to use DMA to write the rectangles
-#define noUSE_DMA
+#define USE_DMA
 
 /*
 #include <ST7789_t3.h>
@@ -200,7 +202,7 @@ void phasedInit(void)
 }
 
 /*
- * Do pahsed init, but one at a time!
+ * Do phased init, but one at a time!
  */
 void phasedInitWrong(void)
 {
@@ -218,8 +220,10 @@ void phasedInitWrong(void)
 
 #endif // defined(ST7789_PHASED)
 
+//=========================================================================================
 void setup() 
 {
+//  halt_cpu();
   Serial.println("Started");
   initDisplayPins();
 
@@ -265,6 +269,11 @@ void setup()
 #endif // defined(USE_DMA)  
 }
 
+//-----------------------------------------------------------
+// moved outside function so we can inspect
+// in TeensyDebug when it crashes!
+int x,y, w, h;
+uint16_t* r;
 
 void randomRect(
 #if defined(_TFT_eSPIH_)
@@ -275,7 +284,7 @@ void randomRect(
   tft, int i = -1
   )
 {
-  int x,y, w = random(140), h = random(80);
+  w = random(140); h = random(80);
   uint16_t colour = random(65536);
 
   do
@@ -285,10 +294,10 @@ void randomRect(
   } while (x+w > tft.width() || y+h > tft.height());
   
 #if defined(USE_DMA)
-  
   // create sprite to draw the rectangle, and draw it
   TFT_eSprite sprite{&tft};
-  uint16_t* r = (uint16_t*) sprite.createSprite(w,h);
+  sprite.createInPSRAM(random(100) > 49); // maybe create in PSRAM
+  r = (uint16_t*) sprite.createSprite(w,h);
 // Serial.printf("sprite data at %08X\n", (uint32_t) r);  
   sprite.fillSprite(colour);
 
@@ -314,6 +323,7 @@ void randomRect(
   tft.print(i+1);
 }
 
+//=========================================================================================
 int rectCount;
 void loop() 
 {
