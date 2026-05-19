@@ -22,11 +22,16 @@
 //*/
 
 #define TFT_BLK    9
+/*
 #define MUX_A     14
 #define MUX_B     15
 #define MUX_C     16
 #define MUX_G     17
-
+*/
+#define MUX_A     38
+#define MUX_B     39
+#define MUX_C     40
+#define MUX_G     41
 
 /*
  * Use 74LVC138 decoder to provide /CS signal to one of
@@ -343,6 +348,14 @@ void loop()
 }
 
 extern uint8_t external_psram_size;
+
+extern "C"
+void startup_middle_hook(void)
+{
+  pinMode(TFT_BLK,OUTPUT);
+  digitalWriteFast(TFT_BLK, LOW);
+}
+
 extern "C"
 void startup_late_hook(void)
 {
