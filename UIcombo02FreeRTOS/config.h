@@ -50,6 +50,8 @@
 // #define TFT_DC    10 // in user config file
 
 #define SCRIBBLE_SPI SPI
+#define TFT_ROTATION 0
+
 // inherent in using SPI for scribble strip:
 // #define TFT_SCK  13
 // #define TFT_MISO 12

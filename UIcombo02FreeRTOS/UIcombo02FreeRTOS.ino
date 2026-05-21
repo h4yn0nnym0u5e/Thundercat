@@ -28,6 +28,7 @@ void setup()
   initLEDs();
   initTouch();
   initADCs();
+  //initScribble();
 
   xTaskCreate(mainLoop, "Super", 512, nullptr, 2, &handleSuper);
 
@@ -45,9 +46,9 @@ void loop() // dummy to keep Arduino happy
 {
 }
 
-extern TaskHandle_t handleSuper, handleADCs, handleRing0, handleTouch;
+extern TaskHandle_t handleSuper, handleADCs, handleRing0, handleTouch, handleScribble;
 extern TaskHandle_t handlesRings[];
-TaskHandle_t* handles[]{nullptr, &handleSuper, &handleADCs, &handleRing0, &handleTouch, handlesRings+1};
+TaskHandle_t* handles[]{nullptr, &handleSuper, &handleADCs, &handleRing0, &handleTouch, handlesRings+1, &handleScribble};
 void printTaskStates(void)
 {
   TaskHandle_t handleIdle = xTaskGetIdleTaskHandle();
@@ -135,4 +136,11 @@ static void mainLoop(void*)
     bits++;
     vTaskDelay(20);
   }
+}
+
+extern "C"
+void startup_middle_hook(void)
+{
+  pinMode(TFT_BLK,arduino::OUTPUT);
+  digitalWriteFast(TFT_BLK, arduino::LOW);
 }

@@ -3,6 +3,7 @@
 
 #include <Arduino.h>
 #include <Wire.h>
+
 #include "config.h"
 #include "arduino_freertos.h"
 
@@ -25,5 +26,7 @@ extern void updateLEDs(void);
 extern void initTouch(void);
 extern void updateTouch(void);
 extern void calibrateTouch(void);
+
+extern void initScribble(void);
 
 #endif // !defined(_HEADERS_H_)
