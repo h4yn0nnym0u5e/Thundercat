@@ -6,6 +6,8 @@
 #include <ADS8688.h>
 #include "headers.h"
 #include "contPot.h"
+#include <TeensyTimerTool.h>
+using namespace TeensyTimerTool;
 
 static uint8_t NmbOfADC = 2;            // Number of ADCs in series. This can only be two as of right now (03/09/19)
 static ADS8688 bank = ADS8688(ADC_CS, ADC_SPI);  // Instantiate ADS8688 with PIN 7 as CS, default to SPI
@@ -53,6 +55,7 @@ void printADCs(void)
   Serial.println();          
 }
 
+//================================================================================
 /*
  * Get all readings from one channel of a set of ADCs
  */
@@ -62,7 +65,7 @@ void getOneADCchannelSet(uint16_t* buf, int numADCs)
   const int _cs   = ADC_CS;
   const int _sclk = ADC_CLK;
 
-  _spi.beginTransaction(SPISettings(_sclk, arduino::MSBFIRST, SPI_MODE1));
+  _spi.beginTransaction(SPISettings(_sclk, arduino::MSBFIRST, SPI_MODE0));
   digitalWrite(_cs, arduino::LOW);
   _spi.transfer16(0x0000); // NO_OP (p45 table 6)
   _spi.endTransaction();
@@ -76,6 +79,101 @@ void getOneADCchannelSet(uint16_t* buf, int numADCs)
   _spi.endTransaction();
 }
 
+
+void getAllADCchannelSets(uint16_t* buf, int numADCs)
+{
+  for (int i=0;i<NUM_POTS;i++)
+    getOneADCchannelSet(buf+i*numADCs, numADCs);
+}
+
+
+//================================================================================
+static PeriodicTimer  SPItimer;
+static EventResponder SPIresponder;
+// 2 values per 360° pot, 1 per fader, 1 for overhead
+static uint16_t TxBuffer[1 + (NUM_POTS*2 + NUM_FADERS)/8]{0}; // transmit zeroes
+static uint16_t ADCrawBuffer[NUM_POTS*2 + NUM_FADERS + 8];
+static uint16_t ADCbuffer[NUM_POTS*2 + NUM_FADERS];
+static uint16_t* pADCraw;
+static int ADCtoDo;
+
+static void transferComplete(EventResponderRef evref)
+{
+  const int _cs   = ADC_CS;
+
+  switch (ADCtoDo)
+  {
+    default:
+      break;
+
+    case 1 ... NUM_POTS-1: // some left to do - re-start the process
+      digitalWrite(_cs, arduino::HIGH);
+      ADCtoDo--;
+      delayNanoseconds(ADC_CS_HIGH_NS); // ensure minimum /CS high time (30ns)
+      digitalWrite(_cs, arduino::LOW);
+      ADC_SPI.transfer(TxBuffer,pADCraw,sizeof TxBuffer,SPIresponder); // next transfer
+      break;
+
+    case 0: // all done
+      digitalWrite(_cs, arduino::HIGH);
+      ADC_SPI.endTransaction();
+
+      // de-interleave the values from the raw buffer
+      {
+        int stride = 2 + (NUM_POTS*2 + NUM_FADERS)/4; // stride in bytes
+        uint8_t* src = (uint8_t*)(ADCrawBuffer+1); // skip the dummy
+        uint16_t* dst = ADCbuffer;
+
+        for (int i=0;i<NUM_POTS;i++) 
+        {
+          dst[0] = (src[0]<<8) | src[1];
+          dst[1] = (src[2]<<8) | src[3];
+          dst += 2;
+          if (0 != NUM_FADERS)
+          {
+            dst[0] = (src[4]<<8) | src[5];
+            dst++;
+          }
+          src += stride;
+        }
+      }
+      ADCtoDo = -1; // extra flag to say we're done
+      xTaskResumeFromISR(handleADCs);      
+      break;
+  }
+}
+
+uint32_t missedADCcallbackCount;
+static void SPItimerCallback(void)
+{
+  const int _cs   = ADC_CS;
+  const int _sclk = ADC_CLK;
+
+  if (NUM_POTS == ADCtoDo) // we're ready for a new set of readings
+  {
+      pADCraw = ADCrawBuffer;
+      ADCtoDo--; // prevent re-triggering
+      ADC_SPI.beginTransaction(SPISettings(_sclk, arduino::MSBFIRST, SPI_MODE0));
+      digitalWrite(_cs, arduino::LOW);
+      ADC_SPI.transfer(TxBuffer,pADCraw,sizeof TxBuffer,SPIresponder); // first transfer
+  }
+  else
+    missedADCcallbackCount++;
+}
+
+void initSPItimer(void)
+{
+  // Attach the EventResponder function to be triggered when
+  // the DMA buffer transfer is done. Note that this is executed 
+  // within the SPI async driver's DMA ISR
+  SPIresponder.attachImmediate(transferComplete);
+
+  // Trigger SPI transaction sequence at fixed frequency
+  SPItimer.begin(SPItimerCallback, 1'000); // fire the SPI sequence every millisecond
+}
+
+
+//================================================================================
 float raw2volts(uint16_t raw)
 {
   return (float) raw / 65535.0f * 5.0f;
@@ -104,11 +202,19 @@ void updateADCs()
   }
   /*/
   {
-    const int numADCs = 2;
+ #if 1
+    const int numADCs = (NUM_POTS*2 + NUM_FADERS)/8;
     uint16_t buffer[NUM_POTS*numADCs]; // each pot has 2 channels
 
+    /*
     for (int i=0;i<NUM_POTS;i++)
       getOneADCchannelSet(buffer+i*numADCs, numADCs);
+    /*/
+    getAllADCchannelSets(buffer, numADCs);
+    //*/
+ #else 
+    uint16_t* buffer = ADCbuffer;    
+ #endif    
 
     // Given a potMap[] of {4,2,0,6}, we get a buffer of 16 values thus
     // 2A, 6A,  2B, 6B,   1A, 5A,  1B, 5B,   0A, 4A,  0B, 4B,   3A, 7A,  3B, 7B
@@ -138,10 +244,14 @@ void taskADCs(void*)
     //allPots[i].setAccel(0.05f, 4.0f);
   }
 
+  //initSPItimer();
+
   while (1)
   {
     updateADCs();
+    ADCtoDo = 8;
     vTaskDelay(1);
+    //vTaskSuspend(nullptr);
   }
 }
 

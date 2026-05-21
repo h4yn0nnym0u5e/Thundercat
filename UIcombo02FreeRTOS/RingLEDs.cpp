@@ -30,7 +30,7 @@ DMAMEM byte displayMemory[numled*12]; // 12 bytes per LED
 
 WS2812Serial leds(numled, displayMemory, drawingMemory, pin, WS2812_GRB);
 RingLEDs<NUM_POTS> rings(leds, drawingMemory, LEDS_PER_RING,LED_TOP_OFFSET);
-
+/*
 int rainbow1[LEDS_PER_RING] = {
     // straight order: first entry is highest value
     0x070000, 0x080100, 0x070200, 0x060200,
@@ -48,13 +48,31 @@ int cold2hot1[LEDS_PER_RING]   = {
     0x020006, 
     0x000100, 0x000100, 0x000100
   };
+  */
+int rainbow1[LEDS_PER_RING] = {
+    // straight order: first entry is highest value
+    0xFF0000, 0xF00800, 0xE02000, 0xD03000,
+    0xC04000, 0xB05000, 0xA06000, 0x908000,
+    0x80A000, 0x60C000, 0x20D000, 0x00FF00,
+    0x00F020, 0x008040, 0x004080, 0x0000FF,
+    0x2000F0, 
+    0x4000E0, 0x6000A0, 0x8000A0
+  };
+int cold2hot1[LEDS_PER_RING]   = {
+    0xA00000, 0xC00000, 0xFF0000, 0xF02020,
+    0xF04040, 0xC06060, 0xA08080, 0x808080,
+    0x606080, 0x404090, 0x4040C0, 0x2020F0,
+    0x2020FF, 0x0000FF, 0x2000F0, 0x2000C0,
+    0x4000B0, 
+    0x001000, 0x001000, 0x001000
+  };
 int rainbow[LEDS_PER_RING], cold2hot[LEDS_PER_RING];
 
 //*
 #define xRED    0xFF0000
 #define xORANGE 0xC02000
-#define xYELLOW 0xC0A000
-#define xGREEN  0x00FF00
+#define xYELLOW 0xB09000
+#define xGREEN  0x00A000 // be a bit conservative here
 #define xBLUE   0x0000FF
 #define xPURPLE 0x2000C0
 #define xPINK   0xC00060
@@ -88,20 +106,21 @@ struct ringConfig_t
   int* pattern;
 } ringConfigs[NUM_POTS]
 {
-  {{rings, 0}, allPots[0],RED},
-  {{rings, 1}, allPots[1],ORANGE},
-  {{rings, 2}, allPots[2],YELLOW},
-  {{rings, 3}, allPots[3],GREEN},
-  {{rings, 4}, allPots[4],BLUE},
-  {{rings, 5}, allPots[5],PURPLE},
-  {{rings, 6}, allPots[6],PINK,cold2hot},
-  {{rings, 7}, allPots[7],WHITE,rainbow}
+  {{rings, 0}, allPots[0],xRED},
+  {{rings, 1}, allPots[1],xORANGE},
+  {{rings, 2}, allPots[2],xYELLOW},
+  {{rings, 3}, allPots[3],xGREEN},
+  {{rings, 4}, allPots[4],xBLUE},
+  {{rings, 5}, allPots[5],xPURPLE},
+  {{rings, 6}, allPots[6],xPINK,cold2hot},
+  {{rings, 7}, allPots[7],xWHITE,rainbow}
 };
 /*
  Simplest possible UI - a dot at the nearest position to 
  the given value (which should have a range of ±1.0)
  */
 extern uint8_t keyStatuses[NUM_POTS];
+int bright = 128;
 
 void setDot(LEDring<NUM_POTS>& ring, float value, uint32_t colour)
 {
@@ -122,13 +141,13 @@ void setDot(LEDring<NUM_POTS>& ring, float value, uint32_t colour)
   }
 
   ring.setArc(18.0f*firstLED - 8.99f, 8*18+8.99f, BLACK);
-  ring.setArc(18.0f*firstLED - 8.99f, value, colour);
+  ring.setArc(18.0f*firstLED - 8.99f, value, colour, bright);
   ring.ensurePixelVisible(firstLED,colour);
   if (ring.debug)
     Serial.println();
   ring.debug = false;
 
-  ring.setPixel(10, keyStatuses[ring.ring]?WHITE:BLACK);
+  ring.setPixel(10, keyStatuses[ring.ring]?xWHITE:BLACK,bright);
 }
 
 
@@ -153,7 +172,7 @@ void taskRing(void* pcfg)
   {
     // Serial.printf("%u: ring task; bits: %02X\n", xTaskGetTickCount(), bits);
     uint8_t mask = bits & (1<<(NUM_POTS - 1 - cfg.ring.ring));
-    cfg.ring.setPixel(9,mask?cfg.colour:BLACK);
+    cfg.ring.setPixel(9,mask?cfg.colour:BLACK,bright);
 
     setDot(cfg.ring, cfg.myPot.getCurrent(), nullptr == cfg.pattern?cfg.colour:PATTERN);
 
