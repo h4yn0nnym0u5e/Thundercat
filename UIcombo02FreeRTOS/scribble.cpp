@@ -1,5 +1,6 @@
 #include <TFT_eSPI.h>
 #include "headers.h"
+#include "contPot.h"
 
 // define this to use DMA to write the rectangles
 #define noUSE_DMA
@@ -37,6 +38,8 @@ const char* busString = "SPI";
 
 #define INIT begin()
 static uint16_t colours[]{TFT_RED, TFT_ORANGE, TFT_YELLOW, TFT_GREEN, TFT_CYAN, TFT_BLUE, TFT_MAGENTA, TFT_VIOLET};
+static uint16_t bkgnds[NUM_POTS];
+static uint16_t textColours[NUM_POTS];
 
 
 TFT_TYPE* tfts[] = {&tft1, &tft2, &tft3, &tft4, &tft5, &tft6, &tft7, &tft8};
@@ -67,9 +70,9 @@ static void initDisplayPins(void)
 
   // reset display
   digitalWriteFast(TFT_RST, arduino::HIGH);
-  delay(1);
+  vTaskDelay(1);
   digitalWriteFast(TFT_RST, arduino::LOW);
-  delay(1);
+  vTaskDelay(1);
   digitalWriteFast(TFT_RST, arduino::HIGH);
 }
 
@@ -118,6 +121,7 @@ static void phasedInit(void)
     {
       finished &= doAphase(i,phases[i]);
     }
+    vTaskDelay(1);
   }
   Serial.printf("Phased init - took %dms\n", (int) em);
   FN_TFTS(fillUnique);
@@ -130,8 +134,7 @@ static void setupScribble()
 {
   Serial.println("Started");
   initDisplayPins();
-
-  
+ 
   // standard setup
   phasedInit();
 
@@ -139,11 +142,11 @@ static void setupScribble()
   for (int i=0;i<129;i++)
   {
     analogWrite(TFT_BLK,i);
-    delay(5);
+    vTaskDelay(5);
   }
-  delay(100);
+  vTaskDelay(100);
  
-  
+
 #if defined(USE_FLEXIO_SPI)
   // This gives us a base clock of 120MHz:
   SPIflex.flexIOHandler()->setClock(120'000'000.0f);
@@ -169,14 +172,7 @@ static void setupScribble()
 int x,y, w, h;
 uint16_t* r;
 
-static void randomRect(
-#if defined(_TFT_eSPIH_)
-  TFT_eSPI&
-#else
-  ST7789_t3&  
-#endif // defined(_TFT_eSPIH_)
-  tft, int i = -1
-  )
+static void randomRect(TFT_TYPE& tft, int i = -1)
 {
   // w = random(140); h = random(80);
   w = random(80); h = random(80);
@@ -220,16 +216,70 @@ static void randomRect(
   //vTaskDelay(1);
 }
 
+//-----------------------------------------------------------------------------------
+extern ContinuousPot allPots[NUM_POTS];
+static float lastPots[NUM_POTS];
+static constexpr float POT_NOT_SET = -999.0f;
+static const float sa = 2*18.0f, ea = 360.0f - 2*18.0f; // TFT_eSPI has zero at 6 o'clock
+
+static void drawArc(TFT_TYPE& tft, float s, float e, uint16_t fg, uint16_t bkgnd)
+{
+  tft.drawArc(120, 120, 110, 80, s+sa, e+sa, fg, bkgnd);
+  Serial.printf("%.1f-%.1f; %04X", s+sa, e+sa, fg);
+}
+
+static void setArc(TFT_TYPE& tft, int i = -1)
+{
+  // get new value in degrees, relative to start angle:
+  float potPos = allPots[i].getCurrent(); // -1.0 to +1.0
+  float newPot = (potPos + 1.0f) * (ea - sa) / 2.0f;
+  float& lastPot = lastPots[i]; 
+
+  if (fabs(newPot - lastPot) > 0.5f)
+  {
+    char buf[10];
+    Serial.printf("Pot %d: ", i);
+    if (POT_NOT_SET == lastPot)
+    {
+      tft.fillScreen(bkgnds[i]);
+      drawArc(tft, 0.0f, ea-sa, TFT_BLACK, bkgnds[i]);
+      lastPot = 0.0f;
+    }
+
+    if (newPot < lastPot)
+      drawArc(tft, newPot, lastPot, TFT_BLACK, bkgnds[i]);
+    else
+      drawArc(tft, lastPot, newPot, colours[i], bkgnds[i]);
+
+    tft.setCursor(70,140);
+    tft.fillRect(70,105,120,50,bkgnds[i]);
+    sprintf(buf,"%5.2f",potPos);
+    tft.print(buf);
+
+    lastPots[i] = newPot;
+    Serial.println();
+  }
+}
 //=========================================================================================
 int rectCount;
 static void loopScribble() 
 {
-  FN_TFTS(randomRect);
+  //FN_TFTS(randomRect);
+  FN_TFTS(setArc);
 }
 
 static void taskScribble(void*)
 {
   setupScribble();
+  for (int i=0; i<NUM_POTS; i++)
+  {
+    lastPots[i] = POT_NOT_SET;
+    bkgnds[i]      = tft1.alphaBlend( 70 /* / 255 */, colours[i], TFT_BLACK);
+    textColours[i] = tft1.alphaBlend( 80 /* / 255 */, colours[i], TFT_WHITE);
+    tfts[i]->setFreeFont(&FreeSansBold24pt7b);
+    tfts[i]->setTextColor(textColours[i], bkgnds[i], true);
+  }
+
   while (1)
   {
     loopScribble();
