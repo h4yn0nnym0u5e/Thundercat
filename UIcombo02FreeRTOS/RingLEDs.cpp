@@ -184,8 +184,8 @@ void taskRing(void* pcfg)
 }
 
 static constexpr size_t STACK_SIZE{512};
-static StackType_t RingStacks[NUM_POTS][STACK_SIZE];
-static StaticTask_t RingTasks[NUM_POTS];
+static DMAMEM StackType_t RingStacks[NUM_POTS][STACK_SIZE];
+static DMAMEM StaticTask_t RingTasks[NUM_POTS];
 void initLEDs(void) 
 {
   // set up multicoloured patterns

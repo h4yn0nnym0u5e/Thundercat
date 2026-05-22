@@ -128,21 +128,12 @@ static void phasedInit(void)
 //=========================================================================================
 static void setupScribble() 
 {
-//  halt_cpu();
   Serial.println("Started");
   initDisplayPins();
 
-  // turn backlight on
-  //digitalWriteFast(TFT_BLK, HIGH);
   
   // standard setup
-  //ALL_TFTS.INIT;
-  //SPI.debugFlag = true;
-#if defined(ST7789_PHASED) // TFT_eSPI set up for phased init
   phasedInit();
-#else
-  FN_TFTS(initUnique);
-#endif // defined(ST7789_PHASED)
 
   // set backlights to half-power
   for (int i=0;i<129;i++)
@@ -161,11 +152,9 @@ static void setupScribble()
   Serial.printf("Updated Flex IO speed: %u; SPI clock will be an integer division of %u\n", clk, clk/2);
 #endif // defined(USE_FLEXIO_SPI)
   
-  //tft.fillScreen(0);
   FN_TFTS(fillUnique);
 
   // this will depend on your hardware!
-  //tft.setRotation(1);
   ALL_TFTS.setRotation(TFT_ROTATION);
   //tft.setSPISpeed(60'000'000);
   
@@ -235,19 +224,7 @@ static void randomRect(
 int rectCount;
 static void loopScribble() 
 {
-//  if (0 == rectCount % 9600)
-//    Serial.printf("\n%d: ", millis());
-//*    
   FN_TFTS(randomRect);
-/*/ 
-  for (int i=0;i<8;i++)
-    randomRect(*tfts[i]);
-//*/  
-  rectCount += 8;
-  if (0 == rectCount % 96)
-  {
-//    Serial.print('.');
-  }
 }
 
 static void taskScribble(void*)
@@ -256,13 +233,18 @@ static void taskScribble(void*)
   while (1)
   {
     loopScribble();
-    vTaskDelay(1);
+    vTaskDelay(5);
   }
 }
 
 TaskHandle_t handleScribble;
+static constexpr size_t STACK_SIZE{512};
+static DMAMEM StackType_t ScribbleStack[STACK_SIZE];
+static DMAMEM StaticTask_t ScribbleTask;
 void initScribble(void)
 {
 Serial.printf("Create Scribble task: \n");    
-  xTaskCreate(taskScribble, "Scribble", 512, nullptr, 2, &handleScribble);
+  // xTaskCreate(taskScribble, "Scribble", 512, nullptr, 2, &handleScribble);
+  handleScribble = xTaskCreateStatic(taskScribble, "Scribble", STACK_SIZE, nullptr, 2,
+                                     ScribbleStack, &ScribbleTask);
 }
