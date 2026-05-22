@@ -37,7 +37,10 @@ TFT_eSPI tft8{240,240,SCRIBBLE_SPI,-1, [](bool negate) { CSfn(7, negate); }};
 const char* busString = "SPI";
 
 #define INIT begin()
-static uint16_t colours[]{TFT_RED, TFT_ORANGE, TFT_YELLOW, TFT_GREEN, TFT_CYAN, TFT_BLUE, TFT_MAGENTA, TFT_VIOLET};
+// #define TFT_ORANGE      0xFDA0      /* 255, 180,   0 */ actually 248,180,0
+#define TFT_ORANGE2      0xFD00      /* 255, 128,   0 */
+
+static uint16_t colours[]{TFT_RED, TFT_ORANGE2, TFT_YELLOW, TFT_GREEN, TFT_CYAN, TFT_BLUE, TFT_MAGENTA, TFT_VIOLET};
 static uint16_t bkgnds[NUM_POTS];
 static uint16_t textColours[NUM_POTS];
 
@@ -219,13 +222,20 @@ static void randomRect(TFT_TYPE& tft, int i = -1)
 //-----------------------------------------------------------------------------------
 extern ContinuousPot allPots[NUM_POTS];
 static float lastPots[NUM_POTS];
+static bool  lastTouches[NUM_POTS];
 static constexpr float POT_NOT_SET = -999.0f;
 static const float sa = 2*18.0f, ea = 360.0f - 2*18.0f; // TFT_eSPI has zero at 6 o'clock
 
 static void drawArc(TFT_TYPE& tft, float s, float e, uint16_t fg, uint16_t bkgnd)
 {
   tft.drawArc(120, 120, 110, 80, s+sa, e+sa, fg, bkgnd);
-  Serial.printf("%.1f-%.1f; %04X", s+sa, e+sa, fg);
+  //Serial.printf("%.1f-%.1f; %04X", s+sa, e+sa, fg);
+}
+
+static void drawTouch(TFT_TYPE& tft, uint16_t colour)
+{
+  tft.fillEllipse(120,210,24,16,colour);
+  //Serial.printf("touch: %04X\n", colour);
 }
 
 static void setArc(TFT_TYPE& tft, int i = -1)
@@ -238,12 +248,13 @@ static void setArc(TFT_TYPE& tft, int i = -1)
   if (fabs(newPot - lastPot) > 0.5f)
   {
     char buf[10];
-    Serial.printf("Pot %d: ", i);
+    //Serial.printf("Pot %d: ", i);
     if (POT_NOT_SET == lastPot)
     {
       tft.fillScreen(bkgnds[i]);
       drawArc(tft, 0.0f, ea-sa, TFT_BLACK, bkgnds[i]);
       lastPot = 0.0f;
+      lastTouches[i] = keyStatuses[i];
     }
 
     if (newPot < lastPot)
@@ -257,7 +268,14 @@ static void setArc(TFT_TYPE& tft, int i = -1)
     tft.print(buf);
 
     lastPots[i] = newPot;
-    Serial.println();
+    //Serial.println();
+  }
+
+  if (lastTouches[i] != keyStatuses[i])
+  {
+    drawTouch(tft, keyStatuses[i]?colours[i]:bkgnds[i]);
+
+    lastTouches[i] = keyStatuses[i];
   }
 }
 //=========================================================================================

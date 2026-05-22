@@ -13,6 +13,7 @@ extern bool echoOnce;
 extern bool supplyValid;
 extern uint32_t ADCupdateMicros;
 extern int bright;
+extern uint8_t keyStatuses[NUM_POTS];
 
 extern void initADCs(void);
 extern void updateADCs(void);
