@@ -2,7 +2,7 @@
 #include "headers.h"
 
 // define this to use DMA to write the rectangles
-#define USE_DMA
+#define noUSE_DMA
 
 /*
  * Use 74LVC138 decoder to provide /CS signal to one of
@@ -189,7 +189,8 @@ static void randomRect(
   tft, int i = -1
   )
 {
-  w = random(140); h = random(80);
+  // w = random(140); h = random(80);
+  w = random(80); h = random(80);
   uint16_t colour = random(65536);
 
   do
@@ -201,7 +202,7 @@ static void randomRect(
 #if defined(USE_DMA)
   // create sprite to draw the rectangle, and draw it
   TFT_eSprite sprite{&tft};
-  sprite.createInPSRAM(random(100) > 49); // maybe create in PSRAM
+  sprite.createInPSRAM(1);//random(100) > 49); // maybe create in PSRAM
   r = (uint16_t*) sprite.createSprite(w,h);
 // Serial.printf("sprite data at %08X\n", (uint32_t) r);  
   sprite.fillSprite(colour);
@@ -215,7 +216,7 @@ static void randomRect(
 #else
 
   tft.fillRect(x,y,w,h,colour);
-  
+  //vTaskDelay(2);
 #endif // defined(USE_DMA)  
 
 #define SZ 4  
@@ -262,5 +263,6 @@ static void taskScribble(void*)
 TaskHandle_t handleScribble;
 void initScribble(void)
 {
-  xTaskCreate(taskScribble, "Scribble", 1024, nullptr, 2, &handleScribble);
+Serial.printf("Create Scribble task: \n");    
+  xTaskCreate(taskScribble, "Scribble", 512, nullptr, 2, &handleScribble);
 }

@@ -120,7 +120,7 @@ struct ringConfig_t
  the given value (which should have a range of ±1.0)
  */
 extern uint8_t keyStatuses[NUM_POTS];
-int bright = 128;
+int bright = 39; // level 5
 
 void setDot(LEDring<NUM_POTS>& ring, float value, uint32_t colour)
 {
@@ -183,7 +183,9 @@ void taskRing(void* pcfg)
   }
 }
 
-
+static constexpr size_t STACK_SIZE{512};
+static StackType_t RingStacks[NUM_POTS][STACK_SIZE];
+static StaticTask_t RingTasks[NUM_POTS];
 void initLEDs(void) 
 {
   // set up multicoloured patterns
@@ -210,7 +212,10 @@ void initLEDs(void)
   {
     char buf[configMAX_TASK_NAME_LEN+1]; // from FreeRTOSconfig.h
     sprintf(buf,"Ring%d",i);
-    xTaskCreate(taskRing, buf, 512, ringConfigs+i, 2, handlesRings+i);
+Serial.printf("Create %s task: \n", buf);    
+    // xTaskCreate(taskRing, buf, 512, ringConfigs+i, 2, handlesRings+i);
+    handlesRings[i] = xTaskCreateStatic(taskRing, buf, STACK_SIZE, ringConfigs+i, 2, 
+                RingStacks[i], RingTasks+i);
   }
   handleRing0 = handlesRings[0];
 }

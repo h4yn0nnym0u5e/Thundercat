@@ -28,8 +28,9 @@ void setup()
   initLEDs();
   initTouch();
   initADCs();
-  //initScribble();
+  initScribble();
 
+Serial.printf("Create Super task: \n");    
   xTaskCreate(mainLoop, "Super", 512, nullptr, 2, &handleSuper);
 
   delay(1000);
@@ -37,6 +38,20 @@ void setup()
   vTaskStartScheduler();
 }
 
+void print_malloc(uint32_t xSize, uint32_t where)
+{
+    Serial.printf("  * allocated %u at 0x%08X\n", xSize, where);
+}
+
+void* mymalloc(size_t xSize)
+{
+  return ::malloc(xSize);
+}
+
+void myfree(void* p)
+{
+  ::free(p);
+}
 
 
 elapsedMillis em;
