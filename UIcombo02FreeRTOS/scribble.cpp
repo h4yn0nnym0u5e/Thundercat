@@ -3,7 +3,7 @@
 #include "contPot.h"
 
 // define this to use DMA to write the rectangles
-#define noUSE_DMA
+#define USE_DMA
 
 /*
  * Use 74LVC138 decoder to provide /CS signal to one of
@@ -259,10 +259,37 @@ static void setArc(TFT_TYPE& tft, int i = -1)
     else
       drawArc(tft, lastPot, newPot, colours[i], bkgnds[i]);
 
+ #if defined(USE_DMA)
+    // create sprite to draw the current level, and draw it
+    int x = 65, y = 100, w = 120, h = 50;
+
+    TFT_eSprite sprite{&tft};
+    sprite.setSpriteSwapBytes(false);
+    sprite.createInPSRAM(1); // create in PSRAM
+
+    uint16_t* r = (uint16_t*) sprite.createSprite(w,h);
+
+    sprite.fillRect(0,0,w,h,bkgnds[i]); //fillSprite(bkgnds[i]);
+    
+    sprite.setFreeFont(&FreeSansBold24pt7b);
+    sprite.setTextColor(textColours[i]);
+    sprite.setCursor(0,35);
+    sprintf(buf,"%5.2f",potPos);
+    sprite.print(buf);
+
+    // write to the display using DMA
+    tft.startWrite();
+    tft.pushImageDMA(x,y,w,h,r);
+    tft.dmaWait(); // could do something useful here
+    tft.endWrite();
+  
+ #else
+    // this works, but flickers
     tft.setCursor(70,140);
     tft.fillRect(70,105,120,50,bkgnds[i]);
     sprintf(buf,"%5.2f",potPos);
     tft.print(buf);
+ #endif // defined(USE_DMA)
 
     lastPots[i] = newPot;
     //Serial.println();
