@@ -235,29 +235,26 @@ static void drawTouch(TFT_TYPE& tft, uint16_t colour)
   //Serial.printf("touch: %04X\n", colour);
 }
 
-static void setArc(TFT_TYPE& tft, int i = -1)
+void setArc(TFT_TYPE& tft, 
+            float newPot, float& lastPot, char* buf,
+            int8_t touch, bool& lastTouch,
+            int fg, int bg, int txt)
 {
-  // get new value in degrees, relative to start angle:
-  float potPos = allPots[i].getCurrent(); // -1.0 to +1.0
-  float newPot = (potPos + 1.0f) * (ea - sa) / 2.0f;
-  float& lastPot = lastPots[i]; 
-
   if (fabs(newPot - lastPot) > 0.5f)
   {
-    char buf[10];
     //Serial.printf("Pot %d: ", i);
     if (POT_NOT_SET == lastPot)
     {
-      tft.fillScreen(bkgnds[i]);
-      drawArc(tft, 0.0f, ea-sa, TFT_BLACK, bkgnds[i]);
+      tft.fillScreen(bg);
+      drawArc(tft, 0.0f, ea-sa, TFT_BLACK, bg);
       lastPot = 0.0f;
-      lastTouches[i] = keyStatuses[i];
+      lastTouch = touch;
     }
 
     if (newPot < lastPot)
-      drawArc(tft, newPot, lastPot, TFT_BLACK, bkgnds[i]);
+      drawArc(tft, newPot, lastPot, TFT_BLACK, bg);
     else
-      drawArc(tft, lastPot, newPot, colours[i], bkgnds[i]);
+      drawArc(tft, lastPot, newPot, fg, bg);
 
  #if defined(USE_DMA)
     // create sprite to draw the current level, and draw it
@@ -269,45 +266,71 @@ static void setArc(TFT_TYPE& tft, int i = -1)
 
     uint16_t* r = (uint16_t*) sprite.createSprite(w,h);
 
-    sprite.fillRect(0,0,w,h,bkgnds[i]); //fillSprite(bkgnds[i]);
-    
+    sprite.fillRect(0,0,w,h,bg); //fillSprite(bkgnds[i]);
+
     sprite.setFreeFont(&FreeSansBold24pt7b);
-    sprite.setTextColor(textColours[i]);
+    sprite.setTextColor(txt);
     sprite.setCursor(0,35);
-    sprintf(buf,"%5.2f",potPos);
     sprite.print(buf);
 
     // write to the display using DMA
+    blockLEDs(true);
     tft.startWrite();
     tft.pushImageDMA(x,y,w,h,r);
-    tft.dmaWait(); // could do something useful here
+    //vTaskDelay(250); // delay task until DMA is complete or timeout
+    //vTaskSuspend(nullptr); // suspend task until DMA is complete
+    uint32_t ulNotifiedValue = ulTaskNotifyTake( pdFALSE, 1000);
+    if (0 == ulNotifiedValue) { /* panic! */}
+    tft.dmaWait();   // could do something useful here
     tft.endWrite();
+    blockLEDs(false);
   
  #else
     // this works, but flickers
     tft.setCursor(70,140);
-    tft.fillRect(70,105,120,50,bkgnds[i]);
-    sprintf(buf,"%5.2f",potPos);
+    tft.fillRect(70,105,120,50,bg);
     tft.print(buf);
  #endif // defined(USE_DMA)
 
-    lastPots[i] = newPot;
+    lastPot = newPot;
     //Serial.println();
   }
 
-  if (lastTouches[i] != keyStatuses[i])
+  if (lastTouch != touch)
   {
-    drawTouch(tft, keyStatuses[i]?colours[i]:bkgnds[i]);
-
-    lastTouches[i] = keyStatuses[i];
+    drawTouch(tft, touch?fg:bg);
+    lastTouch = touch;
   }
+}
+
+static void ssetArc(TFT_TYPE& tft, int i = -1)
+{
+  // get new value in degrees, relative to start angle:
+  float potPos = allPots[i].getCurrent(); // -1.0 to +1.0
+  float newPot = (potPos + 1.0f) * (ea - sa) / 2.0f;
+
+  char buf[10];
+  sprintf(buf,"%5.2f",potPos);
+
+  setArc(tft, newPot, lastPots[i], buf, keyStatuses[i], lastTouches[i],
+         colours[i], bkgnds[i], textColours[i]);
 }
 //=========================================================================================
 int rectCount;
+TaskHandle_t handleScribble;
+static void completionISR(TFT_TYPE& tft)
+{
+//  if (nullptr != handleScribble)
+//    xTaskResumeFromISR(handleScribble);
+  BaseType_t xHigherPriorityTaskWoken;
+  vTaskNotifyGiveFromISR( handleScribble, &xHigherPriorityTaskWoken );
+  portYIELD_FROM_ISR( xHigherPriorityTaskWoken );
+}
+
 static void loopScribble() 
 {
   //FN_TFTS(randomRect);
-  FN_TFTS(setArc);
+  FN_TFTS(ssetArc);
 }
 
 static void taskScribble(void*)
@@ -320,7 +343,11 @@ static void taskScribble(void*)
     textColours[i] = tft1.alphaBlend( 80 /* / 255 */, colours[i], TFT_WHITE);
     tfts[i]->setFreeFont(&FreeSansBold24pt7b);
     tfts[i]->setTextColor(textColours[i], bkgnds[i], true);
-  }
+
+ #if defined(USE_DMA)  
+    tfts[i]->dmaAttachCompletionISR(completionISR);
+ #endif // defined(USE_DMA)
+   }
 
   while (1)
   {
@@ -329,7 +356,6 @@ static void taskScribble(void*)
   }
 }
 
-TaskHandle_t handleScribble;
 static constexpr size_t STACK_SIZE{512};
 //static DMAMEM StackType_t ScribbleStack[STACK_SIZE];
 //static DMAMEM StaticTask_t ScribbleTask;

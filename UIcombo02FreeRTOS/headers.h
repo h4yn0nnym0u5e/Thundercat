@@ -31,6 +31,7 @@ extern void printADCs(void);
 
 extern void initLEDs(void);
 extern void updateLEDs(void);
+extern void blockLEDs(bool block);
 
 extern void initTouch(void);
 extern void updateTouch(void);
