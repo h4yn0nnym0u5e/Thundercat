@@ -36,6 +36,7 @@
 #define MUX_G     41
 
 #define TFT_BLK    9
+#define TFT_TYPE TFT_eSPI
 
 // TFT_RST should be set to -1 in hardware select file, 
 // we need a different value

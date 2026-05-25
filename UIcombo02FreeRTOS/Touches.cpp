@@ -146,7 +146,7 @@ static void taskTouch(void*)
 
 void initTouch() 
 {
-Serial.printf("Create Touch task: \n");    
+//Serial.printf("Create Touch task: \n");    
   xTaskCreate(taskTouch, "Touch", 256, nullptr, 7, &handleTouch);
 }
 

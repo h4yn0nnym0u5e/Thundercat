@@ -23,26 +23,24 @@
 }
 
 
-#define TFT_TYPE TFT_eSPI
-
 const char* libString = "TFT_eSPI";
-TFT_eSPI tft1{240,240,SCRIBBLE_SPI,-1, [](bool negate) { CSfn(0, negate); }};
-TFT_eSPI tft2{240,240,SCRIBBLE_SPI,-1, [](bool negate) { CSfn(1, negate); }};
-TFT_eSPI tft3{240,240,SCRIBBLE_SPI,-1, [](bool negate) { CSfn(2, negate); }};
-TFT_eSPI tft4{240,240,SCRIBBLE_SPI,-1, [](bool negate) { CSfn(3, negate); }};
-TFT_eSPI tft5{240,240,SCRIBBLE_SPI,-1, [](bool negate) { CSfn(4, negate); }};
-TFT_eSPI tft6{240,240,SCRIBBLE_SPI,-1, [](bool negate) { CSfn(5, negate); }};
-TFT_eSPI tft7{240,240,SCRIBBLE_SPI,-1, [](bool negate) { CSfn(6, negate); }};
-TFT_eSPI tft8{240,240,SCRIBBLE_SPI,-1, [](bool negate) { CSfn(7, negate); }};
+TFT_TYPE tft1{240,240,SCRIBBLE_SPI,-1, [](bool negate) { CSfn(0, negate); }};
+TFT_TYPE tft2{240,240,SCRIBBLE_SPI,-1, [](bool negate) { CSfn(1, negate); }};
+TFT_TYPE tft3{240,240,SCRIBBLE_SPI,-1, [](bool negate) { CSfn(2, negate); }};
+TFT_TYPE tft4{240,240,SCRIBBLE_SPI,-1, [](bool negate) { CSfn(3, negate); }};
+TFT_TYPE tft5{240,240,SCRIBBLE_SPI,-1, [](bool negate) { CSfn(4, negate); }};
+TFT_TYPE tft6{240,240,SCRIBBLE_SPI,-1, [](bool negate) { CSfn(5, negate); }};
+TFT_TYPE tft7{240,240,SCRIBBLE_SPI,-1, [](bool negate) { CSfn(6, negate); }};
+TFT_TYPE tft8{240,240,SCRIBBLE_SPI,-1, [](bool negate) { CSfn(7, negate); }};
 const char* busString = "SPI";
 
 #define INIT begin()
 // #define TFT_ORANGE      0xFDA0      /* 255, 180,   0 */ actually 248,180,0
 #define TFT_ORANGE2      0xFD00      /* 255, 128,   0 */
 
-static uint16_t colours[]{TFT_RED, TFT_ORANGE2, TFT_YELLOW, TFT_GREEN, TFT_CYAN, TFT_BLUE, TFT_MAGENTA, TFT_VIOLET};
-static uint16_t bkgnds[NUM_POTS];
-static uint16_t textColours[NUM_POTS];
+uint16_t colours[]{TFT_RED, TFT_ORANGE2, TFT_YELLOW, TFT_GREEN, TFT_CYAN, TFT_BLUE, TFT_MAGENTA, TFT_VIOLET};
+uint16_t bkgnds[NUM_POTS];
+uint16_t textColours[NUM_POTS];
 
 
 TFT_TYPE* tfts[] = {&tft1, &tft2, &tft3, &tft4, &tft5, &tft6, &tft7, &tft8};
@@ -87,7 +85,7 @@ static void fillUnique(TFT_TYPE& tft, int i)
   tft.fillScreen(colours[i]);  
 }
 
-static void initUnique(TFT_TYPE& tft, int i)
+[[maybe_unused]] static void initUnique(TFT_TYPE& tft, int i)
 {
   elapsedMillis em = 0;
   tft.INIT;
@@ -175,7 +173,7 @@ static void setupScribble()
 int x,y, w, h;
 uint16_t* r;
 
-static void randomRect(TFT_TYPE& tft, int i = -1)
+[[maybe_unused]] static void randomRect(TFT_TYPE& tft, int i = -1)
 {
   // w = random(140); h = random(80);
   w = random(80); h = random(80);
@@ -220,7 +218,6 @@ static void randomRect(TFT_TYPE& tft, int i = -1)
 }
 
 //-----------------------------------------------------------------------------------
-extern ContinuousPot allPots[NUM_POTS];
 static float lastPots[NUM_POTS];
 static bool  lastTouches[NUM_POTS];
 static constexpr float POT_NOT_SET = -999.0f;
@@ -307,12 +304,12 @@ static void taskScribble(void*)
 
 TaskHandle_t handleScribble;
 static constexpr size_t STACK_SIZE{512};
-static DMAMEM StackType_t ScribbleStack[STACK_SIZE];
-static DMAMEM StaticTask_t ScribbleTask;
+//static DMAMEM StackType_t ScribbleStack[STACK_SIZE];
+//static DMAMEM StaticTask_t ScribbleTask;
 void initScribble(void)
 {
-Serial.printf("Create Scribble task: \n");    
-  // xTaskCreate(taskScribble, "Scribble", 512, nullptr, 2, &handleScribble);
-  handleScribble = xTaskCreateStatic(taskScribble, "Scribble", STACK_SIZE, nullptr, 2,
-                                     ScribbleStack, &ScribbleTask);
+//Serial.printf("Create Scribble task: \n");    
+  xTaskCreate(taskScribble, "Scribble", 512, nullptr, 2, &handleScribble);
+  //handleScribble = xTaskCreateStatic(taskScribble, "Scribble", STACK_SIZE, nullptr, 2,
+  //                                   ScribbleStack, &ScribbleTask);
 }

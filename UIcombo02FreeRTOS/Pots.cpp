@@ -257,7 +257,7 @@ void taskADCs(void*)
 
 void initADCs(void)
 {
-Serial.printf("Create ADCs task: \n");    
+//Serial.printf("Create ADCs task: \n");    
   xTaskCreate(taskADCs, "ADCs", 128, nullptr, 3, &handleADCs);
 }
 

@@ -1,4 +1,3 @@
-#include "config.h"
 #include "headers.h"
 #include "arduino_freertos.h"
 
@@ -22,6 +21,7 @@ void setup()
   while (!Serial)
     ;
   Serial.println("\n\nstarted");
+  freertos::print_ram_usage();
 
   // initialise hardware
   doReset();
@@ -30,7 +30,7 @@ void setup()
   initADCs();
   initScribble();
 
-Serial.printf("Create Super task: \n");    
+//Serial.printf("Create Super task: \n");    
   xTaskCreate(mainLoop, "Super", 512, nullptr, 2, &handleSuper);
 
   delay(1000);
@@ -38,6 +38,8 @@ Serial.printf("Create Super task: \n");
   vTaskStartScheduler();
 }
 
+/*
+// Useful if you instrument pvPortMalloc() etc.
 void print_malloc(uint32_t xSize, uint32_t where)
 {
     Serial.printf("  * allocated %u at 0x%08X\n", xSize, where);
@@ -52,7 +54,7 @@ void myfree(void* p)
 {
   ::free(p);
 }
-
+*/
 
 elapsedMillis em;
 bool echoOnce, enableADCprint;
@@ -85,6 +87,7 @@ void printTaskStates(void)
             );
   }
   Serial.printf("ADC updates take %uµs\n", ADCupdateMicros);
+  freertos::print_ram_usage();
 }
 
 static void loopFn(void)

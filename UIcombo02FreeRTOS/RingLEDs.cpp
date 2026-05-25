@@ -30,25 +30,7 @@ DMAMEM byte displayMemory[numled*12]; // 12 bytes per LED
 
 WS2812Serial leds(numled, displayMemory, drawingMemory, pin, WS2812_GRB);
 RingLEDs<NUM_POTS> rings(leds, drawingMemory, LEDS_PER_RING,LED_TOP_OFFSET);
-/*
-int rainbow1[LEDS_PER_RING] = {
-    // straight order: first entry is highest value
-    0x070000, 0x080100, 0x070200, 0x060200,
-    0x060200, 0x060300, 0x060400, 0x060500,
-    0x050500, 0x030600, 0x010600, 0x000700,
-    0x000601, 0x000402, 0x000204, 0x000007,
-    0x010007, 
-    0x020007, 0x030005, 0x040005
-  };
-int cold2hot1[LEDS_PER_RING]   = {
-    0x050000, 0x060000, 0x070000, 0x070101,
-    0x070202, 0x060303, 0x050404, 0x040404,
-    0x030304, 0x020204, 0x020206, 0x010108,
-    0x010109, 0x000007, 0x010009, 0x010006,
-    0x020006, 
-    0x000100, 0x000100, 0x000100
-  };
-  */
+
 int rainbow1[LEDS_PER_RING] = {
     // straight order: first entry is highest value
     0xFF0000, 0xF00800, 0xE02000, 0xD03000,
@@ -90,13 +72,12 @@ int rainbow[LEDS_PER_RING], cold2hot[LEDS_PER_RING];
 #define WHITE  0x060606
 //*/
 
-int colours[]{RED, ORANGE, YELLOW, GREEN, BLUE, PURPLE, PINK, WHITE};
-int colours2[]{xRED, xORANGE, xYELLOW, xGREEN, xBLUE, xPURPLE, xPINK, xWHITE};
+//int colours[]{RED, ORANGE, YELLOW, GREEN, BLUE, PURPLE, PINK, WHITE};
+//int colours2[]{xRED, xORANGE, xYELLOW, xGREEN, xBLUE, xPURPLE, xPINK, xWHITE};
 #define BLACK  0x000000
 #define PATTERN -1
-int ringColours[]{RED, ORANGE, YELLOW, GREEN, BLUE, PURPLE, PATTERN, PATTERN};
+//int ringColours[]{RED, ORANGE, YELLOW, GREEN, BLUE, PURPLE, PATTERN, PATTERN};
 
-extern ContinuousPot allPots[NUM_POTS];
 
 struct ringConfig_t
 {
@@ -104,19 +85,27 @@ struct ringConfig_t
   ContinuousPot& myPot;
   int colour;
   int* pattern;
+  struct {
+    TFT_TYPE& tft;
+    uint16_t& colour;
+    uint16_t& bkgnd;
+    uint16_t& textColour;
+  } tft;
 } ringConfigs[NUM_POTS]
 {
-  {{rings, 0}, allPots[0],xRED},
-  {{rings, 1}, allPots[1],xORANGE},
-  {{rings, 2}, allPots[2],xYELLOW},
-  {{rings, 3}, allPots[3],xGREEN},
-  {{rings, 4}, allPots[4],xBLUE},
-  {{rings, 5}, allPots[5],xPURPLE},
-  {{rings, 6}, allPots[6],xPINK,cold2hot},
-  {{rings, 7}, allPots[7],xWHITE,rainbow}
+  {{rings, 0}, allPots[0],xRED,    nullptr,  {*tfts[0], colours[0], bkgnds[0], textColours[0]}},
+  {{rings, 1}, allPots[1],xORANGE, nullptr,  {*tfts[1], colours[1], bkgnds[1], textColours[1]}},
+  {{rings, 2}, allPots[2],xYELLOW, nullptr,  {*tfts[2], colours[2], bkgnds[2], textColours[2]}},
+  {{rings, 3}, allPots[3],xGREEN,  nullptr,  {*tfts[3], colours[3], bkgnds[3], textColours[3]}},
+  {{rings, 4}, allPots[4],xBLUE,   nullptr,  {*tfts[4], colours[4], bkgnds[4], textColours[4]}},
+  {{rings, 5}, allPots[5],xPURPLE, nullptr,  {*tfts[5], colours[5], bkgnds[5], textColours[5]}},
+  {{rings, 6}, allPots[6],xPINK,   cold2hot, {*tfts[6], colours[6], bkgnds[6], textColours[6]}},
+  {{rings, 7}, allPots[7],xWHITE,  rainbow,  {*tfts[7], colours[7], bkgnds[7], textColours[7]}}
 };
+
+
 /*
- Simplest possible UI - a dot at the nearest position to 
+ Draw an arc from the start to 
  the given value (which should have a range of ±1.0)
  */
 extern uint8_t keyStatuses[NUM_POTS];
@@ -184,8 +173,8 @@ void taskRing(void* pcfg)
 }
 
 static constexpr size_t STACK_SIZE{512};
-static DMAMEM StackType_t RingStacks[NUM_POTS][STACK_SIZE];
-static DMAMEM StaticTask_t RingTasks[NUM_POTS];
+//static DMAMEM StackType_t RingStacks[NUM_POTS][STACK_SIZE];
+//static DMAMEM StaticTask_t RingTasks[NUM_POTS];
 void initLEDs(void) 
 {
   // set up multicoloured patterns
@@ -212,10 +201,10 @@ void initLEDs(void)
   {
     char buf[configMAX_TASK_NAME_LEN+1]; // from FreeRTOSconfig.h
     sprintf(buf,"Ring%d",i);
-Serial.printf("Create %s task: \n", buf);    
-    // xTaskCreate(taskRing, buf, 512, ringConfigs+i, 2, handlesRings+i);
-    handlesRings[i] = xTaskCreateStatic(taskRing, buf, STACK_SIZE, ringConfigs+i, 2, 
-                RingStacks[i], RingTasks+i);
+//Serial.printf("Create %s task: \n", buf);    
+    xTaskCreate(taskRing, buf, 512, ringConfigs+i, 2, handlesRings+i);
+    //handlesRings[i] = xTaskCreateStatic(taskRing, buf, STACK_SIZE, ringConfigs+i, 2, 
+    //            RingStacks[i], RingTasks+i);
   }
   handleRing0 = handlesRings[0];
 }
