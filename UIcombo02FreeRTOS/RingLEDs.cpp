@@ -150,7 +150,6 @@ void setDot(LEDring<NUM_POTS>& ring, float value, uint32_t colour)
 TaskHandle_t handlesRings[NUM_POTS];
 TaskHandle_t handleRing0;
 uint8_t bits = 0;
-static bool blocked;
 void taskRing(void* pcfg)
 {
   ringConfig_t& cfg = *((ringConfig_t*) pcfg);
@@ -166,19 +165,13 @@ void taskRing(void* pcfg)
 
     setDot(cfg.ring, cfg.myPot.getCurrent(), nullptr == cfg.pattern?cfg.colour:PATTERN);
 
-    if (0 == cfg.ring.ring && !blocked)
+    if (0 == cfg.ring.ring)
       rings.show();
 
     vTaskDelay(10);
   }
 }
 
-void blockLEDs(bool block)
-{
-  while (leds.busy())
-    vTaskDelay(1);
-  blocked = block;
-}
 
 static constexpr size_t STACK_SIZE{512};
 //static DMAMEM StackType_t RingStacks[NUM_POTS][STACK_SIZE];

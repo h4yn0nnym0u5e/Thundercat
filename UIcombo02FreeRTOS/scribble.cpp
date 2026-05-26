@@ -274,7 +274,6 @@ void setArc(TFT_TYPE& tft,
     sprite.print(buf);
 
     // write to the display using DMA
-    blockLEDs(true);
     tft.startWrite();
     tft.pushImageDMA(x,y,w,h,r);
     //vTaskDelay(250); // delay task until DMA is complete or timeout
@@ -283,7 +282,6 @@ void setArc(TFT_TYPE& tft,
     if (0 == ulNotifiedValue) { /* panic! */}
     tft.dmaWait();   // could do something useful here
     tft.endWrite();
-    blockLEDs(false);
   
  #else
     // this works, but flickers

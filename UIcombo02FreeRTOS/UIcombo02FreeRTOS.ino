@@ -86,7 +86,9 @@ void printTaskStates(void)
               (float) s.ulRunTimeCounter / pct * 100.0f
             );
   }
-  Serial.printf("ADC updates take %uµs\n", ADCupdateMicros);
+  Serial.printf("ADC updates take %uµs; DMA channel bits: %08X\n", 
+                ADCupdateMicros,
+                dma_channel_allocated_mask);
   freertos::print_ram_usage();
 }
 
