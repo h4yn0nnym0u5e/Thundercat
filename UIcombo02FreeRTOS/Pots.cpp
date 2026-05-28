@@ -9,6 +9,8 @@
 #include <TeensyTimerTool.h>
 using namespace TeensyTimerTool;
 
+#define USE_TIMER_TOOL
+
 static uint8_t NmbOfADC = 2;            // Number of ADCs in series. This can only be two as of right now (03/09/19)
 static ADS8688 bank = ADS8688(ADC_CS, ADC_SPI);  // Instantiate ADS8688 with PIN 7 as CS, default to SPI
 
@@ -91,8 +93,9 @@ void getAllADCchannelSets(uint16_t* buf, int numADCs)
 static PeriodicTimer  SPItimer;
 static EventResponder SPIresponder;
 // 2 values per 360° pot, 1 per fader, 1 for overhead
-static uint16_t TxBuffer[1 + (NUM_POTS*2 + NUM_FADERS)/8]{0}; // transmit zeroes
-static uint16_t ADCrawBuffer[NUM_POTS*2 + NUM_FADERS + 8];
+static const int ADC_TX_COUNT{1 + (NUM_POTS*2 + NUM_FADERS)/8};
+static uint16_t TxBuffer[ADC_TX_COUNT]{0}; // transmit zeroes
+static uint16_t ADCrawBuffer[ADC_TX_COUNT * 8];
 static uint16_t ADCbuffer[NUM_POTS*2 + NUM_FADERS];
 static uint16_t* pADCraw;
 static int ADCtoDo;
@@ -101,6 +104,7 @@ static void transferComplete(EventResponderRef evref)
 {
   const int _cs   = ADC_CS;
 
+Serial.printf("%d ", ADCtoDo);  
   switch (ADCtoDo)
   {
     default:
@@ -109,6 +113,7 @@ static void transferComplete(EventResponderRef evref)
     case 1 ... NUM_POTS-1: // some left to do - re-start the process
       digitalWrite(_cs, arduino::HIGH);
       ADCtoDo--;
+      pADCraw += ADC_TX_COUNT;
       delayNanoseconds(ADC_CS_HIGH_NS); // ensure minimum /CS high time (30ns)
       digitalWrite(_cs, arduino::LOW);
       ADC_SPI.transfer(TxBuffer,pADCraw,sizeof TxBuffer,SPIresponder); // next transfer
@@ -149,6 +154,7 @@ static void SPItimerCallback(void)
   const int _cs   = ADC_CS;
   const int _sclk = ADC_CLK;
 
+Serial.printf("\n%u: Timer: ", millis());  
   if (NUM_POTS == ADCtoDo) // we're ready for a new set of readings
   {
       pADCraw = ADCrawBuffer;
@@ -169,7 +175,7 @@ void initSPItimer(void)
   SPIresponder.attachImmediate(transferComplete);
 
   // Trigger SPI transaction sequence at fixed frequency
-  SPItimer.begin(SPItimerCallback, 1'000); // fire the SPI sequence every millisecond
+  SPItimer.begin(SPItimerCallback, /* 1'000 */ 250'000); // fire the SPI sequence every millisecond
 }
 
 
@@ -202,7 +208,7 @@ void updateADCs()
   }
   /*/
   {
- #if 1
+ #if !defined(USE_TIMER_TOOL)
     const int numADCs = (NUM_POTS*2 + NUM_FADERS)/8;
     uint16_t buffer[NUM_POTS*numADCs]; // each pot has 2 channels
 
@@ -214,7 +220,7 @@ void updateADCs()
     //*/
  #else 
     uint16_t* buffer = ADCbuffer;    
- #endif    
+ #endif // defined(USE_TIMER_TOOL)
 
     // Given a potMap[] of {4,2,0,6}, we get a buffer of 16 values thus
     // 2A, 6A,  2B, 6B,   1A, 5A,  1B, 5B,   0A, 4A,  0B, 4B,   3A, 7A,  3B, 7B
@@ -244,14 +250,20 @@ void taskADCs(void*)
     //allPots[i].setAccel(0.05f, 4.0f);
   }
 
-  //initSPItimer();
+ #if defined(USE_TIMER_TOOL)
+  initSPItimer();
+ #endif // defined(USE_TIMER_TOOL)
 
   while (1)
   {
     updateADCs();
     ADCtoDo = 8;
+ #if defined(USE_TIMER_TOOL)
+    vTaskSuspend(nullptr);
+Serial.print(" ... process!");    
+ #else    
     vTaskDelay(1);
-    //vTaskSuspend(nullptr);
+ #endif // defined(USE_TIMER_TOOL)
   }
 }
 
