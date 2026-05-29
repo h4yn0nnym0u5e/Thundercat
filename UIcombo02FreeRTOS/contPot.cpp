@@ -51,7 +51,8 @@ DBG(delta);
     accelDisable--;
     
   // apply accelerated and scaled change:
-  current += delta * scale;
+  float newVal = current + delta * scale;
+  current = newVal * smooth + current * (1.0f - smooth);
 DBG(current);
 
   // limit output as requested (soft stops):

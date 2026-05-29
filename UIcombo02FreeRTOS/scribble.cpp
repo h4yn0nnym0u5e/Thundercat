@@ -41,6 +41,7 @@ const char* busString = "SPI";
 uint16_t colours[]{TFT_RED, TFT_ORANGE2, TFT_YELLOW, TFT_GREEN, TFT_CYAN, TFT_BLUE, TFT_MAGENTA, TFT_VIOLET};
 uint16_t bkgnds[NUM_POTS];
 uint16_t textColours[NUM_POTS];
+int spaceOffset; // leading space numbers are narrower by this much vs. leading minus
 
 
 TFT_TYPE* tfts[] = {&tft1, &tft2, &tft3, &tft4, &tft5, &tft6, &tft7, &tft8};
@@ -165,6 +166,12 @@ static void setupScribble()
 #if defined(USE_DMA)  
   ALL_TFTS.initDMA();
 #endif // defined(USE_DMA)  
+
+  // Work out spaceOffset value
+  // We have to use " 0" since " " apparently has zero width! Bug, methinks...
+  tft1.setFreeFont(&FONT_DP); // this is the font we're using
+  spaceOffset = tft1.textWidth("-0") - tft1.textWidth(" 0");
+//  Serial.printf("%d, %d, %d\n", spaceOffset, tft1.textWidth("-0"), tft1.textWidth(" 0"));
 }
 
 //-----------------------------------------------------------
@@ -271,8 +278,8 @@ void setArc(TFT_TYPE& tft,
 
     sprite.setFreeFont(&FONT_DP);
     sprite.setTextColor(txt);
-    sprite.setCursor(0,35);
-    sprite.print(buf);
+    //sprite.setCursor(0,35);
+    sprite.drawString(buf, buf[0] == ' '?spaceOffset:0, 0);
 
     // write to the display using DMA
     tft.startWrite();
@@ -367,5 +374,4 @@ void initScribble(void)
   xTaskCreate(taskScribble, "Scribble", STACK_SIZE, nullptr, 2, &handleScribble);
   //handleScribble = xTaskCreateStatic(taskScribble, "Scribble", STACK_SIZE, nullptr, 2,
   //                                   ScribbleStack, &ScribbleTask);
-  Serial.println(FMT_DP);
 }
