@@ -58,5 +58,19 @@
 // #define TFT_MISO 12
 // #define TFT_MOSI 11
 
+#define FONT_3DP FreeSansBold24pt7b
+#define FONT_4DP FreeSansBold18pt7b
+#define FMT_3DP "%6.3f"
+#define FMT_4DP "%7.4f"
+
+#define xFONT_DP(n) CONCAT(FONT_,n,DP)
+#define xFMT_DP(n) CONCAT(FMT_,n,DP)
+#define xCHG_DP(n) CONCAT(50.0e,-,n)
+
+#define SCRIBBLE_DP 4
+#define FONT_DP xFONT_DP(SCRIBBLE_DP)
+#define FMT_DP xFMT_DP(SCRIBBLE_DP)
+#define CHGTHR_DP xCHG_DP(SCRIBBLE_DP)
+
 
 #endif // !defined(_CONFIG_H_)

@@ -6,6 +6,8 @@
 #include <TFT_eSPI.h>
 #undef SPISettings // undo macro hack
 
+#define CONCAT(a,b,c) a##b##c
+
 #include "config.h"
 #include <arduino_freertos.h>
 #include "contPot.h"

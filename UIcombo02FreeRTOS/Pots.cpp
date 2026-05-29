@@ -52,7 +52,7 @@ void printADCs(void)
   {
     const char* pad = keyStatuses[i]?"  ":"";
     //Serial.printf("%+.3f ", allPots[i].getCurrent());
-    Serial.printf("%sch%d:%+.3f%s ", pad, i+1, allPots[i].getCurrent(), pad);
+    Serial.printf("%sch%d:%+.6f%s ", pad, i+1, allPots[i].getCurrent(), pad);
   }
   Serial.println();          
 }

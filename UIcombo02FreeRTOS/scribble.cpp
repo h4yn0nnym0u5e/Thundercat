@@ -240,7 +240,8 @@ void setArc(TFT_TYPE& tft,
             int8_t touch, bool& lastTouch,
             int fg, int bg, int txt)
 {
-  if (fabs(newPot - lastPot) > 0.05f)
+  const float CHANGE_THRESHOLD = CHGTHR_DP;
+  if (fabs(newPot - lastPot) > CHANGE_THRESHOLD)
   {
     //Serial.printf("Pot %d: ", i);
     if (POT_NOT_SET == lastPot)
@@ -256,7 +257,7 @@ void setArc(TFT_TYPE& tft,
     else
       drawArc(tft, lastPot, newPot, fg, bg);
 
-    int x = 55, y = 100, w = 140, h = 45;
+    int x = 55+10*(SCRIBBLE_DP - 3), y = 100, w = 140-15*(SCRIBBLE_DP - 3), h = 45;
  #if defined(USE_DMA)
     // create sprite to draw the current level, and draw it
 
@@ -268,7 +269,7 @@ void setArc(TFT_TYPE& tft,
 
     sprite.fillRect(0,0,w,h,bg); //fillSprite(bkgnds[i]);
 
-    sprite.setFreeFont(&FreeSansBold24pt7b);
+    sprite.setFreeFont(&FONT_DP);
     sprite.setTextColor(txt);
     sprite.setCursor(0,35);
     sprite.print(buf);
@@ -308,9 +309,9 @@ static void ssetArc(TFT_TYPE& tft, int i = -1)
   float potPos = allPots[i].getCurrent(); // -1.0 to +1.0
   float newPot = (potPos + 1.0f) * (ea - sa) / 2.0f;
 
-  char buf[10];
-  if (potPos < 0.0f && potPos > -0.0005f) potPos = 0.0f; // don't show -0.000
-  sprintf(buf,"%6.3f",potPos);
+  char buf[30];
+  if (potPos < 0.0f && potPos > -CHGTHR_DP / 100.0f) potPos = 0.0f; // don't show -0.000
+  sprintf(buf,FMT_DP,potPos);
   setArc(tft, newPot, lastPots[i], buf, keyStatuses[i], lastTouches[i],
          colours[i], bkgnds[i], textColours[i]);
 }
@@ -342,7 +343,7 @@ static void taskScribble(void*)
     lastPots[i] = POT_NOT_SET;
     bkgnds[i]      = tft1.alphaBlend( 70 /* / 255 */, colours[i], TFT_BLACK);
     textColours[i] = tft1.alphaBlend( 80 /* / 255 */, colours[i], TFT_WHITE);
-    tfts[i]->setFreeFont(&FreeSansBold24pt7b);
+    tfts[i]->setFreeFont(&FONT_DP);
     tfts[i]->setTextColor(textColours[i], bkgnds[i], true);
 
  #if defined(USE_DMA)  
@@ -366,4 +367,5 @@ void initScribble(void)
   xTaskCreate(taskScribble, "Scribble", STACK_SIZE, nullptr, 2, &handleScribble);
   //handleScribble = xTaskCreateStatic(taskScribble, "Scribble", STACK_SIZE, nullptr, 2,
   //                                   ScribbleStack, &ScribbleTask);
+  Serial.println(FMT_DP);
 }
