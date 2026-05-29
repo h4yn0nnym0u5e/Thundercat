@@ -85,7 +85,7 @@ static void isrTouch(void)
 
 void updateTouch() 
 {
-  if (1)
+  if (0)
   {
     static int dots = 0;
     Serial.print('.');
@@ -126,7 +126,7 @@ static void taskTouch(void*)
     if (0 == theWire.endTransmission())
       break;
     Serial.println("Waiting for 6V supply...");
-    delay(500);
+    vTaskDelay(500);
   }
 
   supplyValid = true;

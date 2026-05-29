@@ -240,7 +240,7 @@ void setArc(TFT_TYPE& tft,
             int8_t touch, bool& lastTouch,
             int fg, int bg, int txt)
 {
-  if (fabs(newPot - lastPot) > 0.5f)
+  if (fabs(newPot - lastPot) > 0.05f)
   {
     //Serial.printf("Pot %d: ", i);
     if (POT_NOT_SET == lastPot)
@@ -256,9 +256,9 @@ void setArc(TFT_TYPE& tft,
     else
       drawArc(tft, lastPot, newPot, fg, bg);
 
+    int x = 55, y = 100, w = 140, h = 45;
  #if defined(USE_DMA)
     // create sprite to draw the current level, and draw it
-    int x = 65, y = 100, w = 120, h = 50;
 
     TFT_eSprite sprite{&tft};
     sprite.setSpriteSwapBytes(false);
@@ -285,8 +285,8 @@ void setArc(TFT_TYPE& tft,
   
  #else
     // this works, but flickers
-    tft.setCursor(70,140);
-    tft.fillRect(70,105,120,50,bg);
+    tft.setCursor(x,y+35);
+    tft.fillRect(x,y,w,h,bg);
     tft.print(buf);
  #endif // defined(USE_DMA)
 
@@ -301,6 +301,7 @@ void setArc(TFT_TYPE& tft,
   }
 }
 
+
 static void ssetArc(TFT_TYPE& tft, int i = -1)
 {
   // get new value in degrees, relative to start angle:
@@ -308,11 +309,13 @@ static void ssetArc(TFT_TYPE& tft, int i = -1)
   float newPot = (potPos + 1.0f) * (ea - sa) / 2.0f;
 
   char buf[10];
-  sprintf(buf,"%5.2f",potPos);
-
+  if (potPos < 0.0f && potPos > -0.0005f) potPos = 0.0f; // don't show -0.000
+  sprintf(buf,"%6.3f",potPos);
   setArc(tft, newPot, lastPots[i], buf, keyStatuses[i], lastTouches[i],
          colours[i], bkgnds[i], textColours[i]);
 }
+
+
 //=========================================================================================
 int rectCount;
 TaskHandle_t handleScribble;
@@ -360,7 +363,7 @@ static constexpr size_t STACK_SIZE{512};
 void initScribble(void)
 {
 //Serial.printf("Create Scribble task: \n");    
-  xTaskCreate(taskScribble, "Scribble", 512, nullptr, 2, &handleScribble);
+  xTaskCreate(taskScribble, "Scribble", STACK_SIZE, nullptr, 2, &handleScribble);
   //handleScribble = xTaskCreateStatic(taskScribble, "Scribble", STACK_SIZE, nullptr, 2,
   //                                   ScribbleStack, &ScribbleTask);
 }

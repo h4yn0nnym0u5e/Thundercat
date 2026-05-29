@@ -67,7 +67,7 @@ void getOneADCchannelSet(uint16_t* buf, int numADCs)
   const int _cs   = ADC_CS;
   const int _sclk = ADC_CLK;
 
-  _spi.beginTransaction(SPISettings(_sclk, arduino::MSBFIRST, SPI_MODE0));
+  _spi.beginTransaction(SPISettings(_sclk, arduino::MSBFIRST, SPI_MODE1));
   digitalWrite(_cs, arduino::LOW);
   _spi.transfer16(0x0000); // NO_OP (p45 table 6)
   _spi.endTransaction();
@@ -99,12 +99,13 @@ static uint16_t ADCrawBuffer[ADC_TX_COUNT * 8];
 static uint16_t ADCbuffer[NUM_POTS*2 + NUM_FADERS];
 static uint16_t* pADCraw;
 static int ADCtoDo;
+static uint32_t now;
+uint32_t ADCupdateMicros;
 
 static void transferComplete(EventResponderRef evref)
 {
   const int _cs   = ADC_CS;
 
-Serial.printf("%d ", ADCtoDo);  
   switch (ADCtoDo)
   {
     default:
@@ -143,6 +144,7 @@ Serial.printf("%d ", ADCtoDo);
         }
       }
       ADCtoDo = -1; // extra flag to say we're done
+      ADCupdateMicros = micros() - now;
       xTaskResumeFromISR(handleADCs);      
       break;
   }
@@ -154,9 +156,10 @@ static void SPItimerCallback(void)
   const int _cs   = ADC_CS;
   const int _sclk = ADC_CLK;
 
-Serial.printf("\n%u: Timer: ", millis());  
   if (NUM_POTS == ADCtoDo) // we're ready for a new set of readings
   {
+      now = micros();
+
       pADCraw = ADCrawBuffer;
       ADCtoDo--; // prevent re-triggering
       ADC_SPI.beginTransaction(SPISettings(_sclk, arduino::MSBFIRST, SPI_MODE0));
@@ -175,7 +178,7 @@ void initSPItimer(void)
   SPIresponder.attachImmediate(transferComplete);
 
   // Trigger SPI transaction sequence at fixed frequency
-  SPItimer.begin(SPItimerCallback, /* 1'000 */ 250'000); // fire the SPI sequence every millisecond
+  SPItimer.begin(SPItimerCallback, 1'000); // fire the SPI sequence every millisecond
 }
 
 
@@ -185,11 +188,9 @@ float raw2volts(uint16_t raw)
   return (float) raw / 65535.0f * 5.0f;
 }
 
-uint32_t ADCupdateMicros;
+
 void updateADCs() 
 {
-  uint32_t now = micros();
-
   // Trigger ADCs to sample analog ports: 
   // (16+16*N)*8 clock cycles, so 384 for 2 ADCs, or 512 for 3 ADCs
   // At 12MHz this will take 5.3µs per channel, so 42.7µs for all 8
@@ -231,7 +232,14 @@ void updateADCs()
     }
   }
   //*/
-  ADCupdateMicros = micros() - now;
+}
+
+static void CPsetup(ContinuousPot& cp)
+{
+    cp.applyLimits(true);
+    cp.setAccel(0.05f, 10.0f);
+    cp.setScale(0.2f);
+
 }
 
 void taskADCs(void*)
@@ -245,10 +253,7 @@ void taskADCs(void*)
   bank.autoRst();                       // reset auto sequence
 
   for (int i=0;i<NUM_POTS;i++)
-  {
-    allPots[i].applyLimits(true);
-    //allPots[i].setAccel(0.05f, 4.0f);
-  }
+    CPsetup(allPots[i]);
 
  #if defined(USE_TIMER_TOOL)
   initSPItimer();
@@ -260,7 +265,6 @@ void taskADCs(void*)
     ADCtoDo = 8;
  #if defined(USE_TIMER_TOOL)
     vTaskSuspend(nullptr);
-Serial.print(" ... process!");    
  #else    
     vTaskDelay(1);
  #endif // defined(USE_TIMER_TOOL)
