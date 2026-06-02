@@ -57,7 +57,8 @@ void myfree(void* p)
 */
 
 elapsedMillis em;
-bool echoOnce, enableADCprint;
+bool echoOnce, enableADCprint, enablePrintTouches;
+;
 
 void loop() // dummy to keep Arduino happy
 {
@@ -101,6 +102,20 @@ static void loopFn(void)
       printADCs();
   }
 
+  if (enablePrintTouches)
+  {
+    static int last[NUM_POTS]{0};
+    bool changed = false;
+    for (int i=0;i<NUM_POTS;i++)
+    {
+      int t = (int) keyStatuses[i].getExtendedStatus();
+      if (last[i] != t)
+        changed = true;
+      last[i] = t;
+    }
+    if (changed)
+      printTouches();
+  }
   int ch = Serial.read();
 
   switch (ch)
@@ -125,6 +140,10 @@ static void loopFn(void)
 
     case 'p':
       enableADCprint = !enableADCprint;
+      break;
+
+    case 'q':
+      enablePrintTouches = !enablePrintTouches;
       break;
 
     case 'r':

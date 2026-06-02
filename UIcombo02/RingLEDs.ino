@@ -10,6 +10,7 @@
  code which is in the public domain. 
 */
 
+#include "headers.h"
 #include "RingLEDs.h"
 #include "contPot.h"
 
@@ -105,8 +106,6 @@ void initLEDs(void)
  Simplest possible UI - a dot at the nearest position to 
  the given value (which should have a range of ±1.0)
  */
-extern uint8_t keyStatuses[NUM_POTS];
-
 void setDot(int ringNum, float value, uint32_t colour)
 {
   const int firstLED = 12;

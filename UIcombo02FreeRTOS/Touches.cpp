@@ -3,15 +3,27 @@
  */
 #include "headers.h"
 #include <Wire.h>
-#include "config.h"
 
 TwoWire& theWire{TOUCH_WIRE};
 TaskHandle_t handleTouch;
 
 static void isrTouch(void);
 
+touchStatus keyStatuses[NUM_POTS];
 
-uint8_t keyStatuses[NUM_POTS];
+void printTouches(void)
+{
+  Serial.printf("%u: ", millis());
+  for (int i=0;i<NUM_POTS;i++)
+  {
+    int t = (int) keyStatuses[i].getExtendedStatus();
+    if (0 != t)
+      Serial.printf("%2d ", t);
+    else
+      Serial.print(" - ");      
+  }
+  Serial.println();
+}
 
 uint8_t status[6];
 void readKeys(void)
@@ -48,7 +60,6 @@ void readKeys(void)
       CASE(0x4000,7);
       CASE(0x8000,8);
       default:
-        //Serial.printf(" *** %04X *** ", lsK);
         chg = 0;
         break;
     }
@@ -76,6 +87,15 @@ static void doCalibrateTouch(void)
 }
 
 
+static void setTouchRecalDelay(uint8_t theDelay)
+{
+    uint8_t cmd[]{12,theDelay};
+    theWire.beginTransmission(TOUCH_ADDR);
+    theWire.write(cmd,2);
+    theWire.endTransmission();
+}
+
+
 bool checkChange = true;
 static void isrTouch(void)
 {
@@ -99,8 +119,6 @@ void updateTouch()
 
   if (checkChange)
   {
-    //Serial.println("touch");
-    //*
     theWire.beginTransmission(TOUCH_ADDR);
     theWire.write(0);
     theWire.endTransmission();
@@ -109,7 +127,6 @@ void updateTouch()
     theWire.requestFrom(TOUCH_ADDR,reqNum,1);
 
     theWire.endTransmission();
-    //*/
     readKeys();
     checkChange = false;
   }
@@ -130,6 +147,8 @@ static void taskTouch(void*)
   }
 
   supplyValid = true;
+
+  setTouchRecalDelay(0); // set TRD register so continuous touch doesn't time out
 
   // change interrupt
   pinMode(CHANGE_PIN,arduino::INPUT_PULLUP);

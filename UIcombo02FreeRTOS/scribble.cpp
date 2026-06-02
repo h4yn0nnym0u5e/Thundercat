@@ -35,7 +35,6 @@ TFT_TYPE tft8{240,240,SCRIBBLE_SPI,-1, [](bool negate) { CSfn(7, negate); }};
 const char* busString = "SPI";
 
 #define INIT begin()
-// #define TFT_ORANGE      0xFDA0      /* 255, 180,   0 */ actually 248,180,0
 #define TFT_ORANGE2      0xFD00      /* 255, 128,   0 */
 
 uint16_t colours[]{TFT_RED, TFT_ORANGE2, TFT_YELLOW, TFT_GREEN, TFT_CYAN, TFT_BLUE, TFT_MAGENTA, TFT_VIOLET};
@@ -147,7 +146,7 @@ static void setupScribble()
     vTaskDelay(5);
   }
   vTaskDelay(100);
- 
+
 
 #if defined(USE_FLEXIO_SPI)
   // This gives us a base clock of 120MHz:
@@ -171,58 +170,8 @@ static void setupScribble()
   // We have to use " 0" since " " apparently has zero width! Bug, methinks...
   tft1.setFreeFont(&FONT_DP); // this is the font we're using
   spaceOffset = tft1.textWidth("-0") - tft1.textWidth(" 0");
-//  Serial.printf("%d, %d, %d\n", spaceOffset, tft1.textWidth("-0"), tft1.textWidth(" 0"));
 }
 
-//-----------------------------------------------------------
-// moved outside function so we can inspect
-// in TeensyDebug when it crashes!
-int x,y, w, h;
-uint16_t* r;
-
-[[maybe_unused]] static void randomRect(TFT_TYPE& tft, int i = -1)
-{
-  // w = random(140); h = random(80);
-  w = random(80); h = random(80);
-  uint16_t colour = random(65536);
-
-  do
-  {
-    x = random(tft.width());
-    y = random(tft.height());
-  } while (x+w > tft.width() || y+h > tft.height());
-  
-#if defined(USE_DMA)
-  // create sprite to draw the rectangle, and draw it
-  TFT_eSprite sprite{&tft};
-  sprite.createInPSRAM(1);//random(100) > 49); // maybe create in PSRAM
-  r = (uint16_t*) sprite.createSprite(w,h);
-// Serial.printf("sprite data at %08X\n", (uint32_t) r);  
-  sprite.fillSprite(colour);
-
-  // write to the display using DMA
-  tft.startWrite();
-  tft.pushImageDMA(x,y,w,h,r);
-  tft.dmaWait(); // could do something useful here
-  tft.endWrite();
-  
-#else
-
-  tft.fillRect(x,y,w,h,colour);
-  //vTaskDelay(2);
-#endif // defined(USE_DMA)  
-
-#define SZ 4  
-  //tft.setFreeFont(&FreeSans18pt7b);
-  tft.setFreeFont(&FreeSansBold24pt7b);
-  //tft.setTextSize(SZ);
-  tft.setTextColor(0);
-  //tft.setCursor(120-SZ*3,120-SZ*4);
-  tft.setCursor(120-SZ*3,120);
-  tft.print(i+1);
-
-  //vTaskDelay(1);
-}
 
 //-----------------------------------------------------------------------------------
 static float lastPots[NUM_POTS];
@@ -233,13 +182,11 @@ static const float sa = 2*18.0f, ea = 360.0f - 2*18.0f; // TFT_eSPI has zero at 
 static void drawArc(TFT_TYPE& tft, float s, float e, uint16_t fg, uint16_t bkgnd)
 {
   tft.drawArc(120, 120, 110, 80, s+sa, e+sa, fg, bkgnd);
-  //Serial.printf("%.1f-%.1f; %04X", s+sa, e+sa, fg);
 }
 
 static void drawTouch(TFT_TYPE& tft, uint16_t colour)
 {
   tft.fillEllipse(120,210,24,16,colour);
-  //Serial.printf("touch: %04X\n", colour);
 }
 
 void setArc(TFT_TYPE& tft, 
@@ -267,7 +214,6 @@ void setArc(TFT_TYPE& tft,
     int x = 55+10*(SCRIBBLE_DP - 3), y = 100, w = 140-15*(SCRIBBLE_DP - 3), h = 45;
  #if defined(USE_DMA)
     // create sprite to draw the current level, and draw it
-
     TFT_eSprite sprite{&tft};
     sprite.setSpriteSwapBytes(false);
     sprite.createInPSRAM(1); // create in PSRAM
@@ -278,18 +224,17 @@ void setArc(TFT_TYPE& tft,
 
     sprite.setFreeFont(&FONT_DP);
     sprite.setTextColor(txt);
-    //sprite.setCursor(0,35);
     sprite.drawString(buf, buf[0] == ' '?spaceOffset:0, 0);
 
     // write to the display using DMA
-    tft.startWrite();
+    tft.startWrite(); //##############################################
     tft.pushImageDMA(x,y,w,h,r);
-    //vTaskDelay(250); // delay task until DMA is complete or timeout
-    //vTaskSuspend(nullptr); // suspend task until DMA is complete
-    uint32_t ulNotifiedValue = ulTaskNotifyTake( pdFALSE, 1000);
+    // wait for DMA to complete - we get notified by the completionISR()
+    // when that occurs, and this task resumes execution
+    uint32_t ulNotifiedValue = ulTaskNotifyTake(pdFALSE, 1000);
     if (0 == ulNotifiedValue) { /* panic! */}
-    tft.dmaWait();   // could do something useful here
-    tft.endWrite();
+    tft.dmaWait();  // tidy up after DMA - shouldn't actually wait
+    tft.endWrite(); //##############################################
   
  #else
     // this works, but flickers
@@ -299,7 +244,6 @@ void setArc(TFT_TYPE& tft,
  #endif // defined(USE_DMA)
 
     lastPot = newPot;
-    //Serial.println();
   }
 
   if (lastTouch != touch)
@@ -327,10 +271,13 @@ static void ssetArc(TFT_TYPE& tft, int i = -1)
 //=========================================================================================
 int rectCount;
 TaskHandle_t handleScribble;
+
+// This runs after DMA completes, in an ISR context.
+// We use it to notify the Scribble task that the 
+// SPI bus and DMA are now idle, and the transaction 
+// can be ended (or more stuff can be done).
 static void completionISR(TFT_TYPE& tft)
 {
-//  if (nullptr != handleScribble)
-//    xTaskResumeFromISR(handleScribble);
   BaseType_t xHigherPriorityTaskWoken;
   vTaskNotifyGiveFromISR( handleScribble, &xHigherPriorityTaskWoken );
   portYIELD_FROM_ISR( xHigherPriorityTaskWoken );
@@ -338,8 +285,7 @@ static void completionISR(TFT_TYPE& tft)
 
 static void loopScribble() 
 {
-  //FN_TFTS(randomRect);
-  FN_TFTS(ssetArc);
+  FN_TFTS(ssetArc); // poll, updating all the displays
 }
 
 static void taskScribble(void*)
@@ -356,7 +302,7 @@ static void taskScribble(void*)
  #if defined(USE_DMA)  
     tfts[i]->dmaAttachCompletionISR(completionISR);
  #endif // defined(USE_DMA)
-   }
+  }
 
   while (1)
   {
@@ -366,12 +312,7 @@ static void taskScribble(void*)
 }
 
 static constexpr size_t STACK_SIZE{512};
-//static DMAMEM StackType_t ScribbleStack[STACK_SIZE];
-//static DMAMEM StaticTask_t ScribbleTask;
 void initScribble(void)
 {
-//Serial.printf("Create Scribble task: \n");    
   xTaskCreate(taskScribble, "Scribble", STACK_SIZE, nullptr, 2, &handleScribble);
-  //handleScribble = xTaskCreateStatic(taskScribble, "Scribble", STACK_SIZE, nullptr, 2,
-  //                                   ScribbleStack, &ScribbleTask);
 }
