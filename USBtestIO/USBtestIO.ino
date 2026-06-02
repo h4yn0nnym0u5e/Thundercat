@@ -73,6 +73,18 @@ void assertPin(int pin, bool state)
 void loop() 
 {
   static bool ssLast;
+  static bool justBooted = true;
+
+  if (justBooted)
+  {
+    if (digitalRead(SOFT_POWER)) // power button has been released
+    {
+      delay(100); // avoid bounce
+      ssActive = true;
+      justBooted = false;
+      Serial.println("Soft switch activated");
+    }
+  }
 
   // Deal with serial commands to toggle I/O
   char ch = Serial.read();
@@ -80,11 +92,19 @@ void loop()
   {
     switch (ch)
     {
-#define ACASE(c,v,p) case c:  v = !v; Serial.printf("Set " #p " %s\nk", v?"asserted":"negated"); Serial.flush(); delay(100); assertPin(p,v); break; 
+#define ACASE(c,v,p) \
+      case c:  \
+        v = !v; \
+        Serial.printf("Set " #p " %s\n", v?"asserted":"negated"); \
+        Serial.flush(); delay(100); \
+        assertPin(p,v); \
+        break; 
+
       ACASE('k',power,TOGGLE_POWER)
       ACASE('s',smartknob,SK_EN)
       ACASE('l',powLED,POWER_LED)
       ACASE('6',en6V,EN_6V)
+
       case 'a':
         ssActive = !ssActive;
         Serial.printf("Soft switch %sactive\n", ssActive?"":"not ");
@@ -113,7 +133,13 @@ void loop()
       Serial.print("\nShutdown");
       Serial.flush();
       delay(100);
-      assertPin(TOGGLE_POWER,HIGH); // die die die !!!
+      assertPin(TOGGLE_POWER,true); // die die die !!!
+      delay(1);
+      assertPin(TOGGLE_POWER,false);  // might fail due to bounce, though
+      delay(1);
+      assertPin(TOGGLE_POWER,true); // die die die !!!
+      delay(1);
+      assertPin(TOGGLE_POWER,false);  // might fail due to bounce, though
     }
     Serial.println();
     ssLast = ssNow;
