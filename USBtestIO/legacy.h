@@ -4,6 +4,34 @@
 #include <sys/types.h>
 #include "settings.h"
 
+// Stolen from Teensy!
+// elapsedMillis acts as an integer which autoamtically increments 1000 times
+// per second.  Useful for creating delays, timeouts, or measuing how long an
+// operation takes.  You can create as many elapsedMillis variables as needed.
+// All of them are independent.  Any may be written, modified or read at any time.
+class elapsedMillis
+{
+private:
+	unsigned long ms;
+public:
+	elapsedMillis(void) { ms = millis(); }
+	elapsedMillis(unsigned long val) { ms = millis() - val; }
+	elapsedMillis(const elapsedMillis &orig) { ms = orig.ms; }
+	operator unsigned long () const { return millis() - ms; }
+	elapsedMillis & operator = (const elapsedMillis &rhs) { ms = rhs.ms; return *this; }
+	elapsedMillis & operator = (unsigned long val) { ms = millis() - val; return *this; }
+	elapsedMillis & operator -= (unsigned long val)      { ms += val ; return *this; }
+	elapsedMillis & operator += (unsigned long val)      { ms -= val ; return *this; }
+	elapsedMillis operator - (int val) const           { elapsedMillis r(*this); r.ms += val; return r; }
+	elapsedMillis operator - (unsigned int val) const  { elapsedMillis r(*this); r.ms += val; return r; }
+	elapsedMillis operator - (long val) const          { elapsedMillis r(*this); r.ms += val; return r; }
+	elapsedMillis operator - (unsigned long val) const { elapsedMillis r(*this); r.ms += val; return r; }
+	elapsedMillis operator + (int val) const           { elapsedMillis r(*this); r.ms -= val; return r; }
+	elapsedMillis operator + (unsigned int val) const  { elapsedMillis r(*this); r.ms -= val; return r; }
+	elapsedMillis operator + (long val) const          { elapsedMillis r(*this); r.ms -= val; return r; }
+	elapsedMillis operator + (unsigned long val) const { elapsedMillis r(*this); r.ms -= val; return r; }
+};
+
 #define NLEDS (LED_STRING)
 
 typedef struct WS2811_s {

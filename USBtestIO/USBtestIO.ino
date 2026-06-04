@@ -21,7 +21,8 @@
   #endif
 #endif // defined(LED_BUILTIN)
   
-
+enum {booted,released,pressed,pressedLong} softSwState;
+elapsedMillis softSwTimer;
 //====================================================================================
 // the setup routine runs once when you press reset:
 void setup() {
@@ -68,24 +69,29 @@ void assertPin(int pin, bool state)
   else
     pinMode(pin,INPUT);
 }
+
+
+// Shut down - kills power to processor, user
+// must press soft switch to re-boot
+void shutDown(void)
+{
+  Serial.print("\nShutdown");
+  Serial.flush();
+  delay(100);
+  assertPin(TOGGLE_POWER,true); // die die die !!!
+  delay(1);
+  assertPin(TOGGLE_POWER,false);  // might fail due to bounce, though
+  delay(1);
+  assertPin(TOGGLE_POWER,true); // die die die !!!
+  delay(1);
+  assertPin(TOGGLE_POWER,false);  // might fail due to bounce, though
+  Serial.println();
+}
+
 //====================================================================================
 // the loop routine runs over and over again forever:
 void loop() 
 {
-  static bool ssLast;
-  static bool justBooted = true;
-
-  if (justBooted)
-  {
-    if (digitalRead(SOFT_POWER)) // power button has been released
-    {
-      delay(100); // avoid bounce
-      ssActive = true;
-      justBooted = false;
-      Serial.println("Soft switch activated");
-    }
-  }
-
   // Deal with serial commands to toggle I/O
   char ch = Serial.read();
   if (ch > 0)
@@ -114,35 +120,66 @@ void loop()
   }
 
   // Deal with soft switch
-  bool ssNow = !digitalRead(SOFT_POWER); // active low
-  if (ssNow != ssLast) // changed state
+  bool ssPressed = !digitalRead(SOFT_POWER); // active low
+  static elapsedMillis dotTimer;
+  const uint32_t shutdownTime = 3000;
+  switch (softSwState)
   {
-    Serial.printf("Soft switch %s", ssNow?"pressed":"released");
-    Serial.flush();
-
-    // if 'a' command has made it active, turn off
-    if (ssActive && ssNow)
-    {
-      // fundamentally the switch turns the system on, so
-      // wait for release before we take the turn-off action
-      while (!digitalRead(SOFT_POWER))
+    case booted:
+      if (!ssPressed)
       {
-        delay(250);
-        Serial.print('.');
+        assertPin(POWER_LED,true);
+        softSwTimer = 0;
+        softSwState = released;
       }
-      Serial.print("\nShutdown");
-      Serial.flush();
-      delay(100);
-      assertPin(TOGGLE_POWER,true); // die die die !!!
-      delay(1);
-      assertPin(TOGGLE_POWER,false);  // might fail due to bounce, though
-      delay(1);
-      assertPin(TOGGLE_POWER,true); // die die die !!!
-      delay(1);
-      assertPin(TOGGLE_POWER,false);  // might fail due to bounce, though
-    }
-    Serial.println();
-    ssLast = ssNow;
+      break;
+    
+    case released:
+      if (ssPressed && softSwTimer > 50)
+      {
+        softSwTimer = 1;
+        dotTimer = 0;
+        Serial.printf("Soft switch pressed\n");
+        Serial.flush();
+        softSwState = pressed;
+      }
+      break;
+
+    case pressed:
+      if (ssPressed) // still pressed
+      {
+        if (dotTimer >= 250)
+        {
+          dotTimer = 0;
+          Serial.print(softSwTimer>shutdownTime?'!':'.');
+        }
+      }
+      else  // released
+      {
+        Serial.printf("Soft switch released\n");
+        Serial.flush();
+        if (softSwTimer > shutdownTime) // long press
+        {
+          softSwTimer = 0;
+          softSwState = pressedLong;
+        }
+        else // short press
+        {
+          softSwState = released;
+          smartknob = !smartknob;
+          assertPin(SK_EN, smartknob);
+          assertPin(EN_6V, smartknob);
+        }
+      }
+      break;
+
+    case pressedLong:
+      if (softSwTimer >= 100)
+      {
+        shutDown();
+        softSwState = released;
+      }
+      break;
   }
   
   for (int i=0;i<3;i++)
