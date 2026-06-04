@@ -103,21 +103,9 @@ static void loopFn(void)
   }
 
   if (enablePrintTouches)
-  {
-    static int last[NUM_POTS]{0};
-    bool changed = false;
-    for (int i=0;i<NUM_POTS;i++)
-    {
-      int t = (int) keyStatuses[i].getExtendedStatus();
-      if (last[i] != t)
-        changed = true;
-      last[i] = t;
-    }
-    if (changed)
-      printTouches();
-  }
-  int ch = Serial.read();
+    printTouches();
 
+  int ch = Serial.read();
   switch (ch)
   {
     case '0':

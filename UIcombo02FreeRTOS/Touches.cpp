@@ -4,6 +4,7 @@
 #include "headers.h"
 #include <Wire.h>
 
+
 TwoWire& theWire{TOUCH_WIRE};
 TaskHandle_t handleTouch;
 
@@ -13,16 +14,29 @@ touchStatus keyStatuses[NUM_POTS];
 
 void printTouches(void)
 {
-  Serial.printf("%u: ", millis());
-  for (int i=0;i<NUM_POTS;i++)
-  {
-    int t = (int) keyStatuses[i].getExtendedStatus();
-    if (0 != t)
-      Serial.printf("%2d ", t);
-    else
-      Serial.print(" - ");      
-  }
-  Serial.println();
+    static int last[NUM_POTS]{0};
+    bool changed = false;
+    for (int i=0;i<NUM_POTS;i++)
+    {
+      int t = (int) keyStatuses[i].getExtendedStatus();
+      if (last[i] != t)
+        changed = true;
+      last[i] = t;
+    }
+
+    if (changed)
+    {
+      Serial.printf("%u: ", millis());
+      for (int i=0;i<NUM_POTS;i++)
+      {
+        int t = (int) keyStatuses[i].getExtendedStatus();
+        if (0 != t)
+          Serial.printf("%2d ", t);
+        else
+          Serial.print(" - ");      
+      }
+      Serial.println();
+    }
 }
 
 uint8_t status[6];
