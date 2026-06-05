@@ -139,14 +139,14 @@ void loop()
       {
         softSwTimer = 1;
         dotTimer = 0;
-        Serial.printf("Soft switch pressed\n");
+        Serial.printf("Soft switch pressed");
         Serial.flush();
         softSwState = pressed;
       }
       break;
 
     case pressed:
-      if (ssPressed) // still pressed
+      if (ssPressed || softSwTimer < 50) // still pressed, or debouncing
       {
         if (dotTimer >= 250)
         {
@@ -156,11 +156,10 @@ void loop()
       }
       else  // released
       {
-        Serial.printf("Soft switch released\n");
+        Serial.printf(" released\n");
         Serial.flush();
         if (softSwTimer > shutdownTime) // long press
         {
-          softSwTimer = 0;
           softSwState = pressedLong;
         }
         else // short press
@@ -170,6 +169,7 @@ void loop()
           assertPin(SK_EN, smartknob);
           assertPin(EN_6V, smartknob);
         }
+        softSwTimer = 0;
       }
       break;
 
@@ -177,14 +177,16 @@ void loop()
       if (softSwTimer >= 100)
       {
         shutDown();
+        softSwTimer = 0;
         softSwState = released;
       }
       break;
   }
   
-  for (int i=0;i<3;i++)
+  static elapsedMillis lightsTimer = 0;
+  if (lightsTimer >= 10)
   {
-    delay(10);
+    lightsTimer = 0;
     updateLights();
     updateNeoPixels();
   }
