@@ -66,7 +66,7 @@ void loop() // dummy to keep Arduino happy
 
 extern TaskHandle_t handleSuper, handleADCs, handleRing0, handleTouch, handleScribble;
 extern TaskHandle_t handlesRings[];
-TaskHandle_t* handles[]{nullptr, &handleSuper, &handleADCs, &handleRing0, &handleTouch, handlesRings+1, &handleScribble};
+TaskHandle_t* handles[]{nullptr, &handleSuper, &handleRing0, handlesRings+1, &handleScribble, &handleADCs, &handleTouch};
 void printTaskStates(void)
 {
   TaskHandle_t handleIdle = xTaskGetIdleTaskHandle();

@@ -140,7 +140,7 @@ static void setupScribble()
   phasedInit();
 
   // set backlights to half-power
-  for (int i=0;i<129;i++)
+  for (int i=0;i<256;i+=2)
   {
     analogWrite(TFT_BLK,i);
     vTaskDelay(5);
