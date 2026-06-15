@@ -1,6 +1,11 @@
-#define noDECODE_SERIAL
+//#include <TeensyDebug.h>
 
-#if defined(DECODE_SERIAL)
+#define DECODE_SERIAL
+
+#if !defined(DECODE_SERIAL)
+#define SER_TERM SerialUSB1
+#else
+#define SER_TERM Serial
 
 #include <PacketSerial.h>
 
@@ -14,28 +19,55 @@
 
 PacketSerial_<COBS, 0, 512> knobSerial;
 
+size_t last_size;
+int last_position;
 void knobPacketHandler(const uint8_t* buffer, size_t size)
 {
-  uint32_t computed_crc = 0;
-  crc32(buffer, size-4, &computed_crc);
-  uint32_t received_crc = buffer[size - 4]
-                       | (buffer[size - 3] << 8)
-                       | (buffer[size - 2] << 16)
-                       | (buffer[size - 1] << 24);
-  bool crc_ok = computed_crc == received_crc;
-  for (size_t i=0;i<size-4;i++)
-    SerialUSB1.printf("%02X ", *buffer++);
-  SerialUSB1.printf(": %s", crc_ok?"OK":"CRC fail");    
-  SerialUSB1.println();
-  if (crc_ok)
+  do 
   {
+    if (size <= 4)
+    {
+      SER_TERM.print('.');
+      break;
+    }
+    // SER_TERM.println(millis());
+  
+    uint32_t computed_crc = 0;
+    last_size = size;
+    crc32(buffer, size-4, &computed_crc);
+    uint32_t received_crc = buffer[size - 4]
+                         | (buffer[size - 3] << 8)
+                         | (buffer[size - 2] << 16)
+                         | (buffer[size - 1] << 24);
+    bool crc_ok = computed_crc == received_crc;
+    /*
+    uint8_t* p = buffer;
+    for (size_t i=0;i<size-4;i++)
+      SER_TERM.printf("%02X ", *p++);
+    SER_TERM.printf(": %s", crc_ok?"OK":"CRC fail");    
+    SER_TERM.println();
+    */
+    if (!crc_ok)
+      break;
+      
     PB_FromSmartKnob pb_rx_buffer_;
     pb_istream_t stream = pb_istream_from_buffer(buffer, size - 4);
     bool decode_ok = pb_decode(&stream, PB_FromSmartKnob_fields, &pb_rx_buffer_);
+    
     if (!decode_ok)
-      SerialUSB1.printf("Decode failed: %s\n", stream.errmsg);
-  }
-  SerialUSB1.println();
+    {
+      //halt_cpu();
+      SER_TERM.printf("Decode failed: %s\n", stream.errmsg);
+      break;
+    }
+
+    if (last_position != pb_rx_buffer_.payload.smartknob_state.current_position)
+    {
+      last_position = pb_rx_buffer_.payload.smartknob_state.current_position;
+      SER_TERM.printf("Position: %d", pb_rx_buffer_.payload.smartknob_state.current_position);
+      SER_TERM.println();
+    }
+  } while (0);
 }
 #endif // defined(DECODE_SERIAL)
 
@@ -52,6 +84,8 @@ void setup()
   knobSerial.setStream(&Serial1);
   knobSerial.setPacketHandler(knobPacketHandler);
 #endif // defined(DECODE_SERIAL)
+
+  //halt_cpu();
 }
 
 int charCount;
