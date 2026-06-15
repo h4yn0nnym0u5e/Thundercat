@@ -1,3 +1,7 @@
+#define noDECODE_SERIAL
+
+#if defined(DECODE_SERIAL)
+
 #include <PacketSerial.h>
 
 #include "smartknob.pb.h"
@@ -33,6 +37,7 @@ void knobPacketHandler(const uint8_t* buffer, size_t size)
   }
   SerialUSB1.println();
 }
+#endif // defined(DECODE_SERIAL)
 
 void setup() 
 {
@@ -42,8 +47,11 @@ void setup()
 
   // USART port to SmartKnob
   Serial1.begin(115200);
+  
+#if defined(DECODE_SERIAL)
   knobSerial.setStream(&Serial1);
   knobSerial.setPacketHandler(knobPacketHandler);
+#endif // defined(DECODE_SERIAL)
 }
 
 int charCount;
@@ -55,7 +63,7 @@ void loop()
   if (ch >= 0)
     Serial1.print((char) ch);
 
-/*
+#if !defined(DECODE_SERIAL)
   ch = Serial1.read();
   if (ch >= 0)
   {
@@ -68,7 +76,7 @@ void loop()
       charCount = 0;
     }
   }
-/*/
+#else
   knobSerial.update();
-//*/  
+#endif // defined(DECODE_SERIAL)
 }
