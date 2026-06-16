@@ -110,7 +110,7 @@ void knobSendConfig(const PB_SmartKnobConfig& cfg)
 
 #endif // defined(DECODE_SERIAL)
 
-void setup() 
+void initSmartKnob() 
 {
   // Teensy USB serial ports
   Serial.begin(0);
@@ -129,7 +129,7 @@ void setup()
 
 extern PB_SmartKnobConfig configs[];
 int charCount;
-void loop() 
+void updateSmartKnob() 
 {
   int ch;
 
@@ -146,20 +146,5 @@ void loop()
       break;      
   }
 
-#if !defined(DECODE_SERIAL)
-  ch = Serial1.read();
-  if (ch >= 0)
-  {
-    Serial.print((char) ch);
-    SerialUSB1.printf("%02X ", ch);
-    charCount++;
-    if (charCount >= 80 || 0 == ch)
-    {
-      SerialUSB1.println();
-      charCount = 0;
-    }
-  }
-#else
   knobSerial.update();
-#endif // defined(DECODE_SERIAL)
 }
