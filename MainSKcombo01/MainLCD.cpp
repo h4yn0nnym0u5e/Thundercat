@@ -51,9 +51,11 @@ TFT_eSPI tft = TFT_eSPI(240,320,TFT_SPI_BUS,TFT_CS_PIN);
 // off-screen version
 TFT_eSprite sprite(&tft);
 TFT_eSprite spritePos(&tft);
+TFT_eSprite spriteButtons(&tft);
 int spaceOffset;
 int posX = 200, posY = 180;
 uint16_t theBuffer[320*240]; // intermediate buffer
+uint16_t TRANSPARENT = 0x0020; // transparent colour (very dark green)
 
 //---------------------------------------------------------
 static void xrandomRect(void)
@@ -182,6 +184,16 @@ static void startMainLCD()
   spritePos.setFreeFont(&FONT_DP); // this is the font we're using
   spaceOffset = spritePos.textWidth("-0") - spritePos.textWidth(" 0");
 
+  spriteButtons.createInPSRAM(true);
+  spriteButtons.createSprite(320,45);
+  spriteButtons.setSpriteSwapBytes(
+#if defined(USE_FLEXIOPSI)
+    true
+#else
+    false    
+#endif // defined(USE_FLEXIOPSI)
+    );
+  spriteButtons.fillScreen(TRANSPARENT);
 
   tft.initDMA(TFT_CS_PIN);
   uint16_t* sprite_data = (uint16_t*) sprite.getPointer();
@@ -206,7 +218,7 @@ static void startMainLCD()
   uint32_t tupd = eus;
   Serial.printf("Async screen fill took %dus\n", tupd);
  */
-  delay(1500);
+  //delay(1500);
 }
 
 //=========================================================
@@ -220,6 +232,7 @@ static bool updateMainLCD()
   drawLogo(sprite, gimp_image);
   drawLogo(sprite, gimp_image2,85,140);
   spritePos.pushToSprite(&sprite, posX, posY);
+  spriteButtons.pushToSprite(&sprite, 0,0, 0x2000);//TRANSPARENT);
   
   copyAreaToBuffer(sprite, theBuffer, x,y,w,h);
   tft.startWrite();
@@ -257,12 +270,42 @@ static bool updatePosition(void)
   return result;
 }
 
+static uint16_t hues[]{TFT_VIOLET, TFT_YELLOW, TFT_ORANGE, TFT_CYAN, TFT_GREEN};
+static const char* names[]{"Unbounded", "Return", "Fine", "Coarse", "Coarse"};
+static const char* detents[]{"none", nullptr, nullptr, "strong", "weak"};
+static void updateButtons(void)
+{
+  int bw = 64, bh = 45;
+
+  //spriteButtons.setFreeFont(&FreeSans12pt7b);
+  //spriteButtons.setTextFont(3);
+  spriteButtons.setTextColor(TFT_BLACK);
+  //spriteButtons.setTextDatum(CC_DATUM);
+  for (int i=0;i<COUNT_OF(hues);i++)
+  {
+    spriteButtons.fillRoundRect(3+i*bw,3,bw-6,bh-5, 3, hues[i]);
+    spriteButtons.drawRoundRect(3+i*bw,3,bw-6,bh-5, 3, TFT_BLACK);
+    //spriteButtons.drawString(names[i], 3+i*bw + bw/2, 3 + bh/2);
+
+    int tw = spriteButtons.textWidth(names[i]);
+    spriteButtons.setCursor(3+i*bw + (bw-6-tw)/2,bh/2 - 5);
+    spriteButtons.print(names[i]);
+
+    if (nullptr != detents[i])
+    {
+      tw = spriteButtons.textWidth(detents[i]);
+      spriteButtons.setCursor(3+i*bw + (bw-6-tw)/2,bh/2 - 5 + 8);
+      spriteButtons.print(detents[i]);
+    }
+  } 
+}
 
 TaskHandle_t handleMainLCD;
 static void taskMainLCD(void* params)
 {
   bool writing;
   startMainLCD();
+  updateButtons();
 
   while (1)
   {

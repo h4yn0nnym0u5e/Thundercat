@@ -14,7 +14,6 @@
 #include <TFT_eSPI.h>
 
 extern void initSmartKnob(HardwareSerialIMXRT& knobSerialPort);
-//extern void updateSmartKnob(void);
 extern int current_position;
 extern float sub_position;
 extern int cmdSK;
