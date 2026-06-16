@@ -99,7 +99,7 @@ void knobSendConfig(const PB_SmartKnobConfig& cfg)
 }
 
 
-void initSmartKnob(HardwareSerialIMXRT& knobSerialPort) 
+void startSmartKnob(HardwareSerialIMXRT& knobSerialPort) 
 {
   // USART port to SmartKnob
   knobSerialPort.begin(115200);
@@ -111,23 +111,41 @@ void initSmartKnob(HardwareSerialIMXRT& knobSerialPort)
 }
 
 extern PB_SmartKnobConfig configs[];
-int charCount;
+int cmdSK;
 void updateSmartKnob() 
 {
-  int ch;
-
-  ch = SER_TERM.read();
-  switch (ch)
+  switch (cmdSK)
   {
     case -1: break; // nothing received, do nothing
 
     case '1' ... '5':
-      knobSendConfig(configs[ch-'1']);
+      knobSendConfig(configs[cmdSK-'1']);
+      cmdSK = -1;
       break;
 
     default:
+      cmdSK = -1;
       break;      
   }
 
   knobSerial.update();
+}
+
+TaskHandle_t handleSmartKnob;
+static void taskSmartKnob(void* params)
+{
+  HardwareSerialIMXRT& knobSerialPort = *((HardwareSerialIMXRT*) params);
+  startSmartKnob(knobSerialPort);
+
+  while (1)
+  {
+    updateSmartKnob();
+    vTaskDelay(2);
+  }
+}
+
+
+void initSmartKnob(HardwareSerialIMXRT& knobSerialPort)
+{
+  xTaskCreate(taskSmartKnob, "SmartKnob", 512, &knobSerialPort, 2, &handleSmartKnob);
 }
