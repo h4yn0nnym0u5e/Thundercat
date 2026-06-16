@@ -1,12 +1,5 @@
 //#include <TeensyDebug.h>
 
-#define DECODE_SERIAL
-
-#if !defined(DECODE_SERIAL)
-#define SER_TERM SerialUSB1
-#else
-#define SER_TERM Serial
-
 #include <PacketSerial.h>
 
 #include "smartknob.pb.h"
@@ -17,10 +10,12 @@
 
 #include "crc32.h"
 
+#include "headers.h"
+
 PacketSerial_<COBS, 0, 512> knobSerial;
 
-size_t last_size;
-int last_position;
+int current_position;
+float sub_position;
 void knobPacketHandler(const uint8_t* buffer, size_t size)
 {
   do 
@@ -33,7 +28,6 @@ void knobPacketHandler(const uint8_t* buffer, size_t size)
     // SER_TERM.println(millis());
   
     uint32_t computed_crc = 0;
-    last_size = size;
     crc32(buffer, size-4, &computed_crc);
     uint32_t received_crc = buffer[size - 4]
                          | (buffer[size - 3] << 8)
@@ -65,12 +59,8 @@ void knobPacketHandler(const uint8_t* buffer, size_t size)
     if (pb_rx_buffer_.which_payload != PB_FromSmartKnob_smartknob_state_tag)
       break;
 
-    if (last_position != pb_rx_buffer_.payload.smartknob_state.current_position)
-    {
-      last_position = pb_rx_buffer_.payload.smartknob_state.current_position;
-      SER_TERM.printf("Position: %d", pb_rx_buffer_.payload.smartknob_state.current_position);
-      SER_TERM.println();
-    }
+    current_position = pb_rx_buffer_.payload.smartknob_state.current_position;
+    sub_position = pb_rx_buffer_.payload.smartknob_state.sub_position_unit;
   } while (0);
 }
 
@@ -108,21 +98,14 @@ void knobSendConfig(const PB_SmartKnobConfig& cfg)
     } while (0);
 }
 
-#endif // defined(DECODE_SERIAL)
 
-void initSmartKnob() 
+void initSmartKnob(HardwareSerialIMXRT& knobSerialPort) 
 {
-  // Teensy USB serial ports
-  Serial.begin(0);
-  SerialUSB1.begin(0);
-
   // USART port to SmartKnob
-  Serial1.begin(115200);
+  knobSerialPort.begin(115200);
   
-#if defined(DECODE_SERIAL)
-  knobSerial.setStream(&Serial1);
+  knobSerial.setStream(&knobSerialPort);
   knobSerial.setPacketHandler(knobPacketHandler);
-#endif // defined(DECODE_SERIAL)
 
   //halt_cpu();
 }
@@ -133,7 +116,7 @@ void updateSmartKnob()
 {
   int ch;
 
-  ch = Serial.read();
+  ch = SER_TERM.read();
   switch (ch)
   {
     case -1: break; // nothing received, do nothing

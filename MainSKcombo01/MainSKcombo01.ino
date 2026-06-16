@@ -7,15 +7,20 @@ void setup()
   Serial.begin(0);
   SerialUSB1.begin(0);
 
-  // USART port to SmartKnob
-  Serial1.begin(115200);
-  
-  initSmartKnob();
+  initSmartKnob(Serial1);
 
   //halt_cpu();
 }
 
+int last_position;
 void loop() 
 {
   updateSmartKnob();
+
+  if (last_position != current_position)
+  {
+    last_position = current_position;
+    SER_TERM.printf("Position: %d", current_position);
+    SER_TERM.println();
+  }
 }
