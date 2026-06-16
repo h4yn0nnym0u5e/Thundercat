@@ -10,6 +10,7 @@ void setup()
 
   initSmartKnob(Serial1);
   initSupervisor();
+  initMainLCD();
 
   //halt_cpu();
   SER_TERM.println("\n\nStarting");
