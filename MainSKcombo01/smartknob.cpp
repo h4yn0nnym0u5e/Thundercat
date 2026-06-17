@@ -61,10 +61,15 @@ void knobPacketHandler(const uint8_t* buffer, size_t size)
       break;
 
     current_position = pb_rx_buffer_.payload.smartknob_state.current_position;
+    /*
     float slew = 0.25f;
     sub_position = 
         (1.0f - slew) * sub_position
       + (       slew) * pb_rx_buffer_.payload.smartknob_state.sub_position_unit;
+    /*/
+    // newer SmartKnob code provides pre-smoothed values
+    sub_position = pb_rx_buffer_.payload.smartknob_state.sub_position_unit;
+    //*/
   } while (0);
 }
 
