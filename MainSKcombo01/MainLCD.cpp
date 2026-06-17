@@ -53,7 +53,7 @@ TFT_eSprite sprite(&tft);
 TFT_eSprite spritePos(&tft);
 TFT_eSprite spriteButtons(&tft);
 int spaceOffset;
-int posX = 200, posY = 180;
+int posX = 170, posY = 180;
 uint16_t theBuffer[320*240]; // intermediate buffer
 uint16_t TRANSPARENT = 0x0020; // transparent colour (very dark green)
 
@@ -173,7 +173,7 @@ static void startMainLCD()
 #endif // defined(USE_FLEXIOPSI)
     );
 
-  spritePos.createSprite(110,45);
+  spritePos.createSprite(tft.width() - posX - 5,45);
   spritePos.setSpriteSwapBytes(
 #if defined(USE_FLEXIOPSI)
     true
@@ -223,6 +223,7 @@ static void startMainLCD()
 
 //=========================================================
 static int last_position;
+static float last_sub;
 static bool updateMainLCD() 
 {
   uint16_t x,y,w,h;
@@ -230,7 +231,7 @@ static bool updateMainLCD()
   randomRect(sprite, x,y,w,h);
   
   drawLogo(sprite, gimp_image);
-  drawLogo(sprite, gimp_image2,85,140);
+  drawLogo(sprite, gimp_image2,80,140);
   spritePos.pushToSprite(&sprite, posX, posY);
   spriteButtons.pushToSprite(&sprite, 0,0, 0x2000);//TRANSPARENT);
   
@@ -242,36 +243,61 @@ static bool updateMainLCD()
   return true;
 }
 
+
+char positionText[10];
+bool positionUpdated;
 static bool updatePosition(void)
 {
-  bool result = false;
-  if (last_position != current_position)
+  bool doUpdate = false;
+
+  if (1 == whichKnob) // pitch bend - analogue
   {
-    char buf[10];
+    if (fabs(last_sub - sub_position) >= 0.001f)
+    {
+      last_sub = sub_position;
+      float show = last_sub;
+      if (show < 0.000f && show > -0.0005f)
+        show = 0.0f;
+      sprintf(positionText,"%.3f", show);
+      doUpdate = true;
+    }
+  }
+  else // digital
+  {
+    if (last_position != current_position)
+    {
+      last_position = current_position;
+      sprintf(positionText,"%d", last_position);
+      doUpdate = true;
+    }
+  }
+
+  if (doUpdate)
+  {
     uint16_t x = posX, y = posY,
       w = spritePos.width(),h = spritePos.height();
-
-    last_position = current_position;
-    sprintf(buf,"%d", last_position);
 
     spritePos.fillScreen(TFT_DARKGREY);
     spritePos.setFreeFont(&FONT_DP);
     spritePos.setTextColor(TFT_LIGHTGREY);
     spritePos.setTextDatum(TR_DATUM);
     //spritePos.drawString(buf, (buf[0] == ' '?spaceOffset:0) + 3, 3);
-    spritePos.drawString(buf, w - 5, 3);
+    spritePos.drawString(positionText, w - 5, 3);
 
     copyAreaToBuffer(spritePos, theBuffer, 0,0,w,h);
     tft.startWrite();
     tft.pushImageDMA(x,y,w,h, theBuffer);
 
-    result = true;
   }
-  return result;
+
+  positionUpdated |= doUpdate;
+
+  return doUpdate;
 }
 
+
 static uint16_t hues[]{TFT_VIOLET, TFT_YELLOW, TFT_ORANGE, TFT_CYAN, TFT_GREEN};
-static const char* names[]{"Unbounded", "Return", "Fine", "Coarse", "Coarse"};
+static const char* names[]{"Unbounded", "Pitch", "Fine", "Coarse", "Coarse"};
 static const char* detents[]{"none", nullptr, nullptr, "strong", "weak"};
 static void updateButtons(void)
 {

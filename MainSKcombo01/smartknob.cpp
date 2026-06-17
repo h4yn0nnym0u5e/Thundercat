@@ -11,6 +11,7 @@
 #include "crc32.h"
 
 #include "headers.h"
+extern PB_SmartKnobConfig configs[];
 
 PacketSerial_<COBS, 0, 512> knobSerial;
 
@@ -60,14 +61,20 @@ void knobPacketHandler(const uint8_t* buffer, size_t size)
       break;
 
     current_position = pb_rx_buffer_.payload.smartknob_state.current_position;
-    sub_position = pb_rx_buffer_.payload.smartknob_state.sub_position_unit;
+    float slew = 0.25f;
+    sub_position = 
+        (1.0f - slew) * sub_position
+      + (       slew) * pb_rx_buffer_.payload.smartknob_state.sub_position_unit;
   } while (0);
 }
 
 uint8_t tx_buffer_[300]; // should be enough...
 uint32_t tx_nonce;
+int whichKnob = -1; // zero-based
 void knobSendConfig(const PB_SmartKnobConfig& cfg)
 {
+    whichKnob = &cfg - configs;
+
     // Encode protobuf message to byte buffer
     PB_ToSmartknob pb_tx_buffer_{};
     pb_tx_buffer_.nonce = ++tx_nonce;
@@ -110,7 +117,6 @@ void startSmartKnob(HardwareSerialIMXRT& knobSerialPort)
   //halt_cpu();
 }
 
-extern PB_SmartKnobConfig configs[];
 int cmdSK;
 void updateSmartKnob() 
 {
@@ -135,6 +141,7 @@ TaskHandle_t handleSmartKnob;
 static void taskSmartKnob(void* params)
 {
   HardwareSerialIMXRT& knobSerialPort = *((HardwareSerialIMXRT*) params);
+  knobSerialPort.flush();
   startSmartKnob(knobSerialPort);
 
   while (1)

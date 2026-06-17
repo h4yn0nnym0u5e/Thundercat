@@ -11,6 +11,7 @@ void setup()
   initSmartKnob(Serial1);
   initSupervisor();
   initMainLCD();
+  initGT911touch();
 
   //halt_cpu();
   SER_TERM.println("\n\nStarting");
@@ -54,7 +55,6 @@ void printTaskStates(void)
   freertos::print_ram_usage();
 }
 //=====================================================
-int last_position;
 static void updateSupervisor() 
 {
   int ch;
@@ -74,12 +74,19 @@ static void updateSupervisor()
       printTaskStates();
       break;      
   }
+
+  if (buttonReleased >= 0)
+  {
+    //SER_TERM.printf("Released button %d\n", buttonReleased);
+    cmdSK = '1' + buttonReleased;
+    buttonReleased = -1;
+  }
   //updateSmartKnob();
 
-  if (last_position != current_position)
+  if (positionUpdated)
   {
-    last_position = current_position;
-    SER_TERM.printf("Position: %d", current_position);
+    positionUpdated = false;
+    SER_TERM.printf("Position:%s", positionText);
     SER_TERM.println();
   }
 }
