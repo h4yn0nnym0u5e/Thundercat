@@ -15,11 +15,11 @@
  */
 #include "headers.h"
 
-#define noUSE_FLEXIOPSI
+#define USE_FLEXIOSPI
 
 
 //---------------------------------------------------------
-#if defined(USE_FLEXIOPSI)
+#if defined(USE_FLEXIOSPI)
 
 #include <FlexIO_t4.h> 
 #include <FlexIOSPI.h>
@@ -31,7 +31,7 @@ FlexIOSPI SPIFLEX(11, 12, 13, -1); // Setup on (int mosiPin, int misoPin, int sc
 #else
 #define TFT_SPI_BUS SPI
 #define TFT_SPI_BUS_TEXT "SPI"
-#endif // defined(USE_FLEXIOPSI)
+#endif // defined(USE_FLEXIOSI)
 //---------------------------------------------------------
 
 // Uses Setup405_Teensy_ST7789_Flex.h 
@@ -110,10 +110,17 @@ void drawLogo(TFT_eSprite& dst, const logo_t& logo, int x = -1, int y = -1)
   if (-1 == x) x = (dst.width() - logo.width) / 2;
   if (-1 == y) y = (dst.height() - logo.height) / 2;;
   
+  bool swapped = dst.getSwapBytes();
+
+#if defined(USE_FLEXIOSPI)
+  dst.setSwapBytes(!swapped);
+#endif // defined(USE_FLEXIOSI)
+
   dst.pushImage(x,y,
                 logo.width, logo.height,
                 logo.pixel_data,
                 0, 0x0040);
+  dst.setSwapBytes(swapped);    
 }
 
 
@@ -151,11 +158,11 @@ static void startMainLCD()
   tft.setTextColor(TFT_GREEN); tft.print("Green ");
   tft.setTextColor(TFT_BLUE); tft.print("Blue");
   
-#if defined(USE_FLEXIOPSI)
+#if defined(USE_FLEXIOSPI)
   // See if we can update the speed...
   //SPIFLEX.flexIOHandler()->setClockSettings(2, 1, 7);	// clksel(0-3PLL4, Pll3 PFD2 PLL5, *PLL3_sw)
   Serial.printf("Flex IO speed: %u\n", SPIFLEX.flexIOHandler()->computeClockRate());
-#endif // defined(USE_FLEXIOPSI)
+#endif // defined(USE_FLEXIOSI)
 
 /*
   // now prepare to use async area updates
@@ -166,20 +173,20 @@ static void startMainLCD()
 */
   sprite.createSprite(320,240);
   sprite.setSpriteSwapBytes(
-#if defined(USE_FLEXIOPSI)
+#if defined(USE_FLEXIOSPI)
     true
 #else
     false    
-#endif // defined(USE_FLEXIOPSI)
+#endif // defined(USE_FLEXIOSI)
     );
 
   spritePos.createSprite(tft.width() - posX - 5,45);
   spritePos.setSpriteSwapBytes(
-#if defined(USE_FLEXIOPSI)
+#if defined(USE_FLEXIOSPI)
     true
 #else
     false    
-#endif // defined(USE_FLEXIOPSI)
+#endif // defined(USE_FLEXIOSI)
     );
   spritePos.setFreeFont(&FONT_DP); // this is the font we're using
   spaceOffset = spritePos.textWidth("-0") - spritePos.textWidth(" 0");
@@ -187,11 +194,11 @@ static void startMainLCD()
   spriteButtons.createInPSRAM(true);
   spriteButtons.createSprite(320,45);
   spriteButtons.setSpriteSwapBytes(
-#if defined(USE_FLEXIOPSI)
+#if defined(USE_FLEXIOSPI)
     true
 #else
     false    
-#endif // defined(USE_FLEXIOPSI)
+#endif // defined(USE_FLEXIOSI)
     );
   spriteButtons.fillScreen(TRANSPARENT);
 
@@ -233,7 +240,13 @@ static bool updateMainLCD()
   drawLogo(sprite, gimp_image);
   drawLogo(sprite, gimp_image2,80,140);
   spritePos.pushToSprite(&sprite, posX, posY);
-  spriteButtons.pushToSprite(&sprite, 0,0, 0x2000);//TRANSPARENT);
+  spriteButtons.pushToSprite(&sprite, 0,0, 
+#if defined(USE_FLEXIOSPI)
+    TRANSPARENT
+#else
+    SWAP(TRANSPARENT)
+#endif // defined(USE_FLEXIOSI)
+  );
   
   copyAreaToBuffer(sprite, theBuffer, x,y,w,h);
   tft.startWrite();

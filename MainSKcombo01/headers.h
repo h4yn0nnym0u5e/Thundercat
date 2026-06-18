@@ -10,6 +10,7 @@
     TASK_LIST_ENTRY(MainLCD)
 
 #define COUNT_OF(a) (int)(sizeof a / sizeof a[0])
+#define SWAP(x) (((x>>8)&0xFF)|(x<<8))
 
 #include <arduino_freertos.h>
 #include <TFT_eSPI.h>

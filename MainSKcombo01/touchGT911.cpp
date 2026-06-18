@@ -121,5 +121,5 @@ static void taskGT911touch(void* params)
 
 void initGT911touch(void)
 {
-  xTaskCreate(taskGT911touch, "GT911touch", 512, nullptr, 2, &handleGT911touch);
+  xTaskCreate(taskGT911touch, "GT911touch", 256, nullptr, 2, &handleGT911touch);
 }

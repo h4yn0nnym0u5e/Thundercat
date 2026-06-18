@@ -13,11 +13,12 @@
  * SDA  17  Black (again!)
  * /INT 15  Red (again!)
  */
-#define noUSE_FLEXIOPSI
+//#include <TeensyDebug.h>
+#define USE_FLEXIOSPI
 
 
 //---------------------------------------------------------
-#if defined(USE_FLEXIOPSI)
+#if defined(USE_FLEXIOSPI)
 
 #include <FlexIO_t4.h> 
 #include <FlexIOSPI.h>
@@ -91,6 +92,10 @@ void randomRect(TFT_eSPI& tft, uint16_t& x, uint16_t& y, uint16_t& w, uint16_t& 
   while (y+h >= tft.height())
     y = random(tft.height());
 
+  /*
+  if (w*h < 2)
+    Serial.printf("x: %d; y: %d; w: %d; h: %d\n",x,y,w,h);
+  */
   tft.fillRect(x,y,w,h,random(65536));
 }
 
@@ -103,10 +108,17 @@ void drawLogo(TFT_eSprite& dst, const logo_t& logo, int x = -1, int y = -1)
   if (-1 == x) x = (dst.width() - logo.width) / 2;
   if (-1 == y) y = (dst.height() - logo.height) / 2;;
   
+  bool swapped = dst.getSwapBytes();
+
+#if defined(USE_FLEXIOSPI)
+  dst.setSwapBytes(!swapped);
+#endif // defined(USE_FLEXIOPSI)
+
   dst.pushImage(x,y,
                 logo.width, logo.height,
                 logo.pixel_data,
                 0, 0x0040);
+  dst.setSwapBytes(swapped);                
 }
 
 
@@ -125,6 +137,30 @@ void copyAreaToBuffer(TFT_eSprite& sprt, uint16_t* dst,
   }
 }
 
+
+void dumpDMA_TCDx(DMAChannel *dmabc) {
+    if (nullptr != dmabc)
+    {
+      Serial.printf("%x (%d) %x:", (uint32_t)dmabc, dmabc->channel, (uint32_t)dmabc->TCD);
+
+      Serial.printf("SA:%x SO:%d AT:%x NB:%x SL:%d DA:%x DO: %d CI:%x DL:%x CS:%x BI:%x\n", (uint32_t)dmabc->TCD->SADDR,
+                    dmabc->TCD->SOFF, dmabc->TCD->ATTR, dmabc->TCD->NBYTES, dmabc->TCD->SLAST, (uint32_t)dmabc->TCD->DADDR,
+                    dmabc->TCD->DOFF, dmabc->TCD->CITER, dmabc->TCD->DLASTSGA, dmabc->TCD->CSR, dmabc->TCD->BITER);
+    }
+}
+
+#define DUMP(r) Serial.printf(#r ": %08x\n", r)
+#define NVIC_PENDING0 (* (uint32_t*) 0xE000'E200)
+void dumpStuff(void)
+{
+  DUMP(NVIC_ISER0);
+  DUMP(NVIC_PENDING0);
+#if defined(USE_FLEXIOSPI_AND_DMA_IS_PUBLIC)
+  dumpDMA_TCDx(SPIFLEX._dmaTX);
+  dumpDMA_TCDx(SPIFLEX._dmaRX);
+#endif // defined(USE_FLEXIOPSI)
+}
+
 //=========================================================
 void setup() 
 {
@@ -132,7 +168,7 @@ void setup()
     ;
 
   // standard TFT display setup
-  tft.init();
+  tft.begin();
   //tft.setSPISpeed(60'000'000);
   tft.setRotation(1);
   tft.invertDisplay(true);
@@ -148,7 +184,7 @@ void setup()
   tft.setTextColor(TFT_BLUE); tft.print("Blue");
   delay(1500);
   
-#if defined(USE_FLEXIOPSI)
+#if defined(USE_FLEXIOSPI)
   // See if we can update the speed...
   //SPIFLEX.flexIOHandler()->setClockSettings(2, 1, 7);	// clksel(0-3PLL4, Pll3 PFD2 PLL5, *PLL3_sw)
   Serial.printf("Flex IO speed: %u\n", SPIFLEX.flexIOHandler()->computeClockRate());
@@ -163,7 +199,7 @@ void setup()
 */
   sprite.createSprite(320,240);
   sprite.setSpriteSwapBytes(
-#if defined(USE_FLEXIOPSI)
+#if defined(USE_FLEXIOSPI)
     true
 #else
     false    
@@ -171,6 +207,8 @@ void setup()
     );
   tft.initDMA(TFT_CS_PIN);
   uint16_t* sprite_data = (uint16_t*) sprite.getPointer();
+
+  //halt_cpu();
   
   showGamut(sprite);
   Serial.printf("TFT settings: %s; SPI on %s\n", USER_SETUP_INFO, TFT_SPI_BUS_TEXT);
@@ -179,7 +217,10 @@ void setup()
   sprite.pushSprite(0,0);
   /*/
   tft.startWrite();
+  //dumpStuff();
   tft.pushImageDMA(0, 0, tft.width(), tft.height(), sprite_data);
+  //dumpStuff();
+  tft.dmaWait();
   tft.endWrite();
   //*/
 /*  
