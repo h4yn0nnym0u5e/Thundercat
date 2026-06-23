@@ -56,3 +56,9 @@ https://github.com/h4yn0nnym0u5e/LittleFS/tree/feature/more-FRAM-types
 - add PM004M MRAM as an option
 - enable use of SPI or FlexIOSPI for FRAM-type parts
   - could be extended to Flash parts, but I haven't done it
+
+
+# initGT911 #
+https://github.com/h4yn0nnym0u5e/initGT911/tree/dev/teensy-01
+
+- fix compile-time issue due to use of ESP32-only macro

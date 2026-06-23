@@ -15,6 +15,12 @@
 #include <arduino_freertos.h>
 #include <TFT_eSPI.h>
 
+namespace freertos
+{
+extern TaskHandle_t g_yield_task;
+}
+extern uint8_t external_psram_size;
+
 extern void initSmartKnob(HardwareSerialIMXRT& knobSerialPort);
 extern int current_position;
 extern float sub_position;

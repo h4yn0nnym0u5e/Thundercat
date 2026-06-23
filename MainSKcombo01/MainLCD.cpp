@@ -171,7 +171,9 @@ static void startMainLCD()
   tft.useFrameBuffer(true);
   tft.updateChangedAreasOnly(true);
 */
+  sprite.createInPSRAM(true);
   sprite.createSprite(320,240);
+  Serial.printf("Buffer sprite at %08X\n", (uint32_t) sprite.getPointer());
   sprite.setSpriteSwapBytes(
 #if defined(USE_FLEXIOSPI)
     true

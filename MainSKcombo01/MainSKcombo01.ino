@@ -15,6 +15,10 @@ void setup()
 
   //halt_cpu();
   SER_TERM.println("\n\nStarting");
+
+  if (0 == external_psram_size)
+    SER_TERM.println("PSRAM not available");
+  
   vTaskStartScheduler();
 }
 
@@ -27,7 +31,7 @@ TASK_LIST
 
 #define TASK_LIST_ENTRY(tsk) , &handle##tsk
 TaskHandle_t* handles[]
-  { nullptr
+  { nullptr, nullptr
     TASK_LIST
   };
 #undef TASK_LIST_ENTRY
@@ -36,6 +40,7 @@ void printTaskStates(void)
 {
   TaskHandle_t handleIdle = xTaskGetIdleTaskHandle();
   handles[0] = &handleIdle;
+  handles[1] = &freertos::g_yield_task;
   configRUN_TIME_COUNTER_TYPE idlePercent = ulTaskGetIdleRunTimePercent(),
                               idleCount = ulTaskGetIdleRunTimeCounter();
   float pct = idleCount * 100.0f / idlePercent; // 100% of counts to date
