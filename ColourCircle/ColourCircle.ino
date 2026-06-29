@@ -144,12 +144,103 @@ bool isOldAngle(float a)
 }
 
 //================================================================
+void drawFatRect(TFT_eSPI& tft, int x, int y, int w, int h, int t, int colour)
+{
+  if (2*t >= h || 2*t >= w) // huge thickness means...
+    tft.fillRect(x,y,w,h,colour);
+  else
+  {
+    tft.fillRect(x,    y,    w,t,    colour);
+    tft.fillRect(x,    y+h-t,w,t,    colour);
+    tft.fillRect(x,    y+t,  t,h-2*t,colour);
+    tft.fillRect(x+w-t,y+t,  t,h-2*t,colour);
+  }    
+}
+
+
+uint16_t getBlend(TFT_eSPI& tft, float l, uint16_t top, uint16_t hue)
+{
+  return tft.alphaBlend(l*255+0.5f, top, hue);
+}
+
+
+uint16_t markGradient(TFT_eSPI& tft, 
+                      int x, int y, int w, int h, // gradient rectangle
+                      uint16_t hue, uint16_t top, // colours
+                      int d,                 // depth of marker
+                      float l, float& oldL)   // fractional level (from bottom)
+{
+  int hh = y+(1-oldL)*h;
+
+  drawFatRect(tft, x-2, hh-d/2, w+4, d+1, 2, TFT_BLACK);
+
+  // draw part of the gradient using a viewport
+  // needs a bug fix in TFT_eSPI
+  tft.setViewport(x-2, hh-d/2, w+4, d+1, false);
+  tft.fillRectVGradient(x,y,w,h,top,hue);
+  tft.resetViewport();
+
+  oldL = l;
+  hh = y+(1-oldL)*h;
+  drawFatRect(tft, x-2, hh-d/2, w+4, d+1, 2, top==TFT_WHITE?TFT_DARKGREY:TFT_LIGHTGREY);
+
+  return getBlend(tft, l, top, hue);
+}
+
+bool isSameLevel(float level, float oldLevel, uint16_t hue, uint16_t top)
+{
+  /*
+  Serial.printf("%.3f -> %.3f; %04X -> %04X\n", oldLevel, level,
+          tft.alphaBlend(oldLevel*255+0.5f, top, hue),
+          tft.alphaBlend(   level*255+0.5f, top, hue) 
+  );
+  */
+  return getBlend(tft,    level, top, hue)
+      == getBlend(tft, oldLevel, top, hue);
+}
+
+
+//================================================================
+int16_t hue, textColour, bgColour;
+
+void drawSettingsExample(TFT_eSPI& tft)
+{
+  int yp = 100;
+  tft.fillRect(65,yp,115,60, bgColour);
+  //tft.setCursor(70,95);
+  tft.setTextColor(textColour);
+  tft.drawString("Text", 75, yp+5, 4);
+  tft.fillRect(75,yp+60-10-15,95,15, hue);
+}
+
+
+void showColours(TFT_eSPI& tft)
+{
+  char buffer[20];
+  tft.setTextColor(TFT_WHITE);
+  tft.setTextFont(1);
+
+  sprintf(buffer," Hue: %04X", hue & 0xFFFF);
+  tft.fillRect(90,60,70,10,TFT_BLACK);
+  tft.drawString(buffer, 90,60);
+
+  sprintf(buffer,"Text: %04X", textColour & 0xFFFF);
+  tft.fillRect(90,70,70,10,TFT_BLACK);
+  tft.drawString(buffer, 90,70);
+
+  sprintf(buffer,"Bgnd: %04X", bgColour & 0xFFFF);
+  tft.fillRect(90,80,70,10,TFT_BLACK);
+  tft.drawString(buffer, 90,80);
+}
+
+//================================================================
 extern void processTouch(int n);
 extern uint8_t updateGT911touch();
 extern void startGT911touch();
 extern GTPoint lastTouch;
 
 int hueX = 120, hueY = 120;
+float textLevel = 0.66f, bgLevel=0.66f;
 
 void setup() 
 {
@@ -162,8 +253,15 @@ void setup()
   initTFT(tft);
 
   hueCircle(tft,hueX,hueY, 100,80, TFT_BLACK);
+  hue = markHue(tft, hueX,hueY, 100,80, 13, PI/2);
   //hueCircle(tft,160,120,  75,60, TFT_BLACK);
-  gradients(tft, 240,270, 20,20,200, TFT_RED);
+  gradients(tft, 240,280, 20,20,200, hue);
+
+  textColour = markGradient(tft, 240,20,20,200, hue,TFT_WHITE, 9, textLevel, textLevel);
+  bgColour = markGradient(tft, 280,20,20,200, hue,TFT_BLACK, 9, bgLevel, bgLevel);
+
+  drawSettingsExample(tft);
+  showColours(tft);
 }
 
 
@@ -176,13 +274,49 @@ void loop()
     if (updateGT911touch() > 0)  
     {
       processTouch(0);
+
+      // Are we in the colour circle - if so select hue
+      bool drawExample = false;
       int dx = lastTouch.x - hueX, dy = lastTouch.y - hueY;
       float touchRadius = sqrtf(dx*dx+dy*dy);
       float touchAngle = atan2(hueY - lastTouch.y, lastTouch.x - hueX);
       if (touchRadius < 105.0f && !isOldAngle(touchAngle))
       {
-        uint16_t hue = markHue(tft, hueX,hueY, 100,80, 13, touchAngle);
-        gradients(tft, 240,270, 20,20,200, hue);
+        drawExample = true;
+        hue = markHue(tft, hueX,hueY, 100,80, 13, touchAngle);
+        gradients(tft, 240,280, 20,20,200, hue);
+        textColour = markGradient(tft, 240,20,20,200, hue,TFT_WHITE, 9, textLevel, textLevel);
+        bgColour = markGradient(tft, 280,20,20,200, hue,TFT_BLACK, 9, bgLevel, bgLevel);
+      }
+      else
+      {
+        if (lastTouch.x>=230 && lastTouch.y>=18 && lastTouch.y<=222)
+        {
+          float l = (220 - lastTouch.y)/200.0f;
+          l = constrain(l,0.0f,1.0f);
+          if (lastTouch.x<270)
+          {
+            if (!isSameLevel(l,textLevel, hue,TFT_WHITE))
+            {
+              textColour = markGradient(tft, 240,20,20,200, hue,TFT_WHITE, 9, l, textLevel);
+              drawExample = true;
+            }
+          }
+          else            
+          {
+            if (!isSameLevel(l,bgLevel, hue,TFT_BLACK))
+            {
+              bgColour = markGradient(tft, 280,20,20,200, hue,TFT_BLACK, 9, l, bgLevel);
+              drawExample = true;
+            }
+          }
+        }
+      }
+
+      if (drawExample)
+      {
+        drawSettingsExample(tft);
+        showColours(tft);
         Serial.printf("%d: %d,%d; %.3f, %d\n", millis(), lastTouch.x, lastTouch.y, touchAngle, rad2TFT(touchAngle));
       }
     }
