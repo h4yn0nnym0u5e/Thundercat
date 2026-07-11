@@ -31,7 +31,6 @@ FlexIOSPI SPIFLEX(11, 12, 13, -1); // Setup on (int mosiPin, int misoPin, int sc
 TFT_eSPI tft = TFT_eSPI(240,320,SPIFLEX,TFT_CS_PIN);
 #define TFT_BL      14
 #define TFT_CTP_INT 15
-#define TFT_CTP_I2C Wire2
 
 void initTFT(TFT_eSPI& tft)
 {

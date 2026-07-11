@@ -1,4 +1,8 @@
-#include <Wire.h>
+/*
+#define TFT_CTP_I2C Wire1 
+/*/
+#define TFT_CTP_I2C Master1 
+//*/
 #include "initGT911.h"
 
 // I2C pins/frequency (adjust for your board)
@@ -17,11 +21,27 @@
 #define TFT_HOR_RES  960
 #define TFT_VER_RES  960
 
-initGT911 Touchscreen(&Wire1, TOUCH_ADDR);
+initGT911 Touchscreen(&TFT_CTP_I2C, TOUCH_ADDR);
+
+struct touchWireContext_s
+{
+  int stuff;
+} touchWireContext{1};
+
+void touchWireCallback(void* pctxt)
+{
+  touchWireContext_s& context = *((touchWireContext_s*) pctxt);
+
+  context.stuff++;
+}
 
 void startGT911touch() {
   // Init I2C
-  Wire1.begin();
+#if defined(I2C_DRIVER_WIRE_H)
+  TFT_CTP_I2C.begin(I2C_FREQ);
+#else  
+  TFT_CTP_I2C.begin();
+#endif // defined(I2C_DRIVER_WIRE_H)
 
   // Init GT911 (interrupts are handled INSIDE the library)
   for (int i=0;i<10;i++)
@@ -29,9 +49,11 @@ void startGT911touch() {
     if (Touchscreen.begin(INT_PIN, RST_PIN, I2C_FREQ)) {
       Serial.println("GT911 initialized (interrupt mode).");
       Touchscreen.setupDisplay(TFT_HOR_RES, TFT_VER_RES, initGT911_ROTATION_0);
+      Touchscreen.getWire().set_callback(touchWireCallback);
+      Touchscreen.getWire().set_context(&touchWireContext);
       break;
     } else {
-      Serial.printf("%d ... ", Touchscreen.beginError);
+      Serial.printf("%d ... ", i /* Touchscreen.beginError */);
     }
   }
 }
@@ -60,7 +82,7 @@ void processTouch(int n)
   int x = p.y/3, y = 240-p.x/4;
   p.x = x; p.y = y;
   p.reserved = 1; // say it's valid
-  //Serial.printf("Touch: X=%u, Y=%u; ", p.x, p.y);
+  //Serial.printf("Touch: X=%u, Y=%u, stuff: %d; ", p.x, p.y, touchWireContext.stuff);
 
   lastTouch = p;
   lastTouchTime = millis();
