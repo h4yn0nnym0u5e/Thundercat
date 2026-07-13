@@ -381,7 +381,7 @@ void taskMainLCD(void* params)
         drawSettingsExample(tft);
         showColours(tft);
         screen_update_us = eu;
-        Serial.printf("%d: %d,%d; %.3f, %d\n", millis(), lastTouch.x, lastTouch.y, touchAngle, rad2TFT(touchAngle));
+        //Serial.printf("%d: %d,%d; %.3f, %d\n", millis(), lastTouch.x, lastTouch.y, touchAngle, rad2TFT(touchAngle));
       }
       setIdlePin(0);
     }

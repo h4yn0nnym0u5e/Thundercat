@@ -1,3 +1,10 @@
+# Changed libraries #
+
+This is a list of the library changes "required" (IMHO) for the 8-fader Monster.
+
+In the main these are extensions to existing behaviour, to allow coexistence of the various libraries in use and optimise their performance when called from FreeRTOS tasks. There are a few bug-fixes, too.
+
+
 # FreeRTOS #
 https://github.com/h4yn0nnym0u5e/freertos-teensy/tree/improved_yield%2Bt4_heap_fix
 
@@ -26,6 +33,8 @@ Many changes!
    - phased `init()`
  - `pushImage()` into sprite can now have transparent colour
  - arc drawing now uses `float` angles
+ - fix issue with clipped gradient fills
+ - fix issue with ESP32-S3, used for SmartKnob
 
 
 # cores #
@@ -59,6 +68,14 @@ https://github.com/h4yn0nnym0u5e/LittleFS/tree/feature/more-FRAM-types
 
 
 # initGT911 #
-https://github.com/h4yn0nnym0u5e/initGT911/tree/dev/teensy-01
+https://github.com/h4yn0nnym0u5e/initGT911/tree/dev/teensy-01-async
 
 - fix compile-time issue due to use of ESP32-only macro
+- allow use of asynchronous I²C library
+
+
+# teensy4_i2c # 
+https://github.com/h4yn0nnym0u5e/teensy4_i2c/tree/dev/no-restart
+
+- allow option to continue read or write without sending a restart 
+- add callbacks to allow non-polled usage with RTOS 
