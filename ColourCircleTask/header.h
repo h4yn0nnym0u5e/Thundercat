@@ -31,9 +31,11 @@ namespace freertos
 extern TaskHandle_t g_yield_task;
 }
 
+#define IDLE_PIN 2
+
 //=================================================
 extern TaskHandle_t handleGT911touch;
 extern void initGT911touch(void);
 
-
+extern void setIdlePin(bool);
 extern TaskHandle_t handleMainLCD;

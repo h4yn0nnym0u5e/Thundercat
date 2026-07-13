@@ -25,10 +25,10 @@
 
 
 //================================================================
-FlexIOSPI SPIFLEX(11, 12, 13, -1); // Setup on (int mosiPin, int misoPin, int sckPin, int csPin=-1) :
+FlexIOSPI SPIflex(11, 12, 13, -1); // Setup on (int mosiPin, int misoPin, int sckPin, int csPin=-1) :
 
 #define TFT_CS_PIN  8
-TFT_eSPI tft = TFT_eSPI(240,320,SPIFLEX,TFT_CS_PIN);
+TFT_eSPI tft = TFT_eSPI(240,320,SPIflex,TFT_CS_PIN);
 #define TFT_BL      14
 #define TFT_CTP_INT 15
 
@@ -36,6 +36,11 @@ void initTFT(TFT_eSPI& tft)
 {
   // standard TFT display setup
   tft.init();
+  // This gives us a base clock of 120MHz:
+  SPIflex.flexIOHandler()->setClock(120'000'000.0f);
+
+  uint32_t clk = SPIflex.flexIOHandler()->computeClockRate();
+  Serial.printf("Updated Flex IO speed: %u; SPI clock will be an integer division of %u\n", clk, clk/2);
   //tft.setSPISpeed(60'000'000);
   tft.setRotation(1);
   tft.invertDisplay(true);
@@ -171,7 +176,8 @@ uint16_t markGradient(TFT_eSPI& tft,
 {
   int hh = y+(1-oldL)*h;
 
-  drawFatRect(tft, x-2, hh-d/2, w+4, d+1, 2, TFT_BLACK);
+  if (l != oldL) // might be just changing hue
+    drawFatRect(tft, x-2, hh-d/2, w+4, d+1, 2, TFT_BLACK);
 
   // draw part of the gradient using a viewport
   // needs a bug fix in TFT_eSPI
@@ -205,7 +211,13 @@ int16_t hue, textColour, bgColour;
 void drawSettingsExample(TFT_eSPI& tft)
 {
   int yp = 100;
-  tft.fillRect(65,yp,115,60, bgColour);
+  // Main background:
+  //tft.fillRect(65,yp,115,60, bgColour);
+  // ... but save time by not overwriting with hue:
+  tft.fillRect(65,yp,      115,60-10-15, bgColour);
+  tft.fillRect(65,yp+60-10,115,   10   , bgColour);
+  tft.fillRect(65,    yp+60-25, 10,   15   , bgColour);
+  tft.fillRect(65+105,yp+60-25, 10,   15   , bgColour);
   //tft.setCursor(70,95);
   tft.setTextColor(textColour);
   tft.drawString("Text", 75, yp+5, 4);
@@ -276,6 +288,7 @@ TaskHandle_t* handles[]
   };
 #undef TASK_LIST_ENTRY
 
+uint32_t screen_update_us;
 void printTaskStates(void)
 {
   TaskHandle_t handleIdle = xTaskGetIdleTaskHandle();
@@ -297,7 +310,15 @@ void printTaskStates(void)
               (float) s.ulRunTimeCounter / pct * 100.0f
             );
   }
+  SER_TERM.printf("Last screen update: %dus\n", screen_update_us);
   freertos::print_ram_usage();
+}
+
+void setIdlePin(bool b)
+{
+#if defined(IDLE_PIN)
+  digitalWriteFast(IDLE_PIN,b);
+#endif // defined(IDLE_PIN)
 }
 
 //================================================================
@@ -319,6 +340,7 @@ void taskMainLCD(void* params)
       float touchAngle = atan2(hueY - lastTouch.y, lastTouch.x - hueX);
       if (touchRadius < 105.0f && !isOldAngle(touchAngle))
       {
+        setIdlePin(1);
         drawExample = true;
         hue = markHue(tft, hueX,hueY, 100,80, 13, touchAngle);
         gradients(tft, 240,280, 20,20,200, hue);
@@ -330,8 +352,10 @@ void taskMainLCD(void* params)
         // see if we're in the text or background sliders
         if (lastTouch.x>=230 && lastTouch.y>=18 && lastTouch.y<=222)
         {
+          setIdlePin(1);
           float l = (220 - lastTouch.y)/200.0f;
           l = constrain<float>(l,0.0f,1.0f);
+
           if (lastTouch.x<270)
           {
             if (!isSameLevel(l,textLevel, hue,TFT_WHITE))
@@ -353,10 +377,13 @@ void taskMainLCD(void* params)
 
       if (drawExample)
       {
+        elapsedMicros eu = 0;
         drawSettingsExample(tft);
         showColours(tft);
+        screen_update_us = eu;
         Serial.printf("%d: %d,%d; %.3f, %d\n", millis(), lastTouch.x, lastTouch.y, touchAngle, rad2TFT(touchAngle));
       }
+      setIdlePin(0);
     }
 
     // get here every timeout (5ms or so); deal with Serial input
@@ -385,6 +412,10 @@ void initMainLCD(void)
 //=========================================
 void setup(void)
 {
+#if defined(IDLE_PIN)
+  pinMode(IDLE_PIN,arduino::OUTPUT);
+#endif // defined(IDLE_PIN)
+
   initMainLCD();
   initGT911touch();
 
@@ -392,3 +423,17 @@ void setup(void)
 }
 
 void loop() {} // keep Arduino happy
+
+#if defined(IDLE_PIN)
+// Called from idle task: must NOT block!
+void vApplicationIdleHook() 
+{
+  static elapsedMicros eu = 0;
+
+  if (eu >= 50)
+  {
+    eu = 0;
+    digitalToggleFast(IDLE_PIN);
+  }
+}
+#endif // defined(IDLE_PIN)

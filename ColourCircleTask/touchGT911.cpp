@@ -58,6 +58,12 @@ void touchWireCallback(void* pctxt)
   portYIELD_FROM_ISR( xHigherPriorityTaskWoken );
 }
 
+// Replacement for delay() when called from inside GT911 library
+void touchDelay(uint32_t ms)
+{
+  vTaskDelay(pdMS_TO_TICKS(ms));
+}
+
 
 void startGT911touch() {
   // Init I2C
@@ -79,6 +85,7 @@ void startGT911touch() {
       Touchscreen.setInterruptHandler(touchISR);
       Touchscreen.setAsyncWait(touchAsyncWait);
       //Touchscreen.setContext(&touchWireContext);
+      Touchscreen.setDelayFn(touchDelay);
       
       break;
     } else {
@@ -166,5 +173,5 @@ static void taskGT911touch(void* params)
 
 void initGT911touch(void)
 {
-  xTaskCreate(taskGT911touch, "GT911touch", 512, nullptr, 2, &handleGT911touch);
+  xTaskCreate(taskGT911touch, "GT911touch", 512, nullptr, 3, &handleGT911touch);
 }
