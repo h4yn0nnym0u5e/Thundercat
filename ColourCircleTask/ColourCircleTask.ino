@@ -29,18 +29,49 @@ FlexIOSPI SPIflex(11, 12, 13, -1); // Setup on (int mosiPin, int misoPin, int sc
 
 #define TFT_CS_PIN  8
 TFT_eSPI tft = TFT_eSPI(240,320,SPIflex,TFT_CS_PIN);
+TFT_eSprite sprite{&tft}; // sprite for off-screen rendering
+uint16_t* imageBuffer;    // extra buffer to serialise area of sprite
 #define TFT_BL      14
 #define TFT_CTP_INT 15
 
-void initTFT(TFT_eSPI& tft)
+
+// callback executed within ISR when DMA SPI transfer completes
+static void TFTdmaDoneCB(FlexIOSPI* pFlex)
+{
+  BaseType_t xHigherPriorityTaskWoken = pdFALSE; 
+
+  vTaskNotifyGiveFromISR(handleMainLCD, &xHigherPriorityTaskWoken);
+  portYIELD_FROM_ISR( xHigherPriorityTaskWoken );  
+}
+
+
+// block until DMA is complete
+static void TFTdmaWait(void)
+{
+  // wait for notification from async TFT_eSPI library
+  ulTaskNotifyTake(pdTRUE, portMAX_DELAY);  
+
+  // now we can...
+  tft.dmaWait();  // ...tidy up...
+  tft.endWrite(); // ...and release the SPI bus
+}
+
+
+void initTFT(TFT_eSPI& tft, TFT_eSprite& spr)
 {
   // standard TFT display setup
   tft.init();
+
+  // FlexIOSPI-specific stuff --------------------------------------------
   // This gives us a base clock of 120MHz:
   SPIflex.flexIOHandler()->setClock(120'000'000.0f);
 
   uint32_t clk = SPIflex.flexIOHandler()->computeClockRate();
   Serial.printf("Updated Flex IO speed: %u; SPI clock will be an integer division of %u\n", clk, clk/2);
+  SPIflex.setTransferCallback(TFTdmaDoneCB);
+  // ---------------------------------------------------------------------
+
+
   //tft.setSPISpeed(60'000'000);
   tft.setRotation(1);
   tft.invertDisplay(true);
@@ -49,6 +80,44 @@ void initTFT(TFT_eSPI& tft)
   pinMode(TFT_BL,arduino::OUTPUT);
   digitalWriteFast(TFT_BL,arduino::HIGH);
   tft.fillScreen(TFT_BLACK);
+
+  // initialise a sprite
+  // Needs 153'600 bytes for a 320x240 display
+  spr.createSprite(tft.width(), tft.height());
+  //spr.invertDisplay(true);
+  spr.setSpriteSwapBytes(false);
+  imageBuffer = (uint16_t*) malloc(115*60*sizeof(uint16_t)); // hack hack..
+
+  // allow DMA
+  tft.initDMA();
+}
+//================================================================
+bool spriteAreaToBuffer(TFT_eSprite& spr, uint16_t* dst, int x, int y, int w, int h)
+{
+  bool result = false;
+  uint16_t* src = (uint16_t*) spr.getPointer();
+  int sw = spr.width();
+
+  if (nullptr != src && nullptr != dst)
+  {
+    uint16_t* img = src+y*sw+x; // first pixel
+    while (h)
+    {
+      /*
+      memcpy(dst,img,w*sizeof *img); // copy a line
+      /*/
+      // we have to do byte swapping here, library seems broken
+      for (int i=0;i<w;i++)
+        dst[i] = (img[i] << 8) | ((img[i] >> 8) & 0xFF); 
+      //*/
+      dst += w;   // next free buffer area
+      img += sw;  // next line in sprite data
+      h--;
+    }
+    result = true;
+  }
+
+  return result;
 }
 
 //================================================================
@@ -208,6 +277,8 @@ bool isSameLevel(float level, float oldLevel, uint16_t hue, uint16_t top)
 //================================================================
 int16_t hue, textColour, bgColour;
 
+// render what settings look like inside hue circle
+// Hack hack - it's a 115x60 area
 void drawSettingsExample(TFT_eSPI& tft)
 {
   int yp = 100;
@@ -262,7 +333,7 @@ void startTaskMainLCD()
   while (!Serial)
     ;
   Serial.println("\n\nStarting");
-  initTFT(tft);
+  initTFT(tft, sprite);
 
   hueCircle(tft,hueX,hueY, 100,80, TFT_BLACK);
   hue = markHue(tft, hueX,hueY, 100,80, 13, PI/2);
@@ -378,9 +449,28 @@ void taskMainLCD(void* params)
       if (drawExample)
       {
         elapsedMicros eu = 0;
-        drawSettingsExample(tft);
-        showColours(tft);
+        //showColours(tft);
+        showColours(sprite);
+        if (spriteAreaToBuffer(sprite, imageBuffer, 90,60,70,30))
+        {
+          tft.startWrite();
+          tft.pushImageDMA(90,60,70,30, imageBuffer);
+          TFTdmaWait();
+        }
+        
+        //drawSettingsExample(tft);
+        drawSettingsExample(sprite);
+        if (spriteAreaToBuffer(sprite, imageBuffer, 65,100,115,60))
+        {
+          /*
+          tft.pushImage(65,100,115,60, imageBuffer);
+          /*/
+          tft.startWrite();
+          tft.pushImageDMA(65,100,115,60, imageBuffer);
+          //*/
+        }
         screen_update_us = eu;
+        TFTdmaWait();   // blocks this task until DMA completes
         //Serial.printf("%d: %d,%d; %.3f, %d\n", millis(), lastTouch.x, lastTouch.y, touchAngle, rad2TFT(touchAngle));
       }
       setIdlePin(0);
@@ -398,7 +488,10 @@ void taskMainLCD(void* params)
 
       case 't':
         printTaskStates();
-        break;      
+        break;   
+        
+      case 'h':
+        Serial.printf("Hue: %04X\n", imageBuffer[0]);        
     }
   }
 }
