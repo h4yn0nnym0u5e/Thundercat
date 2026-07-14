@@ -181,15 +181,19 @@ int rad2TFT(float rad)
  * and conventional at 3 o'clock and runs anticlockwise. Sigh.
  */
 float oldAngle;
-uint16_t markHue(TFT_eSPI& tft, 
+void unMarkHue(TFT_eSPI& tft, 
              int cx, int cy,  // selection ring centre...
              int cr,          // ...and radius:outer...
              int cri,         // ...and inner
              int mr,          // marker radius
-             float a)         // conventional angle, ±pi
+             float a,         // conventional angle, ±pi
+             int& mx,   // return screen position of marker
+             int& my)
 {
   int crm = (cr+cri)/2;
-  int mx = crm * cosf(oldAngle) + cx, my = cy - crm * sinf(oldAngle);
+  mx = crm * cosf(oldAngle) + cx;
+  my = cy - crm * sinf(oldAngle);
+
   //tft.drawCircle(mx,my,mr,TFT_BLACK);
   tft.drawArc(mx,my,mr,mr-2, 0,360, TFT_BLACK,TFT_BLACK);
   for (int i=-10;i<11;i++)
@@ -199,7 +203,18 @@ uint16_t markHue(TFT_eSPI& tft,
     tftAngle = (tftAngle + 360) % 360;
     tft.drawArc(cx,cy,cr,cri, tftAngle, tftAngle+1, angleToHue(tft, hueAngle), TFT_BLACK);
   }
+}
 
+uint16_t markHue(TFT_eSPI& tft, 
+             int cx, int cy,  // selection ring centre...
+             int cr,          // ...and radius:outer...
+             int cri,         // ...and inner
+             int mr,          // marker radius
+             float a,         // conventional angle, ±pi
+             int& mx,   // return screen position of marker
+             int& my)
+{
+  int crm = (cr+cri)/2;
   oldAngle = a;
   mx = crm * cosf(oldAngle) + cx, my = cy - crm * sinf(oldAngle);
   //tft.drawCircle(mx,my,mr,TFT_LIGHTGREY);
@@ -210,6 +225,16 @@ uint16_t markHue(TFT_eSPI& tft,
 
   return hue;
 }
+
+
+void asyncDrawHue(int mx, int my, int mr)
+{
+  spriteAreaToBuffer(sprite, imageBuffer, mx - mr - 1,my - mr - 1,mr*2+2,mr*2+2);
+  tft.startWrite();
+  tft.pushImageDMA(mx - mr - 1,my - mr - 1,mr*2+2,mr*2+2, imageBuffer);
+  TFTdmaWait();
+}
+
 
 bool isOldAngle(float a)
 {
@@ -336,7 +361,10 @@ void startTaskMainLCD()
   initTFT(tft, sprite);
 
   hueCircle(tft,hueX,hueY, 100,80, TFT_BLACK);
-  hue = markHue(tft, hueX,hueY, 100,80, 13, PI/2);
+  hueCircle(sprite,hueX,hueY, 100,80, TFT_BLACK);
+
+  int mx,my;
+  hue = markHue(tft, hueX,hueY, 100,80, 13, PI/2, mx, my);
   //hueCircle(tft,160,120,  75,60, TFT_BLACK);
   gradients(tft, 240,280, 20,20,200, hue);
 
@@ -413,7 +441,14 @@ void taskMainLCD(void* params)
       {
         setIdlePin(1);
         drawExample = true;
-        hue = markHue(tft, hueX,hueY, 100,80, 13, touchAngle);
+
+        int mx,my, mr = 13;
+        // hue = markHue(tft, hueX,hueY, 100,80, 13, touchAngle); // old - direct draw
+        unMarkHue(sprite, hueX,hueY, 100,80, mr, touchAngle, mx, my);
+        asyncDrawHue(mx,my,mr);
+        hue = markHue(sprite, hueX,hueY, 100,80, mr, touchAngle, mx, my);
+        asyncDrawHue(mx,my,mr);
+
         gradients(tft, 240,280, 20,20,200, hue);
         textColour = markGradient(tft, 240,20,20,200, hue,TFT_WHITE, 9, textLevel, textLevel);
         bgColour = markGradient(tft, 280,20,20,200, hue,TFT_BLACK, 9, bgLevel, bgLevel);
@@ -449,17 +484,24 @@ void taskMainLCD(void* params)
       if (drawExample)
       {
         elapsedMicros eu = 0;
+        bool alreadyPushing = false;
+
+        // Show hex values of colour settings
         //showColours(tft);
         showColours(sprite);
         if (spriteAreaToBuffer(sprite, imageBuffer, 90,60,70,30))
         {
           tft.startWrite();
           tft.pushImageDMA(90,60,70,30, imageBuffer);
-          TFTdmaWait();
+          alreadyPushing = true;
         }
         
+        // Show example of colours
         //drawSettingsExample(tft);
-        drawSettingsExample(sprite);
+        drawSettingsExample(sprite);  // update sprite
+        if (alreadyPushing)           
+          TFTdmaWait(); // wait for running push to complete
+
         if (spriteAreaToBuffer(sprite, imageBuffer, 65,100,115,60))
         {
           /*
