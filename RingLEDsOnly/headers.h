@@ -2,9 +2,6 @@
 #define _HEADERS_H_
 
 #include <Arduino.h>
-#include <Wire.h>
-#include <TFT_eSPI.h>
-#undef SPISettings // undo macro hack
 
 #define CONCAT(a,b,c) a##b##c
 
