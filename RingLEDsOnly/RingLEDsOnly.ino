@@ -4,6 +4,10 @@ void setup()
 {
   while (!Serial)
     ;
+
+  pinMode(TFT_BLK, OUTPUT);
+  digitalWriteFast(TFT_BLK, LOW);
+
   Serial.println("\n\nstarted");
 
   // initialise hardware
@@ -22,6 +26,11 @@ void loop(void)
   int ch = Serial.read();
   switch (ch)
   {
+    case 'x':
+      bright = 0;
+      Serial.println("off");
+      break; 
+
     case '0':
       bright = -1;
       Serial.println("brightness: max");

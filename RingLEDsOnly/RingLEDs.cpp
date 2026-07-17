@@ -96,10 +96,10 @@ struct ringConfig_t
 {
   {{rings, 0}, allPots[0],xRED,    nullptr },
   {{rings, 1}, allPots[1],xORANGE, nullptr },
-  {{rings, 2}, allPots[2],xYELLOW, nullptr },
-  {{rings, 3}, allPots[3],xGREEN,  nullptr },
-  {{rings, 4}, allPots[4],xBLUE,   nullptr },
-  {{rings, 5}, allPots[5],xPURPLE, nullptr },
+  {{rings, 2}, allPots[2],xYELLOW, cold2hot },
+  {{rings, 3}, allPots[3],xGREEN,  rainbow },
+  {{rings, 4}, allPots[4],xBLUE,   cold2hot },
+  {{rings, 5}, allPots[5],xPURPLE, rainbow },
   {{rings, 6}, allPots[6],xPINK,   cold2hot},
   {{rings, 7}, allPots[7],xWHITE,  rainbow }
 };
@@ -146,14 +146,24 @@ void setDot(int ring, float value)
 {
   ringConfig_t& cfg = ringConfigs[ring];
   setDot(cfg.ring, value, nullptr == cfg.pattern?cfg.colour:PATTERN);
+  cfg.ring.setPixel(10,cfg.colour,bright);
   rings.show();
 }
 
 
 void updateLEDs(void)
 {
-  for (int i=0;i<NUM_POTS;i++)
-    setDot(i, 1.0f); // use values from -1.0 to +1.0
+  if (bright != 0)
+  {
+    for (int i=0;i<NUM_POTS;i++)
+      setDot(i, 1.0f); // use values from -1.0 to +1.0
+  }
+  else 
+  {
+    for (int i=0;i<NUM_POTS;i++)
+      ringConfigs[i].ring.clear();
+    rings.show();      
+  }
 }
 
 
@@ -170,8 +180,13 @@ void initLEDs(void)
 
   // tell relevant rings that they're using the pattern
   // set in the config class
-  ringConfigs[6].ring.setPattern(ringConfigs[6].pattern);
-  ringConfigs[7].ring.setPattern(ringConfigs[7].pattern);
+  for (int i=0;i<NUM_POTS;i++)
+  {
+    ringConfig_t& cfg = ringConfigs[i];
+
+    if (nullptr != cfg.pattern)
+      cfg.ring.setPattern(cfg.pattern);
+  }
 
   // starting colours
   rings.begin();
