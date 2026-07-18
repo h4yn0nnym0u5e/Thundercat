@@ -112,30 +112,37 @@ int bright = 39; // level 5
 
 void setDot(LEDring<NUM_POTS>& ring, float value, uint32_t colour)
 {
-  const int firstLED = 12;
-
-  if (value < -1.0f) value = -1.0f;
-  if (value > +1.0f) value = +1.0f;
-
-  value = value*(17*18 / 2 - 0.02f); // angle: ±152.8
-  if (value < 0.0f)
-    value += 360.0f; // 207.2 minimum
-  //rings.clear(ringNum);
-
-  if (echoOnce && 0 == ring.ring)
+  if (0 == bright)
   {
-    ring.debug = true;
-    echoOnce = false;
+    ring.clear();
   }
+  else
+  {
+    const int firstLED = 12;
 
-  ring.setArc(18.0f*firstLED - 8.99f, 8*18+8.99f, BLACK);
-  ring.setArc(18.0f*firstLED - 8.99f, value, colour, bright);
-  ring.ensurePixelVisible(firstLED,colour);
-  if (ring.debug)
-    Serial.println();
-  ring.debug = false;
+    if (value < -1.0f) value = -1.0f;
+    if (value > +1.0f) value = +1.0f;
 
-  ring.setPixel(10, keyStatuses[ring.ring]?xWHITE:BLACK,bright);
+    value = value*(17*18 / 2 - 0.02f); // angle: ±152.8
+    if (value < 0.0f)
+      value += 360.0f; // 207.2 minimum
+    //rings.clear(ringNum);
+
+    if (echoOnce && 0 == ring.ring)
+    {
+      ring.debug = true;
+      echoOnce = false;
+    }
+
+    ring.setArc(18.0f*firstLED - 8.99f, 8*18+8.99f, BLACK);
+    ring.setArc(18.0f*firstLED - 8.99f, value, colour, bright);
+    ring.ensurePixelVisible(firstLED,colour);
+    if (ring.debug)
+      Serial.println();
+    ring.debug = false;
+
+    ring.setPixel(10, keyStatuses[ring.ring]?xWHITE:BLACK,bright);
+  }
 }
 
 

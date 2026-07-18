@@ -148,6 +148,11 @@ static void loopFn(void)
       potsToRaw();
       break;
 
+    case 'x':
+      bright = 0;
+      Serial.println("brightness: off");
+      break; 
+
     case 'z':
       zeroPots();
       break;

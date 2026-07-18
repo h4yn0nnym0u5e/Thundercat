@@ -13,6 +13,6 @@
 ## Usage ##
 - compile and upload as normal
 - connect to Serial Monitor
-- enter numbers from 1 to 9 for intermediate brightnesses; 0 for max brightness
+- enter numbers from 1 to 9 for intermediate brightnesses; 0 for max brightness; x for off
 - see feedback in monitor for actual level set
   - note the steps are logarithmic; each is 45% brighter than the previous
