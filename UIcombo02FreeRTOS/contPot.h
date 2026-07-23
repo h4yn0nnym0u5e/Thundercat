@@ -9,6 +9,7 @@ class ContinuousPot
           rate, // rate of change 
           current;
     float scale, accelThreshold, accelFactor, smooth; // change "feel" of pot
+    float minChange;
     bool limitsApplied;
     int accelDisable;
     elapsedMicros updateInterval;
@@ -17,7 +18,8 @@ class ContinuousPot
       : adcMax{_adcMax}, ch1Pol{_ch1Pol}, ch2Pol{_ch2Pol}, deadZone{_deadZone},
         minLimit{-1.0f}, maxLimit{1.0f},
         rate{0.0f}, current{0.0f},
-        scale{1.0f}, accelThreshold{0.0f}, accelFactor{0.0f}, smooth{0.1f},
+        scale{1.0f}, accelThreshold{0.0f}, accelFactor{0.0f}, 
+        smooth{0.1f}, minChange{0.000002f},
         limitsApplied{false},
         accelDisable{5}, updateInterval{0}
         ,debug{false}

@@ -225,18 +225,28 @@ void taskADCs(void*)
   // We use a PeriodicTimer to fire off an
   // interrupt / DMA controlled sequence of reads...
   initSPItimer(); // ... initialise that
-
   while (1)
   {
+    static elapsedMillis em = 0;
     ADCtoDo = 8;  // tell timer we're ready for new data...
     vTaskSuspend(nullptr); // ...suspend until it's available...
     updateADCs(); // ...and process it
+
+    /* debug drift and noise
+    if (em > 10'000)
+    {
+      allPots[6].debug = true;
+      em = 9'500;
+    }
+    else
+      allPots[6].debug = false;
+    //*/      
   }
 }
 
 void initADCs(void)
 {
-  xTaskCreate(taskADCs, "ADCs", 128, nullptr, 3, &handleADCs);
+  xTaskCreate(taskADCs, "ADCs", 512, nullptr, 3, &handleADCs);
 }
 
 

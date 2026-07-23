@@ -5,11 +5,12 @@ class touchStatus
 {
   public:    
     enum class eStatus {OFF, JUST_OFF, JUST_OFF_LONG,  // off statuses
-                        ON=11, LONG, DOUBLE, LONG_SHORT}; // on statuses
+                        ON=11, LONG, DOUBLE, SHORT_LONG, LONG_SHORT, LONG_LONG}; // on statuses
   private:    
     uint8_t status;
-    enum eStatus extendedStatus;
-    uint32_t longTouch, doubleTouch;
+    enum eStatus extendedStatus, lastReadStatus;
+    uint32_t longTouch,     // longer than this is a long touch
+             doubleTouch;   // re-touched within this is a double-touch
     elapsedMillis touchTime;
 
     // update status after time has possibly passed
@@ -30,6 +31,16 @@ class touchStatus
                 if (touchTime > longTouch)
                     extendedStatus = eStatus::LONG;
                 break;
+            
+            case eStatus::DOUBLE:
+                if (touchTime > longTouch)
+                    extendedStatus = eStatus::SHORT_LONG;
+                break;
+            
+            case eStatus::LONG_SHORT:
+                if (touchTime > longTouch)
+                    extendedStatus = eStatus::LONG_LONG;
+                break;
         }
     }
 
@@ -42,8 +53,11 @@ class touchStatus
     eStatus getExtendedStatus(void)
     {
         updateExtendedStatus();
+        lastReadStatus = extendedStatus;
         return extendedStatus;
     }
+
+    bool isChangedStatus(void) { updateExtendedStatus(); return lastReadStatus != extendedStatus;}
 
     // called when touch status changes
     touchStatus& operator =(uint8_t v) 
@@ -74,9 +88,15 @@ class touchStatus
             switch (extendedStatus)
             {
                 case eStatus::ON:
+                    extendedStatus = eStatus::JUST_OFF;
+                    break;
+
+                // don't do sequences of double states 
                 case eStatus::DOUBLE:
                 case eStatus::LONG_SHORT:
-                    extendedStatus = eStatus::JUST_OFF;
+                case eStatus::SHORT_LONG:
+                case eStatus::LONG_LONG:
+                    extendedStatus = eStatus::OFF;
                     break;
                 
                 case eStatus::LONG:
@@ -87,7 +107,9 @@ class touchStatus
                     break;
             }
         }
-        touchTime = 0;
+
+        if (v != status)    // changed?
+            touchTime = 0;  // yes: note timestamp
         status = v; 
         return *this; 
     }

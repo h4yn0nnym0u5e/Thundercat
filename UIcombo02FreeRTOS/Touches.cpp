@@ -113,8 +113,12 @@ static void setTouchRecalDelay(uint8_t theDelay)
 bool checkChange = true;
 static void isrTouch(void)
 {
+  //xTaskResumeFromISR(handleTouch);
+  BaseType_t xHigherPriorityTaskWoken = pdFALSE; 
+
   checkChange = true;
-  xTaskResumeFromISR(handleTouch);
+  vTaskNotifyGiveFromISR(handleTouch, &xHigherPriorityTaskWoken);
+  portYIELD_FROM_ISR( xHigherPriorityTaskWoken );
 }
 
 void updateTouch() 
@@ -146,6 +150,19 @@ void updateTouch()
   }
 }
 
+
+static void pollTouch(void)
+{
+  for (int i=0;i<COUNT_OF(keyStatuses);i++)
+  {
+    if (keyStatuses[i].isChangedStatus())
+    {
+      int status = (int) keyStatuses[i].getExtendedStatus();
+      Serial.printf("Touch %d: status %d\n", i+1, status);
+    }
+  }
+}
+
 bool supplyValid;
 static void taskTouch(void*)
 {
@@ -172,14 +189,15 @@ static void taskTouch(void*)
   {
     if (calibrateRequested)
       doCalibrateTouch();
-    updateTouch();
-    vTaskSuspend(nullptr);
+    updateTouch(); // only does I²C if ISR fired
+    pollTouch(); // generate state outputs
+    ulTaskNotifyTake(pdTRUE, 10); // wait for notification from touch ISR
   }
 }
 
 void initTouch() 
 {
 //Serial.printf("Create Touch task: \n");    
-  xTaskCreate(taskTouch, "Touch", 256, nullptr, 7, &handleTouch);
+  xTaskCreate(taskTouch, "Touch", 512, nullptr, 7, &handleTouch);
 }
 

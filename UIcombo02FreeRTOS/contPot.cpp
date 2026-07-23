@@ -9,21 +9,30 @@
 #include "headers.h"
 #include "contPot.h"
 
-#define DBG(x) if (debug) { Serial.printf(" %.4f ", x); }
+extern char dbgBuffer[];
+extern bool dbgWritten;
+static int offset;
 //#define DBG(x) if (debug) { Serial.printf(#x ": %.34f; ", x); }
-#define NL if (debug) { Serial.println(); }
+
+//#define DBG(x) if (debug) { Serial.printf(" %.4f ", x); }
+//#define NL if (debug) { Serial.println(); Serial.flush(); }
+#define DBG(x) if (debug) { offset += sprintf(dbgBuffer+offset, " %.6f ", x); }
+#define NL if (debug) { offset += sprintf(dbgBuffer+offset, "\n"); dbgWritten = true; offset = 0; }
+
 float ContinuousPot::update(float a1, float a2)
 {
+  float oldVal = current; // used to check if we've changed the value
+
   // map ADC range to ±1.0
   a1 = map(a1, 0.0f, adcMax,ch1Pol,-ch1Pol);
   a2 = map(a2, 0.0f, adcMax,ch2Pol,-ch2Pol);
-DBG(a1); DBG(a2); 
+//DBG(a1); DBG(a2); 
 
   // map readings to angle in range ±1.0:
   float t1 = (a2>0.0f?(a1 - 1.0f):(1.0f - a1))*0.5f;
   float t2 = (a1<0.0f?(a2 - 2.0f):(0.0f - a2))*0.5f;
   if (t2 < -1.0) t2 += 2.0f;
-DBG(t1); DBG(t2); 
+//DBG(t1); DBG(t2); 
 //NL;
 
 
@@ -32,7 +41,7 @@ DBG(t1); DBG(t2);
   if (weight < 0.0f) weight = 0.0f;
   if (weight > 1.0f) weight = 1.0f;
   float t3 = t1 * weight + t2 * (1.0f - weight);
-DBG(weight); DBG(t3);
+//DBG(weight); DBG(t3);
 
   // decouple absolute position from output value:
   float delta = t3 - raw; // change since last update
@@ -52,7 +61,12 @@ DBG(delta);
     
   // apply accelerated and scaled change:
   float newVal = current + delta * scale;
-  current = newVal * smooth + current * (1.0f - smooth);
+DBG(newVal);  
+  newVal = newVal * smooth + current * (1.0f - smooth);
+DBG(newVal - current);
+  // deal with floating point inaccuracies tending to cause drift:
+  if (fabs(newVal - current) > minChange)
+    current = newVal;
 DBG(current);
 
   // limit output as requested (soft stops):
@@ -63,7 +77,8 @@ DBG(current);
   }
 
   // stash values ready for next update:
-  raw = t3;
+  if (current != oldVal)
+    raw = t3; // only if user-facing value was changed - deal with super-slow rotation
   updateInterval = 0;
 
 NL;  

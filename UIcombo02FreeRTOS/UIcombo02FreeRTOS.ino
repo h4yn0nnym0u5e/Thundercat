@@ -93,8 +93,17 @@ void printTaskStates(void)
   freertos::print_ram_usage();
 }
 
+char dbgBuffer[200];
+bool dbgWritten;
+
 static void loopFn(void)
 {
+  if (dbgWritten)
+  {
+    Serial.print(dbgBuffer);
+    dbgWritten = false;
+  }
+
   if (em >= 250)
   {
     em = 0;
