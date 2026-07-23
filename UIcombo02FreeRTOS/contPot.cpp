@@ -70,14 +70,15 @@ DBG(newVal - current);
 DBG(current);
 
   // limit output as requested (soft stops):
+  bool limited = false;
   if (limitsApplied)
   {
-    if (current > maxLimit) current = maxLimit;
-    if (current < minLimit) current = minLimit;
+    if (current > maxLimit) { limited = true; current = maxLimit; }
+    if (current < minLimit) { limited = true; current = minLimit; }
   }
 
   // stash values ready for next update:
-  if (current != oldVal)
+  if (current != oldVal || limited)
     raw = t3; // only if user-facing value was changed - deal with super-slow rotation
   updateInterval = 0;
 
