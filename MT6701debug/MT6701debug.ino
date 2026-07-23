@@ -16,6 +16,8 @@ void setup()
 }
 
 elapsedMillis em;
+float lastAngle;
+int tries;
 void loop() 
 {
   uint32_t out=0,in;
@@ -27,13 +29,23 @@ void loop()
   SPI.endTransaction();
 
   uint32_t flags = (in>>14)&0xF;
+  bool valid = 0 == (flags & 0x8);
   uint32_t pos = in>>24;
-  if (em >= 500 || 0 != (flags & 4))
+  float angle = (in>>18)*360.0f/16384;
+  if (valid && (em >= 100 || 0 != (flags & 4)))
   {
     em = 0;
+    float noise = (lastAngle - angle)*16384/360;
+    if (noise > 10000.0f || noise < -10000.0f) // jump!
+      noise = 0.42f;
     //Serial.printf("%08X %01X %d\n", in, flags, pos);
-    Serial.printf("%d: flags:%d angle:%d\n", millis(), flags, pos);
+    //Serial.printf("%d: flags:%d angle:%d\n", millis(), flags, pos);
+    Serial.printf("%d: tries:%d flags:%d angle:%.2f noise:%.2f\n", millis(), tries, flags, angle, noise);
+    lastAngle = angle;
   }
+  tries++;
+  if (valid)
+    tries = 0;
 
   delay(1);
 }
