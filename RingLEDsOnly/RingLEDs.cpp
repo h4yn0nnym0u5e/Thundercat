@@ -94,14 +94,14 @@ struct ringConfig_t
   int* pattern;
 } ringConfigs[NUM_POTS]
 {
-  {{rings, 0}, allPots[0],xRED,    nullptr },
-  {{rings, 1}, allPots[1],xORANGE, nullptr },
+  {{rings, 0}, allPots[0],xRED,    cold2hot },
+  {{rings, 1}, allPots[1],xORANGE, rainbow  },
   {{rings, 2}, allPots[2],xYELLOW, cold2hot },
-  {{rings, 3}, allPots[3],xGREEN,  rainbow },
+  {{rings, 3}, allPots[3],xGREEN,  rainbow  },
   {{rings, 4}, allPots[4],xBLUE,   cold2hot },
-  {{rings, 5}, allPots[5],xPURPLE, rainbow },
-  {{rings, 6}, allPots[6],xPINK,   cold2hot},
-  {{rings, 7}, allPots[7],xWHITE,  rainbow }
+  {{rings, 5}, allPots[5],xPURPLE, rainbow  },
+  {{rings, 6}, allPots[6],xPINK,   cold2hot },
+  {{rings, 7}, allPots[7],xWHITE,  rainbow  }
 };
 
 
@@ -146,7 +146,7 @@ void setDot(int ring, float value)
 {
   ringConfig_t& cfg = ringConfigs[ring];
   setDot(cfg.ring, value, nullptr == cfg.pattern?cfg.colour:PATTERN);
-  cfg.ring.setPixel(10,cfg.colour,bright);
+  cfg.ring.setPixel(10,xWHITE,bright);
   rings.show();
 }
 
@@ -192,7 +192,7 @@ void initLEDs(void)
   rings.begin();
   rings.clear();
   for (int i=0;i<NUM_POTS; i++)
-    rings.setPixel(i,10,ringConfigs[i].colour);
+    rings.setPixel(i,10,xWHITE /* ringConfigs[i].colour*/);
   rings.show();
   Serial.println("LEDs initialised");
 }
