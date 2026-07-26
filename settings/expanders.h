@@ -45,7 +45,7 @@
  */
 
  /*
-  * Since the port exapnders are used to sense the RGB buttons, we'll map those here
+  * Since the port expanders are used to sense the RGB buttons, we'll map those here
   */
 
 #define PCB4_LED   0

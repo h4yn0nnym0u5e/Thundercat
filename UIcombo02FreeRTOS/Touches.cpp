@@ -190,7 +190,7 @@ static void taskTouch(void*)
     if (calibrateRequested)
       doCalibrateTouch();
     updateTouch(); // only does I²C if ISR fired
-    pollTouch(); // generate state outputs
+    // pollTouch(); // generate state outputs
     ulTaskNotifyTake(pdTRUE, 10); // wait for notification from touch ISR
   }
 }
