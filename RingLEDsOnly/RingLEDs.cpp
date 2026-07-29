@@ -110,7 +110,7 @@ struct ringConfig_t
  Draw an arc from the start to 
  the given value (which should have a range of ±1.0)
  */
-int bright = 39; // level 5
+int bright = 9; // level 1
 
 void setDot(LEDring<NUM_POTS>& ring, float value, uint32_t colour)
 {

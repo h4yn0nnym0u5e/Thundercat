@@ -257,6 +257,7 @@ InterTaskRequest::Result TouchTask::requestCalibration(InterTaskRequest* req)
   else 
     req = &calibrationRequest; // caller not interested in progress!
 
+  
   req->setContext(this);
   return request(*req);
 }

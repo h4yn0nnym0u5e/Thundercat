@@ -4,28 +4,51 @@
 //================================================================
 void SuperTask::loopFn(void)
 {
-  int ch = Serial.read();
-  switch (ch)
+  // deal with a string of commands all in one go,
+  // unless an unrecognised commands is given
+  while (1)
   {
-    case 'c':
-      if (touchCalibrationRequest.isBusy())
-        Serial.println("Calibration request pending!");
-      else
-        touchTask.requestCalibration(&touchCalibrationRequest);
-      break;
+    bool exitWhile = false;
+    int ch = Serial.read();
+    switch (ch)
+    {
+      default:
+        exitWhile = true;
+        break; 
 
-    case 'q':
-      {
-        InterTaskRequest* preq;
-        if (pdPASS == xQueuePeek(touchTask.queue, &preq, 0))
-          Serial.println("Touch task queue has item(s) pending");
-        else
-          Serial.println("Touch task queue is empty");
-      }
-      break;
+      case 'c':
+        if (InterTaskRequest::Result::failed == touchTask.requestCalibration(&touchCalibrationRequest))
+        {
+          if (touchCalibrationRequest.isBusy())
+            Serial.println("Calibration request pending!");
+          else
+            Serial.println("Calibration request failed (queue full?)");
+        }          
+        break;
 
-    case 'x':
-      touchCalibrationRequest.setInactive();
+      case 'q':
+        {
+          InterTaskRequest* preq;
+          if (pdPASS == xQueuePeek(touchTask.queue, &preq, 0))
+            Serial.println("Touch task queue has item(s) pending");
+          else
+            Serial.println("Touch task queue is empty");
+        }
+        break;
+
+      case 'x':
+        touchCalibrationRequest.setInactive();
+        break;
+
+      case ' ':
+        Serial.println();
+        break;
+
+      case 'd':
+        vTaskDelay(5);
+        break;
+    }
+    if (exitWhile)
       break;
   }
 

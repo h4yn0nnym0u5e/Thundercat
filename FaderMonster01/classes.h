@@ -35,6 +35,7 @@ class InterTaskRequest
     void setInactive(void) { status = inactive; }
     bool isBusy(void) { return pending == status || running == status; }
     bool isFinished(void) { return done == status || failed == status; }
+    bool isInactive(void) { return inactive == status || done == status || failed == status; }
 
     // instrumentation: find out how long various things took
     uint32_t responseTime(void)  { return executed - requested; } // delay due to handing off to another task
@@ -53,11 +54,14 @@ class RequestQueue
     QueueHandle_t queue;
   public:
     RequestQueue(int length) { queue = xQueueCreate(length, sizeof(InterTaskRequest*)); }
+
+    // send a request
+    // fails if request instance is already busy, or can't add it to the queue
     InterTaskRequest::Result request(InterTaskRequest& req, TickType_t timeout = 0) 
     { 
         InterTaskRequest* preq = &req;
         InterTaskRequest::Result result = InterTaskRequest::Result::failed;
-        if (pdPASS == xQueueSend(queue, &preq, timeout))
+        if (req.isInactive() && pdPASS == xQueueSend(queue, &preq, timeout))
         {
             req.status = result = InterTaskRequest::Result::pending;
             req.requested = micros();
@@ -167,13 +171,28 @@ class FaderMonsterTask
         void* params;
 };
 
+/*
+class SuperTask : public FaderMonsterTask
+{ 
+  public:
+    SuperTask(const char* _name, 
+              configSTACK_DEPTH_TYPE _stackDepth = 512, 
+              void* _params = nullptr,
+              UBaseType_t _priority = 2)
+    : FaderMonsterTask{_name, _stackDepth, _params, _priority}
+    {}
+    
+    void run(void) override;
+};
+*/
+
 
 class SuperTask : public FaderMonsterTask
 { 
     void loopFn(void);
     InterTaskRequest touchCalibrationRequest;
 
-public:
+  public:
     SuperTask(const char* _name, 
               configSTACK_DEPTH_TYPE _stackDepth = 512, 
               void* _params = nullptr,
@@ -210,7 +229,7 @@ class TouchTask : public FaderMonsterTask, public RequestQueue
     
     AT42QT2120& touchChip;
     bool supplyValid{false};
-    bool checkChange{true};
+    bool checkChange{true}; // public: set by ISR
 };
 
 
