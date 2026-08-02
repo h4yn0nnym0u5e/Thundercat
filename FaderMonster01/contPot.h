@@ -11,6 +11,7 @@ class ContinuousPot
     float scale, accelThreshold, accelFactor, smooth; // change "feel" of pot
     float minChange;
     bool limitsApplied;
+    bool changed;
     int accelDisable;
     elapsedMicros updateInterval;
   public:
@@ -20,12 +21,13 @@ class ContinuousPot
         rate{0.0f}, current{0.0f},
         scale{1.0f}, accelThreshold{0.0f}, accelFactor{0.0f}, 
         smooth{0.1f}, minChange{0.000002f},
-        limitsApplied{false},
+        limitsApplied{false}, changed{false},
         accelDisable{5}, updateInterval{0}
         ,debug{false}
       {}
 
     float update(float a1, float a2); // update with new ADC readings
+    bool available(void) { bool result = changed; changed = false; return result; }
     float     getRaw(void) { return raw; }  // physical position: ±1.0
     float    getRate(void) { return rate; } // rate of change: turns/sec
     float getCurrent(void) { return current; } // logical position
@@ -36,6 +38,15 @@ class ContinuousPot
     void setSmooth(float s) { smooth = s; } // reading-to-reading smoothing
     void setAccel(float thr, float fac) // accelerate changes if turned quickly
       { accelThreshold = thr; accelFactor = fac; }
+    float setMinChange(float m) 
+    { 
+      float result = minChange; 
+      if (m > 0.0f)
+      {
+        minChange = m;
+      }
+      return result;
+    }
     bool debug;      
 };
 

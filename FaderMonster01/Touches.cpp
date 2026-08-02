@@ -163,12 +163,11 @@ void updateKeyStatuses(AT42QT2120& touch)
 }
 
 
-InterTaskRequest::Result doCalibrateTouch(void* context)
+InterTaskRequest::Result TouchTask::doCalibrateTouch(void* context)
 {
-  TouchTask& task = *((TouchTask*) context);
   Serial.println("Calibrate touch");
 
-  task.touchChip.calibrate();
+  touchChip.calibrate();
 
   return InterTaskRequest::Result::done;
 }
@@ -241,23 +240,3 @@ void TouchTask::run(void)
 
 
 TouchTask touchTask{"Touch", 512, nullptr, 7, 1, potsTouch};
-
-/*
- * Request touch chip calibration
- * Caller can supply a pointer to an InterTaskRequest instance,
- * which will have the "how to calibrate" function etc. copied in;
- * as that's private, the caller can't use it, but they can look at
- * the status to see if the call succeeded.
- */
-static InterTaskRequest calibrationRequest{doCalibrateTouch, nullptr};
-InterTaskRequest::Result TouchTask::requestCalibration(InterTaskRequest* req)
-{
-  if (nullptr != req)
-    *req = calibrationRequest; // give caller a copy of the "how to"
-  else 
-    req = &calibrationRequest; // caller not interested in progress!
-
-  
-  req->setContext(this);
-  return request(*req);
-}

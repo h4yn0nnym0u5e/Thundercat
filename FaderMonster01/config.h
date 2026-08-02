@@ -21,6 +21,7 @@
 #define NUM_POTS   8
 #define NUM_FADERS 0 // for now!
 #define POT_MAP {4,2,0,6}
+#define POT_READ_INTERVAL_US 1'000
 
 
 // ============== LED rings ==============
@@ -28,6 +29,15 @@
 #define LED_DRIVE_PIN 20
 #define LED_TOP_OFFSET 8
 
+// some basic colours
+#define xRED    0xFF0000
+#define xORANGE 0xC02000
+#define xYELLOW 0xB09000
+#define xGREEN  0x00A000 // be a bit conservative here
+#define xBLUE   0x0000FF
+#define xPURPLE 0x2000C0
+#define xPINK   0xC00060
+#define xWHITE  0xC0C0C0
 
 // ============== Scribble board ==============
 #define MUX_A     38
@@ -57,6 +67,8 @@
 // #define TFT_SCK  13
 // #define TFT_MISO 12
 // #define TFT_MOSI 11
+
+#define TFT_ORANGE2      0xFD00      /* 255, 160,   0 */
 
 #define FONT_3DP FreeSansBold24pt7b
 #define FONT_4DP FreeSansBold18pt7b

@@ -76,6 +76,7 @@ DBG(current);
     if (current > maxLimit) { limited = true; current = maxLimit; }
     if (current < minLimit) { limited = true; current = minLimit; }
   }
+  changed = current != oldVal;
 
   // stash values ready for next update:
   if (current != oldVal || limited)
