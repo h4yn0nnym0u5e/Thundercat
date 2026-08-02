@@ -61,7 +61,6 @@ class InterTaskRequest
 template <class T, class P>
 class RequestQueue
 {
-public:
     QueueHandle_t queue;
   public:
     struct queueEntry 
@@ -83,6 +82,7 @@ public:
         InterTaskRequest::Result result = InterTaskRequest::Result::failed;
         if (req.req->isInactive() && pdPASS == xQueueSend(queue, &req, timeout))
         {
+            Serial.printf("sent req at %08X\n", (uint32_t) req.req);
             req.req->status = result = InterTaskRequest::Result::pending;
             req.req->requested = micros();
         }
@@ -93,6 +93,8 @@ public:
     BaseType_t getRequest(queueEntry* req, int timeout)
     {
         BaseType_t result = xQueueReceive(queue, req, timeout);
+        if (pdPASS == result)
+            Serial.printf("received req at %08X\n", (uint32_t) req->req);
         return result;
     }
 
@@ -104,8 +106,10 @@ public:
         if (pdPASS == getRequest(&entry, timeout))
         {
             entry.req->executed = micros();
+            Serial.println("execute");
             result = (instance.*entry.payload.requestExecutor)(entry.payload.context);
-            entry.req->finished = micros();            
+            entry.req->finished = micros();
+            entry.req->status = result; 
         }
 
         return result;
@@ -264,21 +268,6 @@ class TouchTask : public FaderMonsterTask
     };
     RequestQueue<TouchTask, requestPayload> reqQueue;
 
-    // polled in task's loop
-    InterTaskRequest::Result executeRequest(int timeout)
-    {
-        InterTaskRequest::Result result = InterTaskRequest::Result::inactive; // did nothing
-        RequestQueue<TouchTask, requestPayload>::queueEntry entry;
-        if (pdPASS == reqQueue.getRequest(&entry, timeout))
-        {
-            entry.req->executed = micros();
-            result = ((*this).*entry.payload.requestExecutor)(entry.payload.context);
-            entry.req->finished = micros();            
-        }
-
-        return result;
-    }
-
     InterTaskRequest::Result doCalibrateTouch(void*);
     //------------------------------------------------------------------------
 
@@ -360,21 +349,6 @@ class ScribbleTask : public FaderMonsterTask
         void* context;
     };
     RequestQueue<ScribbleTask, requestPayload> reqQueue;
-
-    // polled in task's loop
-    InterTaskRequest::Result executeRequest(int timeout)
-    {
-        InterTaskRequest::Result result = InterTaskRequest::Result::inactive; // did nothing
-        RequestQueue<ScribbleTask, requestPayload>::queueEntry entry;
-        if (pdPASS == reqQueue.getRequest(&entry, timeout))
-        {
-            entry.req->executed = micros();
-            result = ((*this).*entry.payload.requestExecutor)(entry.payload.context);
-            entry.req->finished = micros();            
-        }
-
-        return result;
-    }
 
     InterTaskRequest::Result doUpdateDirty(void* pScribble);
     //------------------------------------------------------------------------

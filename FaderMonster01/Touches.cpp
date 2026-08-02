@@ -231,7 +231,7 @@ void TouchTask::run(void)
 
   while (1)
   {
-    executeRequest(0); // execute any pending requests (calibration)
+    reqQueue.executeRequest(*this, 0); // execute any pending requests (calibration)
     updateTouch(); // only does I²C if ISR fired
     pollTouch(); // generate state outputs
     ulTaskNotifyTake(pdTRUE, 10); // wait for notification from touch ISR

@@ -188,7 +188,7 @@ void ScribbleTask::run(void)
 
     while (1)
     {
-        executeRequest(10);
+        reqQueue.executeRequest(*this, 10);
     }
 }
 
