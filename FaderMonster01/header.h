@@ -20,7 +20,8 @@ extern TouchTask touchTask;
 extern ScribbleTask scribbleTask;
 extern PotsTask potsTask;
 extern RingLEDsTask ringLEDsTask;
-//extern StripTask* StripTask::tasks[NUM_POTS];
+extern SuperTask superTask;
+// use StripTask& StripTask::getStriptask(n) for strip tasks
 
 
 extern void taskRoot(void*);
@@ -32,9 +33,12 @@ extern ContinuousPot allPots[NUM_POTS];
 extern  RingLEDs<NUM_POTS> rings;
 
 extern FaderMonsterSettings faderMonsterSettings;
+
+// hacky things to be got rid of later. Probably.
 extern uint8_t bits;
 extern char dbgBuffer[200];
 extern bool dbgWritten;
+extern uint32_t ADCupdateMicros;
 
 
 #define COUNT_OF(a) (int)(sizeof a / sizeof a[0])

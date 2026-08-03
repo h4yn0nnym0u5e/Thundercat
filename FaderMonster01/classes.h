@@ -497,10 +497,12 @@ class StripTask : public FaderMonsterTask
       ring{LEDring{_rings,_num}}, pot{_pot}, 
       scribble{_scribble}, 
       lastPot{POT_NOT_SET}, lastTouch{false}, spaceOffset{0},
+      scribbleState{done},
       num{_num},
       bright{39}, useRingPattern{false}
     {}
     static void CreateTasks(void);
+    static StripTask& getStripTask(int n) { return *tasks[n]; }
     
     void run(void) override;
 

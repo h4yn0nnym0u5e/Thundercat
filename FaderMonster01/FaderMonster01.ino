@@ -64,6 +64,39 @@ void cycleLED(elapsedMillis& em, int& colour, int ring, int led)
   }
 }
 
+//================================================================
+TaskHandle_t* handles[]{nullptr, &superTask.handle, &touchTask.handle, // 0-2
+                        &scribbleTask.handle, &potsTask.handle, &ringLEDsTask.handle, // 3-5
+                        nullptr, nullptr}; // 6+7
+void printTaskStates(void)
+{
+  TaskHandle_t handleIdle = xTaskGetIdleTaskHandle();
+  handles[0] = &handleIdle;
+  handles[6] = &StripTask::getStripTask(0).handle;
+  handles[7] = &StripTask::getStripTask(3).handle;
+  configRUN_TIME_COUNTER_TYPE idlePercent = ulTaskGetIdleRunTimePercent(),
+                              idleCount = ulTaskGetIdleRunTimeCounter();
+  float pct = idleCount * 100.0f / idlePercent; // 100% of counts to date
+  Serial.println();
+  for (int i = 0;i < COUNT_OF(handles);i++)
+  {
+    TaskStatus_t s;
+    vTaskGetInfo(*(handles[i]), &s, pdTRUE, eInvalid);
+    Serial.printf("Name '%s'; priority: %d; unused stack: %d; runtime %d (%.3f%%)\n",
+              s.pcTaskName,
+              s.uxCurrentPriority,
+              s.usStackHighWaterMark,
+              s.ulRunTimeCounter,
+              (float) s.ulRunTimeCounter / pct * 100.0f
+            );
+  }
+  Serial.printf("ADC updates take %uµs; DMA channel bits: %08X\n", 
+                ADCupdateMicros,
+                dma_channel_allocated_mask);
+  freertos::print_ram_usage();
+}
+
+//================================================================
 char dbgBuffer[200];
 bool dbgWritten;
 
@@ -111,6 +144,10 @@ void SuperTask::loopFn(void)
       case 'd':
         vTaskDelay(5);
         break;
+
+      case 't':
+        printTaskStates();
+        break;        
     }
     if (exitWhile)
       break;
@@ -135,7 +172,7 @@ SuperTask superTask{"Super", 512, nullptr, 2};
 uint8_t bits;
 void SuperTask::run(void)
 {
-  Serial.println("\n\nstarted supervisor task");
+  Serial.printf("\n\n[%d]: started supervisor task\n", micros());
 
   while (1)
   {

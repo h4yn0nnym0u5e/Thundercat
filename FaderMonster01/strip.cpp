@@ -134,24 +134,13 @@ void StripTask::run(void)
   while (!ScribbleTask::tftInitComplete())
     vTaskDelay(5);
 
-    
   // create sprite buffer in PSRAM
   int w, h;
   scribble.getTFTarea(w,h);
-  //w = h = 240; // hack hack
-  /*
   scribble.createInPSRAM(true);
+  taskENTER_CRITICAL();
   scribble.createSprite(w,h);
-//*/
-  {
-    char* myName = pcTaskGetName(nullptr);
-    Serial.printf("%s has %dx%d buffer at %08X\n", 
-                    myName,
-                    w,h,
-                    //scribble.width(), scribble.height(), 
-                    (uint32_t) scribble.getPointer()
-                );
-  }
+  taskEXIT_CRITICAL();
                 
   // basic settings
   scribble.setSpriteSwapBytes(false);
@@ -216,24 +205,6 @@ void StripTask::CreateTasks(void)
     {
         TFT_eSPI& tft = ScribbleTask::getTFT(i); 
         TFT_eSprite& scribble = *(new TFT_eSprite{&tft});
-//*
-  int w, h;
-  scribble.getTFTarea(w,h);
-  if (0 == i)
-        Serial.printf("getTFTarea() gives %dx%d\n", w, h);
-  scribble.createInPSRAM(true);
-  scribble.createSprite(w,h);
-
-  {
-    Serial.printf("%d created %dx%d buffer at %08X\n", 
-                    i,
-                    w,h,
-                    //scribble.width(), scribble.height(), 
-                    (uint32_t) scribble.getPointer()
-                );
-  }
-//*/
-
 
         // create an instance of the StripTask class
         tasks[i] = new StripTask{"<strip>", 512, nullptr, 2,   // base task stuff

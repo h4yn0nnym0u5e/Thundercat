@@ -170,12 +170,12 @@ void ScribbleTask::phasedInit(void)
  */
 void ScribbleTask::run(void)
 {
-    Serial.print("scribble task: init pins ...");
+    Serial.printf("[%d]: scribble task: init pins ...\n", micros());
     initDisplayPins();
-    Serial.print(" phased init ...");
+    //Serial.print(" phased init ...");
     phasedInit();  // does phased init then initial screen fill
 
-    // set backlights to half-power
+    // set backlights to half-power (640ms)
     Serial.print(" backlight ...");
     for (int i=0;i<128;i+=1)
     {
@@ -191,7 +191,7 @@ void ScribbleTask::run(void)
     setDMAbuffer(allocateDMAbuffer(tft1.width(), tft1.height()));
     setDMAcompletionISR(DMAcompletionISR);
 
-    Serial.println(" ready");
+    Serial.printf("\n[%d]: ready\n", micros());
     initComplete = true;
 
     int colour = 0;
