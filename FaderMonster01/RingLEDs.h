@@ -83,7 +83,7 @@ class RingLEDs
           {}
 
     static constexpr int USE_PATTERN{-1};
-    
+
     void begin(void) { ledString.begin(); }
 
     void clear(int ring)
@@ -140,7 +140,9 @@ class RingLEDs
             if (led >= ledsPerRing)
                 led -= ledsPerRing;
             ln += led;
+            taskENTER_CRITICAL();
             ledString.setPixel(ln, colour);
+            taskEXIT_CRITICAL();
         }
         if (debug) Serial.printf("%d,%d: %06X (%d)", ring, dbgLED, colour, intensity);
     }

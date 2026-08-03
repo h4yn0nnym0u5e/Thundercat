@@ -219,7 +219,8 @@ void StripTask::CreateTasks(void)
 //*
   int w, h;
   scribble.getTFTarea(w,h);
-  //w = h = 240; // hack hack
+  if (0 == i)
+        Serial.printf("getTFTarea() gives %dx%d\n", w, h);
   scribble.createInPSRAM(true);
   scribble.createSprite(w,h);
 

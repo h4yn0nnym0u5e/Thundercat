@@ -64,18 +64,23 @@ DBG(delta);
 DBG(newVal);  
   newVal = newVal * smooth + current * (1.0f - smooth);
 DBG(newVal - current);
+
+  bool limited = false;
   // deal with floating point inaccuracies tending to cause drift:
   if (fabs(newVal - current) > minChange)
-    current = newVal;
+  {
 DBG(current);
 
-  // limit output as requested (soft stops):
-  bool limited = false;
-  if (limitsApplied)
-  {
-    if (current > maxLimit) { limited = true; current = maxLimit; }
-    if (current < minLimit) { limited = true; current = minLimit; }
+    // limit output as requested (soft stops):
+    if (limitsApplied)
+    {
+      if (newVal > maxLimit) { limited = true; newVal = maxLimit; }
+      if (newVal < minLimit) { limited = true; newVal = minLimit; }
+    }
+
+    current = newVal; // one point of update - safe for RTOS
   }
+
   changed = current != oldVal;
 
   // stash values ready for next update:
