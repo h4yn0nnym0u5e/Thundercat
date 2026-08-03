@@ -82,7 +82,8 @@ class RequestQueue
         InterTaskRequest::Result result = InterTaskRequest::Result::failed;
         if (req.req->isInactive() && pdPASS == xQueueSend(queue, &req, timeout))
         {
-            Serial.printf("sent req at %08X\n", (uint32_t) req.req);
+            char* callerName = pcTaskGetName(nullptr);
+            Serial.printf("[%u]: %s sent req at %08X\n", micros(), callerName, (uint32_t) req.req);
             req.req->status = result = InterTaskRequest::Result::pending;
             req.req->requested = micros();
         }
@@ -94,7 +95,10 @@ class RequestQueue
     {
         BaseType_t result = xQueueReceive(queue, req, timeout);
         if (pdPASS == result)
-            Serial.printf("received req at %08X\n", (uint32_t) req->req);
+        {
+            char* callerName = pcTaskGetName(nullptr);
+            Serial.printf("[%u]: %s received req at %08X ... ", micros(), callerName, (uint32_t) req->req);
+        }
         return result;
     }
 
@@ -357,6 +361,7 @@ class ScribbleTask : public FaderMonsterTask
                     tft5, tft6, tft7, tft8;
     static TFT_TYPE* scribbles[NUM_POTS];
     static InterTaskRequest updateDirtyReq;
+    static bool initComplete;
     uint16_t* DMAbuffer;
 
     void setDMAcompletionISR(void (*isr)(TFT_eSPI& which))
@@ -386,6 +391,7 @@ class ScribbleTask : public FaderMonsterTask
     
     void run(void) override;
     void setDMAbuffer(uint16_t* buf) { DMAbuffer = buf; }
+    static bool tftInitComplete(void) { return initComplete; }
 
     //------------------------------------------------------------------------
     // stuff to allow another task to make async requests:
@@ -483,13 +489,13 @@ class StripTask : public FaderMonsterTask
               int _num, int _reqQlen,
               RingLEDs<NUM_POTS>& _rings,
               ContinuousPot& _pot,
-              TFT_eSPI& _tft,
+              TFT_eSprite& _scribble,
               StripConfig& _cfg
             )
     : FaderMonsterTask{_name, _stackDepth, _params, _priority},
       reqQueue{_reqQlen}, cfg{_cfg},
       ring{LEDring{_rings,_num}}, pot{_pot}, 
-      scribble{*new TFT_eSprite{&_tft}}, 
+      scribble{_scribble}, 
       lastPot{POT_NOT_SET}, lastTouch{false}, spaceOffset{0},
       num{_num},
       bright{39}, useRingPattern{false}

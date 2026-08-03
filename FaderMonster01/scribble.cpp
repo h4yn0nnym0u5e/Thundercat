@@ -31,6 +31,7 @@ TFT_TYPE* ScribbleTask::scribbles[]
 {&ScribbleTask::tft1, &ScribbleTask::tft2, &ScribbleTask::tft3, &ScribbleTask::tft4, 
  &ScribbleTask::tft5, &ScribbleTask::tft6, &ScribbleTask::tft7, &ScribbleTask::tft8};
 
+ bool ScribbleTask::initComplete{false};
 //----------------------------------------------------------------------------
 // run from ISR when TFT DMA has finished
 void DMAcompletionISR(TFT_eSPI& which) 
@@ -60,6 +61,7 @@ InterTaskRequest::Result ScribbleTask::doUpdateDirty(void* pScribble)
     bool isDirty = scribble.getDirtyArea(x,y,w,h);
     scribble.clearDirtyArea();
     taskEXIT_CRITICAL();
+    Serial.printf("Dirty area: %dx%d @ %d,%d (%s)\n", w,h,x,y, isDirty?"dirty":"clean");
 
     // need a valid sprite and buffer, and sprite has to need updating
     if (nullptr != src && nullptr != DMAbuffer && isDirty)
@@ -168,10 +170,13 @@ void ScribbleTask::phasedInit(void)
  */
 void ScribbleTask::run(void)
 {
+    Serial.print("scribble task: init pins ...");
     initDisplayPins();
+    Serial.print(" phased init ...");
     phasedInit();  // does phased init then initial screen fill
 
     // set backlights to half-power
+    Serial.print(" backlight ...");
     for (int i=0;i<128;i+=1)
     {
         analogWrite(TFT_BLK,i);
@@ -186,9 +191,17 @@ void ScribbleTask::run(void)
     setDMAbuffer(allocateDMAbuffer(tft1.width(), tft1.height()));
     setDMAcompletionISR(DMAcompletionISR);
 
+    Serial.println(" ready");
+    initComplete = true;
+
+    int colour = 0;
+    elapsedMillis em = 0;
     while (1)
     {
         reqQueue.executeRequest(*this, 10);
+
+        // check whether this task is running
+        cycleLED(em, colour, 0);
     }
 }
 

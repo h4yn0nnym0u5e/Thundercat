@@ -130,12 +130,29 @@ void StripTask::run(void)
   cfg.scribble.colours.txt = scribble.alphaBlend( 80, cfg.scribble.colours.fg, TFT_WHITE);
                                             /* / 255 */
   
+  // wait for display init to be finished
+  while (!ScribbleTask::tftInitComplete())
+    vTaskDelay(5);
+
+    
   // create sprite buffer in PSRAM
   int w, h;
   scribble.getTFTarea(w,h);
+  //w = h = 240; // hack hack
+  /*
   scribble.createInPSRAM(true);
   scribble.createSprite(w,h);
-
+//*/
+  {
+    char* myName = pcTaskGetName(nullptr);
+    Serial.printf("%s has %dx%d buffer at %08X\n", 
+                    myName,
+                    w,h,
+                    //scribble.width(), scribble.height(), 
+                    (uint32_t) scribble.getPointer()
+                );
+  }
+                
   // basic settings
   scribble.setSpriteSwapBytes(false);
   scribble.setFreeFont(&FONT_DP);
@@ -144,6 +161,7 @@ void StripTask::run(void)
 
   while (1)
   {
+    bool wait = true;
     // we're responsible solely for the UI - real-time MIDI etc.
     // is dealt with separately by a high-priority task
     switch (scribbleState)
@@ -151,6 +169,7 @@ void StripTask::run(void)
         case ScribbleState::done:
             // poll for queued requests
             reqQueue.executeRequest(*this, 10);
+            wait = true;
             break;
 
         case ScribbleState::start:
@@ -179,8 +198,12 @@ void StripTask::run(void)
     // Serial.printf("%u: ring task; bits: %02X\n", xTaskGetTickCount(), bits);
     uint8_t mask = bits & (1<<(NUM_POTS - 1 - num));
     ring.setPixel(9,mask?cfg.ringLEDs.colour:TFT_BLACK,bright);
+
+    if (wait)
+        vTaskDelay(2);        
   }    
 }
+
 
 // We want multiple copies of this, so actually 
 // generate them in setup(), by calling this (just once!):
@@ -191,17 +214,37 @@ void StripTask::CreateTasks(void)
 
     for (int i=0;i<COUNT_OF(StripTask::tasks);i++)
     {
+        TFT_eSPI& tft = ScribbleTask::getTFT(i); 
+        TFT_eSprite& scribble = *(new TFT_eSprite{&tft});
+//*
+  int w, h;
+  scribble.getTFTarea(w,h);
+  //w = h = 240; // hack hack
+  scribble.createInPSRAM(true);
+  scribble.createSprite(w,h);
+
+  {
+    Serial.printf("%d created %dx%d buffer at %08X\n", 
+                    i,
+                    w,h,
+                    //scribble.width(), scribble.height(), 
+                    (uint32_t) scribble.getPointer()
+                );
+  }
+//*/
+
+
         // create an instance of the StripTask class
         tasks[i] = new StripTask{"<strip>", 512, nullptr, 2,   // base task stuff
                     i, // strip number
                     5, // request queue length - just a guess
                     rings, potsTask.getPot(i),       // task-specific stuff
-                    *(new TFT_eSprite{&ScribbleTask::getTFT(i)}),
+                    scribble,
                     faderMonsterSettings.stripsConfig[i]}; 
 
         // now create the FreeRTOS task to run it
-        sprintf(buffer, "Strip%d", i);
-        tasks[i]->create(buffer);
+        sprintf(buffer, "Strip%d", i);  // give it...
+        tasks[i]->create(buffer);       // ...a unique name
 
         // Tell the pots task that we want to 
         // know about changes on a specific pot

@@ -25,6 +25,7 @@ extern RingLEDsTask ringLEDsTask;
 
 extern void taskRoot(void*);
 extern uint16_t* allocateDMAbuffer(int w, int h);
+extern void cycleLED(elapsedMillis& em, int& colour, int ring, int led = 11);
 
 extern ContinuousPot allPots[NUM_POTS];
 //typedef RingLEDs<NUM_POTS> FaderMonsterRingLEDs; 

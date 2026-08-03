@@ -47,11 +47,23 @@ uint16_t* allocateDMAbuffer(int w, int h)
 {
   size_t sz = w*h               // number of pixels
             * sizeof(uint16_t); // pixels take this space each
-
-  return (uint16_t*) extmem_malloc(sz);
+  uint16_t* result = (uint16_t*) extmem_malloc(sz);
+  Serial.printf("Allocate %dx%d @ %08X\n", w, h, (uint32_t) result);
+  return result;
 }
 
 //================================================================
+void cycleLED(elapsedMillis& em, int& colour, int ring, int led)
+{
+  if (em >= 250)
+  {
+      em = 0;
+      rings.setPixel(ring,led, faderMonsterSettings.stripsConfig[colour].ringLEDs.colour, 10);
+      if (++colour >= NUM_POTS)
+          colour = 0;
+  }
+}
+
 char dbgBuffer[200];
 bool dbgWritten;
 

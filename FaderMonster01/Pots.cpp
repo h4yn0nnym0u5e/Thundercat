@@ -226,11 +226,15 @@ void PotsTask::run(void)
   // We use a PeriodicTimer to fire off an
   // interrupt / DMA controlled sequence of reads...
   initSPItimer(&handle); // ... initialise that
+
+  int colour = 0;
+  elapsedMillis em = 0;
   while (1)
   {
     ADCtoDo = 8;  // tell timer we're ready for new data...
     vTaskSuspend(nullptr); // ...suspend until it's available...
     updateADCs(); // ...and process it  
+    cycleLED(em, colour, 1);
   }
 }
 
