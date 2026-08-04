@@ -66,6 +66,17 @@ InterTaskRequest::Result ScribbleTask::doUpdateDirty(void* pScribble)
     // need a valid sprite and buffer, and sprite has to need updating
     if (nullptr != src && nullptr != DMAbuffer && isDirty)
     {
+        int pixels = w*h;
+        if (pixels < 16) // stupidly small!
+        {
+            int fudge = 2;
+            w += fudge;
+            if (x+w > scribble.width())
+                x -= fudge;
+            h += fudge;           
+            if (y+h > scribble.height())
+                y -= fudge;
+        }
         uint16_t* dst = DMAbuffer;
         src += y*sw + x;
         for (int i=0;i<h;i++)
@@ -201,7 +212,7 @@ void ScribbleTask::run(void)
         reqQueue.executeRequest(*this, 10);
 
         // check whether this task is running
-        cycleLED(em, colour, 0);
+        // cycleLED(em, colour, 0);
     }
 }
 

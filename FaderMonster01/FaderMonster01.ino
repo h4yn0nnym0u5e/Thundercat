@@ -47,7 +47,11 @@ uint16_t* allocateDMAbuffer(int w, int h)
 {
   size_t sz = w*h               // number of pixels
             * sizeof(uint16_t); // pixels take this space each
+  
+  taskENTER_CRITICAL();
   uint16_t* result = (uint16_t*) extmem_malloc(sz);
+  taskEXIT_CRITICAL();
+
   Serial.printf("Allocate %dx%d @ %08X\n", w, h, (uint32_t) result);
   return result;
 }
@@ -132,6 +136,16 @@ void SuperTask::loopFn(void)
       default:
         exitWhile = true;
         break; 
+
+      case '0':
+        StripTask::globalBright = -1;
+        Serial.println("brightness: max");
+        break; 
+
+      case '1' ... '9':
+        StripTask::globalBright = 9.0f * powf(1.45f,ch - '1'); // 9 to 175, geometric scale
+        Serial.printf("brightness: %d (level %d, %.1f%%)\n", StripTask::globalBright, ch - '0', (float) StripTask::globalBright / 2.55f);
+        break;        
 
       case 'c':
         if (InterTaskRequest::Result::failed == touchTask.requestCalibration(touchCalibrationRequest))
@@ -232,6 +246,9 @@ void doReset()
 
 void setup() 
 {
+  while (!Serial)
+    ;
+
   pinMode(TFT_BLK, arduino::OUTPUT);
   digitalWriteFast(TFT_BLK, arduino::LOW);
 

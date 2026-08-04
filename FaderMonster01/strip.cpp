@@ -1,5 +1,7 @@
 #include "header.h"
 
+int StripTask::globalBright{39};
+
 void StripTask::setDot(float value, uint32_t colour)
 {
   if (0 == bright)
@@ -38,7 +40,7 @@ void StripTask::setDot(float value, uint32_t colour)
 
 InterTaskRequest::Result StripTask::doPotChange(void* pNothing)
 {
-    setDot(pot.getCurrent(), useRingPattern?RingLEDs<NUM_POTS>::USE_PATTERN:cfg.ringLEDs.colour);
+    setDotCurrent();
     scribbleState = ScribbleState::start;
 
     return InterTaskRequest::Result::done;
@@ -59,17 +61,16 @@ void StripTask::drawTouch(TFT_TYPE& tft, uint16_t colour)
 }
 
 // return true if change was worth drawing
-bool StripTask::setArc(TFT_TYPE& tft, float newPot, colours_t& colours)
+bool StripTask::setArc(TFT_eSprite& tft, float newPot, colours_t& colours)
 {
     bool result = false;
     const float CHANGE_THRESHOLD = CHGTHR_DP;
     if (fabs(newPot - lastPot) > CHANGE_THRESHOLD)
     {
-        result = true;
-
         //Serial.printf("Pot %d: ", i);
         if (POT_NOT_SET == lastPot)
         {
+            // initial background and black arc
             tft.fillScreen(colours.bg);
             drawArc(tft, 0.0f, ea-sa, TFT_BLACK, colours.bg);
             lastPot = 0.0f;
@@ -79,30 +80,53 @@ bool StripTask::setArc(TFT_TYPE& tft, float newPot, colours_t& colours)
             drawArc(tft, newPot, lastPot, TFT_BLACK, colours.bg);
         else
             drawArc(tft, lastPot, newPot, colours.fg, colours.bg);
+
+        lastPot = newPot;
+        
+        int32_t x,y,w,h;
+        result = tft.getDirtyArea(x,y,w,h);
     }
 
     return result;
 }
 
-void StripTask::setText(TFT_eSprite& sprite, char* buf, colours_t& colours)
-{
-    int x = 55+10*(SCRIBBLE_DP - 3),  y = 100, 
-        w = 140-15*(SCRIBBLE_DP - 3), h =  45;
- 
-    sprite.fillRect(x,y,w,h,colours.bg); //fillSprite(bkgnds[i]);
 
-    sprite.setFreeFont(&FONT_DP);
-    sprite.setTextColor(colours.txt);
-    sprite.drawString(buf, x + (buf[0] == ' '?spaceOffset:0), y);
+// update sprite with text in the centre of the display
+// returns true if the text is different from the previous
+bool StripTask::setText(TFT_eSprite& sprite, char* buf, colours_t& colours)
+{
+    bool result = strncmp(buf, lastString, sizeof lastString) != 0;
+
+    if (result)
+    {
+        int x = 55+10*(SCRIBBLE_DP - 3),  y = 100, 
+            w = 140-15*(SCRIBBLE_DP - 3), h =  45;
+    
+        sprite.fillRect(x,y,w,h,colours.bg); //fillSprite(bkgnds[i]);
+
+        sprite.setFreeFont(&FONT_DP);
+        sprite.setTextColor(colours.txt);
+        sprite.drawString(buf, x + (buf[0] == ' '?spaceOffset:0), y);
+
+        strncpy(lastString, buf, sizeof lastString);
+        lastString[sizeof lastString - 1] = 0; // force termination
+    }
+
+    return result;
 }
 
-void StripTask::setFloat(TFT_eSprite& sprite, float potPos, colours_t& colours)
+
+// update sprite with a float value in the centre of the display
+// returns true if the text is different from the previous
+bool StripTask::setFloat(TFT_eSprite& sprite, float potPos, colours_t& colours)
 {
-  char buf[30];
+  char buf[BUF_SIZE];
   if (potPos < 0.0f && potPos > -CHGTHR_DP / 100.0f) potPos = 0.0f; // don't show -0.000
   sprintf(buf,FMT_DP,potPos);
-  setText(sprite, buf, colours);
+
+  return setText(sprite, buf, colours);
 }
+
 
 bool StripTask::setTouch(TFT_eSprite& sprite, bool touch, colours_t& colours)
 {
@@ -158,37 +182,40 @@ void StripTask::run(void)
         case ScribbleState::done:
             // poll for queued requests
             reqQueue.executeRequest(*this, 10);
-            wait = true;
+            wait = false; // already waited 10 ticks
             break;
 
         case ScribbleState::start:
             if (updateReq.isInactive())
             {
                 if (setArc(scribble, (pot.getCurrent() + 1.0f) * (ea - sa) / 2.0f, cfg.scribble.colours))
-                {
                     scribbleTask.updateDirty(updateReq, scribble, 0);
-                    scribbleState = ScribbleState::arc;
-                }
-                else
-                    scribbleState = ScribbleState::done;
+                scribbleState = ScribbleState::arc;
             }
             break;
 
         case ScribbleState::arc:
             if (updateReq.isInactive())
             {
-                setFloat(scribble, pot.getCurrent(), cfg.scribble.colours);
-                scribbleTask.updateDirty(updateReq, scribble, 0);
+                if (setFloat(scribble, pot.getCurrent(), cfg.scribble.colours))
+                    scribbleTask.updateDirty(updateReq, scribble, 0);
                 scribbleState = ScribbleState::done;
             }
             break;
+    }
+
+    // see if brightness needs changing
+    if (bright != globalBright)
+    {
+        bright = globalBright;
+        setDotCurrent();
     }
 
     // Serial.printf("%u: ring task; bits: %02X\n", xTaskGetTickCount(), bits);
     uint8_t mask = bits & (1<<(NUM_POTS - 1 - num));
     ring.setPixel(9,mask?cfg.ringLEDs.colour:TFT_BLACK,bright);
 
-    if (wait)
+    if (wait) // poll until scribble finishes display write
         vTaskDelay(2);        
   }    
 }
@@ -215,7 +242,7 @@ void StripTask::CreateTasks(void)
                     faderMonsterSettings.stripsConfig[i]}; 
 
         // now create the FreeRTOS task to run it
-        sprintf(buffer, "Strip%d", i);  // give it...
+        sprintf(buffer, "Strip%d", i+1);  // give it...
         tasks[i]->create(buffer);       // ...a unique name
 
         // Tell the pots task that we want to 

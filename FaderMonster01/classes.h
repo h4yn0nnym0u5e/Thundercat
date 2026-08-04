@@ -462,24 +462,27 @@ class StripTask : public FaderMonsterTask
     // Fader& fader;            // ...fader
     // Button& button;          // ...button (control and LED)
 
-    static constexpr float POT_NOT_SET = -999.0f;
-    static constexpr float sa = 2*18.0f, ea = 360.0f - 2*18.0f; // TFT_eSPI has zero at 6 o'clock
+    static constexpr float POT_NOT_SET{-999.0f};
+    static constexpr float sa{2*18.0f}, ea{360.0f - 2*18.0f}; // TFT_eSPI has zero at 6 o'clock
+    static constexpr int BUF_SIZE{30};
     float lastPot;
     bool  lastTouch;
     int   spaceOffset;
+    char  lastString[BUF_SIZE]{0};
     enum ScribbleState {done, start, arc, text, touch} scribbleState;
 
     InterTaskRequest updateReq; // used to monitor progress of display update
 
     // ring LEDs
     void setDot(float value, uint32_t colour);
+    void setDotCurrent(void) { setDot(pot.getCurrent(), useRingPattern?RingLEDs<NUM_POTS>::USE_PATTERN:cfg.ringLEDs.colour); }
 
     // sprite (TFT)
     void drawArc(TFT_TYPE& tft, float s, float e, uint16_t fg, uint16_t bg);
     void drawTouch(TFT_TYPE& tft, uint16_t colour);
-    bool setArc(TFT_TYPE& tft, float newPot, colours_t& colours);
-    void setText(TFT_eSprite& sprite, char* buf, colours_t& colours);
-    void setFloat(TFT_eSprite& sprite, float value, colours_t& colours);
+    bool setArc(TFT_eSprite& tft, float newPot, colours_t& colours);
+    bool setText(TFT_eSprite& sprite, char* buf, colours_t& colours);
+    bool setFloat(TFT_eSprite& sprite, float value, colours_t& colours);
     bool setTouch(TFT_eSprite& sprite, bool touch, colours_t& colours);
 
   public:
@@ -501,7 +504,7 @@ class StripTask : public FaderMonsterTask
       lastPot{POT_NOT_SET}, lastTouch{false}, spaceOffset{0},
       scribbleState{done},
       num{_num},
-      bright{39}, useRingPattern{false}
+      useRingPattern{false}
     {}
     static void CreateTasks(void);
     static StripTask& getStripTask(int n) { return *tasks[n]; }
@@ -527,6 +530,7 @@ class StripTask : public FaderMonsterTask
     }
 
     int num; // which strip this is (0-7)
+    static int globalBright;
     int bright;
     bool useRingPattern;
     InterTaskRequest displayReq, potReq;
