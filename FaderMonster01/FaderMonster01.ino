@@ -65,15 +65,16 @@ void cycleLED(elapsedMillis& em, int& colour, int ring, int led)
 }
 
 //================================================================
-TaskHandle_t* handles[]{nullptr, &superTask.handle, &touchTask.handle, // 0-2
+TaskHandle_t* handles[]{nullptr, nullptr, &superTask.handle, &touchTask.handle, // 0-2
                         &scribbleTask.handle, &potsTask.handle, &ringLEDsTask.handle, // 3-5
                         nullptr, nullptr}; // 6+7
 void printTaskStates(void)
 {
   TaskHandle_t handleIdle = xTaskGetIdleTaskHandle();
   handles[0] = &handleIdle;
-  handles[6] = &StripTask::getStripTask(0).handle;
-  handles[7] = &StripTask::getStripTask(3).handle;
+  handles[1] = &freertos::g_yield_task;
+  handles[7] = &StripTask::getStripTask(0).handle;
+  handles[8] = &StripTask::getStripTask(3).handle;
   configRUN_TIME_COUNTER_TYPE idlePercent = ulTaskGetIdleRunTimePercent(),
                               idleCount = ulTaskGetIdleRunTimeCounter();
   float pct = idleCount * 100.0f / idlePercent; // 100% of counts to date
@@ -100,8 +101,26 @@ void printTaskStates(void)
 char dbgBuffer[200];
 bool dbgWritten;
 
+bool enableADCprint;
+
 void SuperTask::loopFn(void)
 {
+  {
+    static elapsedMillis em;
+    if (em >= 250)
+    {
+      em = 0;
+      if (enableADCprint)
+        printADCs();
+    }
+  }
+
+  if (dbgWritten)
+  {
+    dbgWritten = false;
+    Serial.print(dbgBuffer);
+  }
+
   // deal with a string of commands all in one go,
   // unless an unrecognised commands is given
   while (1)
@@ -145,6 +164,10 @@ void SuperTask::loopFn(void)
         vTaskDelay(5);
         break;
 
+      case 'p':
+        enableADCprint = !enableADCprint;
+        break;
+
       case 't':
         printTaskStates();
         break;        
@@ -183,10 +206,36 @@ void SuperTask::run(void)
 }
 
 //================================================================
+//                      888                      
+//                      888                      
+//                      888                      
+//    .d8888b   .d88b.  888888 888  888 88888b.  
+//    88K      d8P  Y8b 888    888  888 888 "88b 
+//    "Y8888b. 88888888 888    888  888 888  888 
+//         X88 Y8b.     Y88b.  Y88b 888 888 d88P 
+//     88888P'  "Y8888   "Y888  "Y88888 88888P"  
+//                                      888      
+//                                      888      
+//                                      888      
+//
+void doReset()
+{
+  // reset ADCs and touch chip
+  pinMode(RST_PIN,arduino::OUTPUT);
+  digitalWrite(RST_PIN,arduino::HIGH);
+  delay(1);
+  digitalWrite(RST_PIN,arduino::LOW);
+  delay(1);
+  digitalWrite(RST_PIN,arduino::HIGH);
+  delay(1);
+}
+
 void setup() 
 {
   pinMode(TFT_BLK, arduino::OUTPUT);
   digitalWriteFast(TFT_BLK, arduino::LOW);
+
+  doReset();
 
   // hardware "server" tasks - independent of one another
   touchTask.create(); // creates task - doesn't start it
@@ -204,7 +253,7 @@ void setup()
 
   vTaskStartScheduler(); // start all tasks - the mayhem begins!
 }
-
+//================================================================
 void loop() {} // keep Arduino happy
 
 // Run a FaderMonsterTask

@@ -39,6 +39,11 @@ extern uint8_t bits;
 extern char dbgBuffer[200];
 extern bool dbgWritten;
 extern uint32_t ADCupdateMicros;
+extern void printADCs(void);
+namespace freertos
+{
+    extern TaskHandle_t g_yield_task;
+}
 
 
 #define COUNT_OF(a) (int)(sizeof a / sizeof a[0])

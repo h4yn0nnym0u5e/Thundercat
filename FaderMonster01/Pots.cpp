@@ -45,17 +45,17 @@ void zeroPots(void)
   }
 }
 
-/*
+
 void printADCs(void)
 {
   for (int i=0;i<NUM_POTS;i++)
   {
-    const char* pad = keyStatuses[i]?"  ":"";
+    const char* pad = TouchTask::keyStatuses[i]?"  ":"";
     Serial.printf("%sch%d:%+.6f%s ", pad, i+1, allPots[i].getCurrent(), pad);
   }
   Serial.println();          
 }
-*/
+
 
 
 //================================================================================
@@ -234,7 +234,6 @@ void PotsTask::run(void)
     ADCtoDo = 8;  // tell timer we're ready for new data...
     vTaskSuspend(nullptr); // ...suspend until it's available...
     updateADCs(); // ...and process it  
-    cycleLED(em, colour, 1);
   }
 }
 

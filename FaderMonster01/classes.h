@@ -277,6 +277,7 @@ class TouchTask : public FaderMonsterTask
 
     void updateTouch(void);
     void pollTouch(void);
+    void updateKeyStatuses(AT42QT2120& touch);
 
   public:
     TouchTask(const char* _name, 
@@ -305,6 +306,7 @@ class TouchTask : public FaderMonsterTask
     AT42QT2120& touchChip;
     bool supplyValid{false};
     bool checkChange{true}; // public: set by ISR
+    static touchStatus keyStatuses[NUM_POTS];
     UBaseType_t messagesWaiting(void) { return reqQueue.messagesWaiting(); }
 };
 
@@ -563,7 +565,7 @@ class PotsTask : public FaderMonsterTask
     void run(void) override;
     ContinuousPot& getPot(int n) { return allPots[n]; }
     void setOwner(StripTask* pTask, int n) { stripTasks[n] = pTask; }
-    void notifyOwner(int n) { stripTasks[n]->potChanged(); }
+    void notifyOwner(int n) { if (nullptr != stripTasks[n]) stripTasks[n]->potChanged(); }
 };
 
 //                      888    888    d8b                            

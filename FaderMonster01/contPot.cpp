@@ -16,13 +16,14 @@ static int offset;
 
 //#define DBG(x) if (debug) { Serial.printf(" %.4f ", x); }
 //#define NL if (debug) { Serial.println(); Serial.flush(); }
+#define TS(x) if (debug) { offset += sprintf(dbgBuffer+offset, "[%u]: ", millis()); }
 #define DBG(x) if (debug) { offset += sprintf(dbgBuffer+offset, " %.6f ", x); }
 #define NL if (debug) { offset += sprintf(dbgBuffer+offset, "\n"); dbgWritten = true; offset = 0; }
 
 float ContinuousPot::update(float a1, float a2)
 {
   float oldVal = current; // used to check if we've changed the value
-
+TS(x);
   // map ADC range to ±1.0
   a1 = map(a1, 0.0f, adcMax,ch1Pol,-ch1Pol);
   a2 = map(a2, 0.0f, adcMax,ch2Pol,-ch2Pol);

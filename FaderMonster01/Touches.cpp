@@ -9,7 +9,7 @@ AT42QT2120 potsTouch{TOUCH_WIRE, TOUCH_ADDR, 0xFF0};
 
 static void isrTouch(void);
 
-touchStatus keyStatuses[NUM_POTS];
+touchStatus TouchTask::keyStatuses[NUM_POTS];
 
 void printTouches(void)
 {
@@ -17,7 +17,7 @@ void printTouches(void)
     bool changed = false;
     for (int i=0;i<NUM_POTS;i++)
     {
-      int t = (int) keyStatuses[i].getExtendedStatus();
+      int t = (int) TouchTask::keyStatuses[i].getExtendedStatus();
       if (last[i] != t)
         changed = true;
       last[i] = t;
@@ -28,7 +28,7 @@ void printTouches(void)
       Serial.printf("%u: ", millis());
       for (int i=0;i<NUM_POTS;i++)
       {
-        int t = (int) keyStatuses[i].getExtendedStatus();
+        int t = (int) TouchTask::keyStatuses[i].getExtendedStatus();
         if (0 != t)
           Serial.printf("%2d ", t);
         else
@@ -136,7 +136,7 @@ static void isrTouch(void)
 }
 
 
-void updateKeyStatuses(AT42QT2120& touch)
+void TouchTask::updateKeyStatuses(AT42QT2120& touch)
 {
   int keyNum;
   bool state;
