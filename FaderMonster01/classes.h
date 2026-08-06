@@ -83,7 +83,7 @@ class RequestQueue
         if (req.req->isInactive() && pdPASS == xQueueSend(queue, &req, timeout))
         {
             char* callerName = pcTaskGetName(nullptr);
-            Serial.printf("[%u]: %s sent req at %08X\n", micros(), callerName, (uint32_t) req.req);
+            //Serial.printf("[%u]: %s sent req at %08X\n", micros(), callerName, (uint32_t) req.req);
             req.req->status = result = InterTaskRequest::Result::pending;
             req.req->requested = micros();
         }
@@ -97,7 +97,7 @@ class RequestQueue
         if (pdPASS == result)
         {
             char* callerName = pcTaskGetName(nullptr);
-            Serial.printf("[%u]: %s received req at %08X ... ", micros(), callerName, (uint32_t) req->req);
+            //Serial.printf("[%u]: %s received req at %08X ... ", micros(), callerName, (uint32_t) req->req);
         }
         return result;
     }
@@ -110,7 +110,7 @@ class RequestQueue
         if (pdPASS == getRequest(&entry, timeout))
         {
             entry.req->executed = micros();
-            Serial.println("execute");
+            //Serial.println("execute");
             result = (instance.*entry.payload.requestExecutor)(entry.payload.context);
             entry.req->finished = micros();
             entry.req->status = result; 

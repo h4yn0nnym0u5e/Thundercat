@@ -61,7 +61,7 @@ InterTaskRequest::Result ScribbleTask::doUpdateDirty(void* pScribble)
     bool isDirty = scribble.getDirtyArea(x,y,w,h);
     scribble.clearDirtyArea();
     taskEXIT_CRITICAL();
-    Serial.printf("Dirty area: %dx%d @ %d,%d (%s)\n", w,h,x,y, isDirty?"dirty":"clean");
+    //Serial.printf("Dirty area: %dx%d @ %d,%d (%s)\n", w,h,x,y, isDirty?"dirty":"clean");
 
     // need a valid sprite and buffer, and sprite has to need updating
     if (nullptr != src && nullptr != DMAbuffer && isDirty)

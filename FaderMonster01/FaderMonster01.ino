@@ -49,7 +49,7 @@ uint16_t* allocateDMAbuffer(int w, int h)
             * sizeof(uint16_t); // pixels take this space each
   
   taskENTER_CRITICAL();
-  uint16_t* result = (uint16_t*) extmem_malloc(sz);
+  uint16_t* result = (uint16_t*) malloc(sz);
   taskEXIT_CRITICAL();
 
   Serial.printf("Allocate %dx%d @ %08X\n", w, h, (uint32_t) result);
@@ -210,6 +210,10 @@ uint8_t bits;
 void SuperTask::run(void)
 {
   Serial.printf("\n\n[%d]: started supervisor task\n", micros());
+
+  /*** REMOVE THIS LATER ! ****/
+  // dummy allocation to ensure we don't over-allocate RAM2
+  allocateDMAbuffer(320,240);
 
   while (1)
   {

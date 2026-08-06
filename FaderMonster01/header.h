@@ -35,6 +35,7 @@ extern  RingLEDs<NUM_POTS> rings;
 extern FaderMonsterSettings faderMonsterSettings;
 
 // hacky things to be got rid of later. Probably.
+extern WS2812Serial leds;
 extern uint8_t bits;
 extern char dbgBuffer[200];
 extern bool dbgWritten;
