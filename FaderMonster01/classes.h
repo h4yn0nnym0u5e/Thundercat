@@ -82,7 +82,7 @@ class RequestQueue
         InterTaskRequest::Result result = InterTaskRequest::Result::failed;
         if (req.req->isInactive() && pdPASS == xQueueSend(queue, &req, timeout))
         {
-            char* callerName = pcTaskGetName(nullptr);
+            //char* callerName = pcTaskGetName(nullptr);
             //Serial.printf("[%u]: %s sent req at %08X\n", micros(), callerName, (uint32_t) req.req);
             req.req->status = result = InterTaskRequest::Result::pending;
             req.req->requested = micros();
@@ -96,7 +96,7 @@ class RequestQueue
         BaseType_t result = xQueueReceive(queue, req, timeout);
         if (pdPASS == result)
         {
-            char* callerName = pcTaskGetName(nullptr);
+            //char* callerName = pcTaskGetName(nullptr);
             //Serial.printf("[%u]: %s received req at %08X ... ", micros(), callerName, (uint32_t) req->req);
         }
         return result;
@@ -306,7 +306,7 @@ class TouchTask : public FaderMonsterTask
     AT42QT2120& touchChip;
     bool supplyValid{false};
     bool checkChange{true}; // public: set by ISR
-    static touchStatus keyStatuses[NUM_POTS];
+    static TouchStatus keyStatuses[NUM_POTS];
     UBaseType_t messagesWaiting(void) { return reqQueue.messagesWaiting(); }
 };
 
@@ -451,6 +451,7 @@ class StripTask : public FaderMonsterTask
     RequestQueue<StripTask, requestPayload> reqQueue;
 
     InterTaskRequest::Result doPotChange(void* pNothing);
+    InterTaskRequest::Result doTouchChange(void* pNothing);
     //------------------------------------------------------------------------
     static StripTask* tasks[NUM_POTS];
 
@@ -458,7 +459,8 @@ class StripTask : public FaderMonsterTask
 
     LEDring<NUM_POTS> ring;   // our LED ring
     ContinuousPot& pot;       // ...continuous pot...
-    TFT_eSprite& scribble;        // ...scribble strip display
+    TouchStatus& potTouch;    // ...and its touch sensor...
+    TFT_eSprite& scribble;    // ...scribble strip display...
     // Fader& fader;            // ...fader
     // Button& button;          // ...button (control and LED)
 
@@ -466,7 +468,7 @@ class StripTask : public FaderMonsterTask
     static constexpr float sa{2*18.0f}, ea{360.0f - 2*18.0f}; // TFT_eSPI has zero at 6 o'clock
     static constexpr int BUF_SIZE{30};
     float lastPot;
-    bool  lastTouch;
+    TouchStatus::eStatus lastTouch; // previous extended status
     int   spaceOffset;
     char  lastString[BUF_SIZE]{0};
     enum ScribbleState {done, start, arc, text, touch} scribbleState;
@@ -479,11 +481,12 @@ class StripTask : public FaderMonsterTask
 
     // sprite (TFT)
     void drawArc(TFT_TYPE& tft, float s, float e, uint16_t fg, uint16_t bg);
-    void drawTouch(TFT_TYPE& tft, uint16_t colour);
+    void drawTouch(TFT_TYPE& tft, colours_t& colours, int thickness = -1);
+    void drawTouch(TFT_TYPE& tft, TouchStatus::eStatus estatus, colours_t& colours);
     bool setArc(TFT_eSprite& tft, float newPot, colours_t& colours);
     bool setText(TFT_eSprite& sprite, char* buf, colours_t& colours);
     bool setFloat(TFT_eSprite& sprite, float value, colours_t& colours);
-    bool setTouch(TFT_eSprite& sprite, bool touch, colours_t& colours);
+    bool setTouch(TFT_eSprite& sprite, TouchStatus& touch, colours_t& colours);
 
   public:
     StripTask(const char* _name, 
@@ -493,13 +496,13 @@ class StripTask : public FaderMonsterTask
             
               int _num, int _reqQlen,
               RingLEDs<NUM_POTS>& _rings,
-              ContinuousPot& _pot,
+              ContinuousPot& _pot, TouchStatus& _potTouch,
               TFT_eSprite& _scribble,
               StripConfig& _cfg
             )
     : FaderMonsterTask{_name, _stackDepth, _params, _priority},
       reqQueue{_reqQlen}, cfg{_cfg},
-      ring{LEDring{_rings,_num}}, pot{_pot}, 
+      ring{LEDring{_rings,_num}}, pot{_pot}, potTouch{_potTouch},
       scribble{_scribble}, 
       lastPot{POT_NOT_SET}, lastTouch{false}, spaceOffset{0},
       scribbleState{done},
@@ -529,11 +532,20 @@ class StripTask : public FaderMonsterTask
         reqQueue.request(entry, 0);
     }
 
+    void touchChanged(void)
+    {
+        requestPayload payload{&StripTask::doTouchChange, nullptr};
+        RequestQueue<StripTask, requestPayload>::queueEntry entry{&touchReq, payload};
+
+        reqQueue.request(entry, 0);
+    }
+
     int num; // which strip this is (0-7)
     static int globalBright;
     int bright;
     bool useRingPattern;
-    InterTaskRequest displayReq, potReq;
+    InterTaskRequest displayReq, // outgoing
+                     potReq, touchReq; // incoming
 };
 
 //                      888             

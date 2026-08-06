@@ -6,7 +6,7 @@
  * Keeps track of touch timing to yield double and
  * long press information
  */
-class touchStatus
+class TouchStatus 
 {
   public:    
     enum class eStatus {OFF, JUST_OFF, JUST_OFF_LONG,  // off statuses
@@ -50,7 +50,7 @@ class touchStatus
     }
 
   public:
-    touchStatus() 
+    TouchStatus() 
         : status{0}, extendedStatus{eStatus::OFF},
           longTouch{500}, doubleTouch{250}
         {}
@@ -65,7 +65,7 @@ class touchStatus
     bool isChangedStatus(void) { updateExtendedStatus(); return lastReadStatus != extendedStatus;}
 
     // called when touch status changes
-    touchStatus& operator =(uint8_t v) 
+    TouchStatus& operator =(uint8_t v) 
     { 
         updateExtendedStatus();
         if (0 != v) // touched

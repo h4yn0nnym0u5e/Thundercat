@@ -205,8 +205,8 @@ void ScribbleTask::run(void)
     Serial.printf("\n[%d]: ready\n", micros());
     initComplete = true;
 
-    int colour = 0;
-    elapsedMillis em = 0;
+    //int colour = 0;
+    //elapsedMillis em = 0;
     while (1)
     {
         reqQueue.executeRequest(*this, 10);

@@ -38,6 +38,7 @@
 #define xPURPLE 0x2000C0
 #define xPINK   0xC00060
 #define xWHITE  0xC0C0C0
+#define xBLACK  0x000000
 
 // ============== Scribble board ==============
 #define MUX_A     38

@@ -227,8 +227,6 @@ void PotsTask::run(void)
   // interrupt / DMA controlled sequence of reads...
   initSPItimer(&handle); // ... initialise that
 
-  int colour = 0;
-  elapsedMillis em = 0;
   while (1)
   {
     ADCtoDo = 8;  // tell timer we're ready for new data...

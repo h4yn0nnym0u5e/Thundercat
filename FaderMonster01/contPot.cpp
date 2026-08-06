@@ -16,7 +16,7 @@ static int offset;
 
 //#define DBG(x) if (debug) { Serial.printf(" %.4f ", x); }
 //#define NL if (debug) { Serial.println(); Serial.flush(); }
-#define TS(x) if (debug) { offset += sprintf(dbgBuffer+offset, "[%u]: ", millis()); }
+#define TS(x) if (debug) { offset += sprintf(dbgBuffer+offset, "[%lu]: ", millis()); }
 #define DBG(x) if (debug) { offset += sprintf(dbgBuffer+offset, " %.6f ", x); }
 #define NL if (debug) { offset += sprintf(dbgBuffer+offset, "\n"); dbgWritten = true; offset = 0; }
 
