@@ -115,6 +115,13 @@ void RingLEDsTask::run(void)
     cold2hot[dst]= cold2hot1[i];
   }
 
+  // this would normally be a configuration / scene option:
+  for (int i=0;i<LEDS_PER_RING;i++)
+  {
+    faderMonsterSettings.stripsConfig[6].ringLEDs.pattern[i] = cold2hot[i];
+    faderMonsterSettings.stripsConfig[7].ringLEDs.pattern[i] = rainbow[i];
+  }
+
   // starting colours
   rings.begin();
   rings.clear();

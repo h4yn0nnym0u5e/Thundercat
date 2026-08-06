@@ -342,5 +342,9 @@ void StripTask::CreateTasks(void)
         // Tell the pots task that we want to 
         // know about changes on a specific pot
         potsTask.setOwner(tasks[i], i);
+
+        // use pattern on some rings
+        if (i>5)
+            tasks[i]->useRingPattern = true;
     }
 }

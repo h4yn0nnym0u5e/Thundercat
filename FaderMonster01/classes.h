@@ -666,13 +666,15 @@ class PotsTask : public FaderMonsterTask
     void setOwner(StripTask* pTask, int n) { stripTasks[n] = pTask; }
     void notifyOwner(int n) 
     { 
+        static elapsedMillis lastMIDI = 0;
         if (nullptr != stripTasks[n]) 
             stripTasks[n]->potChanged(); 
 
         // this will actually use scene settings...
         int newValue = (int) roundf(allPots[n].getCurrent() * 10000.0f);
-        if (midiReqs[n].lastValue != newValue)
+        if (midiReqs[n].lastValue != newValue && lastMIDI >= 10)
         {
+            lastMIDI = 0; // try not to overwhelm Serial (for now)
             midiReqs[n].lastValue = newValue;
             MIDImessage msg{42, (n+1)*111, newValue};
             midiTask.sendMIDI(midiReqs[n].req, msg);
