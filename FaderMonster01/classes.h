@@ -23,7 +23,7 @@ class InterTaskRequest
 {
   public:
     enum Result {inactive, pending, running, done, failed} status;
-    int32_t requested, executed, finished; // performance measuring
+    uint32_t requested, executed, finished; // performance measuring
 
     InterTaskRequest(void)
     : status{inactive}
@@ -79,13 +79,17 @@ class RequestQueue
     // fails if request instance is already busy, or can't add it to the queue
     InterTaskRequest::Result request(queueEntry& req, TickType_t timeout = 0) 
     { 
-        InterTaskRequest::Result result = InterTaskRequest::Result::failed;
-        if (req.req->isInactive() && pdPASS == xQueueSend(queue, &req, timeout))
+        InterTaskRequest::Result result = InterTaskRequest::Result::pending;
+        if (req.req->isInactive())
         {
             //char* callerName = pcTaskGetName(nullptr);
             //Serial.printf("[%u]: %s sent req at %08X\n", micros(), callerName, (uint32_t) req.req);
-            req.req->status = result = InterTaskRequest::Result::pending;
+            req.req->status = result;
             req.req->requested = micros();
+            if (pdPASS == xQueueSend(queue, &req, timeout))
+                result = req.req->status; // may execute immediately!
+            else
+                result = InterTaskRequest::Result::failed;                
         }
         return result; 
     }
@@ -101,6 +105,26 @@ class RequestQueue
         }
         return result;
     }
+
+    // retrieve a request's payload
+    // assumes it's all done with
+    BaseType_t getPayload(P& payload, int timeout, uint32_t* pRequested = nullptr)
+    {
+        queueEntry entry;
+
+        BaseType_t result = xQueueReceive(queue, &entry, timeout);
+        if (pdPASS == result)
+        {
+            payload = entry.payload;
+            entry.req->executed = micros();
+            entry.req->finished = micros();
+            entry.req->status = InterTaskRequest::Result::done; 
+            if (nullptr != pRequested)
+                *pRequested = entry.req->requested;
+        }
+        return result;
+    }
+
 
     // polled in task's loop
     InterTaskRequest::Result executeRequest(T& instance, int timeout)
@@ -224,6 +248,59 @@ class GenericTask : public FaderMonsterTask
     void run(void) override;
 };
 */
+
+//    888b     d888 8888888 8888888b. 8888888 
+//    8888b   d8888   888   888  "Y88b  888   
+//    88888b.d88888   888   888    888  888   
+//    888Y88888P888   888   888    888  888   
+//    888 Y888P 888   888   888    888  888   
+//    888  Y8P  888   888   888    888  888   
+//    888   "   888   888   888  .d88P  888   
+//    888       888 8888888 8888888P" 8888888 
+// 
+struct MIDImessage
+{
+    int type, cmd,value;
+};
+
+class MIDItask : public FaderMonsterTask
+{
+    //------------------------------------------------------------------------
+    // stuff to deal with async requests from another task:
+    //typedef InterTaskRequest::Result (MIDItask::* RequestExecutor)(void*);
+    struct requestPayload
+    {
+        MIDImessage message;
+    };
+    RequestQueue<MIDItask, requestPayload> reqQueue;
+
+    InterTaskRequest::Result doSendMIDI(MIDImessage& msg, uint32_t reqTime);
+    //------------------------------------------------------------------------
+    
+  public:
+    MIDItask(const char* _name, 
+              configSTACK_DEPTH_TYPE _stackDepth, 
+              void* _params,
+              UBaseType_t _priority,
+            
+              int _reqQlen)
+    : FaderMonsterTask{_name, _stackDepth, _params, _priority},
+      reqQueue{_reqQlen}
+    {}
+    
+    void run(void) override;
+    InterTaskRequest::Result sendMIDI(InterTaskRequest& req, MIDImessage& msg)
+    {
+        InterTaskRequest::Result result = InterTaskRequest::Result::done;
+        requestPayload payload{msg};
+        RequestQueue<MIDItask, requestPayload>::queueEntry entry{&req, payload};
+
+        result = reqQueue.request(entry, 0);
+
+        return result;
+    }
+};
+extern MIDItask midiTask;
 
 //                                                
 //    .d8888b  888  888 88888b.   .d88b.  888d888 
@@ -544,8 +621,8 @@ class StripTask : public FaderMonsterTask
     static int globalBright;
     int bright;
     bool useRingPattern;
-    InterTaskRequest displayReq, // outgoing
-                     potReq, touchReq; // incoming
+    InterTaskRequest displayReq,        // outgoing
+                     potReq, touchReq;  // incoming
 };
 
 //                      888             
@@ -564,9 +641,15 @@ class StripTask : public FaderMonsterTask
 // same SPI bus, so need to be dealt with together
 class PotsTask : public FaderMonsterTask
 { 
+    static struct MIDIreq
+    {
+        InterTaskRequest req;
+        int lastValue;
+    } midiReqs[NUM_POTS];
+
     static ContinuousPot allPots[NUM_POTS];
     static StripTask* stripTasks[NUM_POTS];
-
+    
     void updateADCs(void);
     float raw2volts(uint16_t raw) { return (float) raw / 65535.0f * 5.0f; }
 
@@ -581,8 +664,22 @@ class PotsTask : public FaderMonsterTask
     void run(void) override;
     ContinuousPot& getPot(int n) { return allPots[n]; }
     void setOwner(StripTask* pTask, int n) { stripTasks[n] = pTask; }
-    void notifyOwner(int n) { if (nullptr != stripTasks[n]) stripTasks[n]->potChanged(); }
+    void notifyOwner(int n) 
+    { 
+        if (nullptr != stripTasks[n]) 
+            stripTasks[n]->potChanged(); 
+
+        // this will actually use scene settings...
+        int newValue = (int) roundf(allPots[n].getCurrent() * 10000.0f);
+        if (midiReqs[n].lastValue != newValue)
+        {
+            midiReqs[n].lastValue = newValue;
+            MIDImessage msg{42, (n+1)*111, newValue};
+            midiTask.sendMIDI(midiReqs[n].req, msg);
+        }
+    }
 };
+
 
 //                      888    888    d8b                            
 //                      888    888    Y8P                            

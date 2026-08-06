@@ -21,6 +21,7 @@ extern ScribbleTask scribbleTask;
 extern PotsTask potsTask;
 extern RingLEDsTask ringLEDsTask;
 extern SuperTask superTask;
+extern MIDItask midiTask;
 // use StripTask& StripTask::getStriptask(n) for strip tasks
 
 

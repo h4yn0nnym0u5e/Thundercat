@@ -202,9 +202,9 @@ void TouchTask::pollTouch(void)
   {
     if (keyStatuses[i].isChangedStatus())
     {
-      int status = (int) keyStatuses[i].getExtendedStatus();
+      //int status = (int) keyStatuses[i].getExtendedStatus();
+      //Serial.printf("Touch %d: status %d\n", i+1, status);
       StripTask::getStripTask(i).touchChanged();
-      Serial.printf("Touch %d: status %d\n", i+1, status);
     }
   }
 }

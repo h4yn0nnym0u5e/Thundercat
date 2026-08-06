@@ -25,6 +25,7 @@ ContinuousPot PotsTask::allPots[NUM_POTS]
   };
 
 StripTask* PotsTask::stripTasks[NUM_POTS]{nullptr};
+PotsTask::MIDIreq PotsTask::midiReqs[NUM_POTS];
 
 static const int potMap[] = POT_MAP;
 

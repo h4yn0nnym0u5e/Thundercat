@@ -269,7 +269,7 @@ void setup()
 
   // "client" tasks
   StripTask::CreateTasks(); // ...the strip...
-  // midiTask.create(); // ...and MIDI tasks
+  midiTask.create(); // ...and MIDI tasks
   superTask.create();
 
   vTaskStartScheduler(); // start all tasks - the mayhem begins!
