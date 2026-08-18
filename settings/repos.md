@@ -35,6 +35,8 @@ Many changes!
  - arc drawing now uses `float` angles
  - fix issue with clipped gradient fills
  - fix issue with ESP32-S3, used for SmartKnob
+ - add "dirty area" support to TFT_eSprite
+ - add async push of sprite to display
 
 
 # cores #

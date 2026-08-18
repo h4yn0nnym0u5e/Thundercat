@@ -13,8 +13,8 @@
 //                         888                                   
 //                         888                                   
 //
-/*
- * Request from one "client" task for a function to be run 
+/**
+ * Request from one "client" task for a function to be run
  * by another "server" task. Typically the server will
  * provide exclusive access to some piece of hardware, 
  * e.g. a SPI or I²C bus
@@ -22,21 +22,43 @@
 class InterTaskRequest
 {
   public:
-    enum Result {inactive, pending, running, done, failed} status;
-    uint32_t requested, executed, finished; // performance measuring
+    //! status / result of request
+    enum Result {inactive,  //!< no request made
+                 pending,   //!< request awaiting attention from server task
+                 running,   //!< request being executed by server task
+                 done,      //!< request completed successfully
+                 failed     //!< request failed 
+                } status;
+    // performance measuring                 
+    uint32_t requested, //!< timestamp when request was made (microseconds)
+             executed,  //!< timestamp when request started execution (microseconds)
+             finished;  //!< timestamp when request execution completed (microseconds)
 
+    //! construct in inactive state
     InterTaskRequest(void)
     : status{inactive}
     {}
 
+    //! force status to inactive
     void setInactive(void) { status = inactive; }
+
+    //! \return true if request is busy
     bool isBusy(void) { return pending == status || running == status; }
+
+    //! \return true if request has completed
     bool isFinished(void) { return done == status || failed == status; }
+
+    //! \return true if request is not busy
     bool isInactive(void) { return inactive == status || done == status || failed == status; }
 
     // instrumentation: find out how long various things took
+    //! \return time taken between request and execution start (microseconds)
     uint32_t responseTime(void)  { return executed - requested; } // delay due to handing off to another task
+    
+    //! \return time taken to execute request once started (microseconds)
     uint32_t executionTime(void) { return finished - executed;  } // actual time taken to do it
+    
+    //! \return time taken between request and execution completion (microseconds)
     uint32_t overallTime(void)   { return finished - requested; } // 
 };
 
@@ -52,7 +74,7 @@ class InterTaskRequest
 //                         888                                                 
 //                         888                                                 
 // 
-/*
+/**
  * Wrapper for passing requests between tasks using FreeRTOS queues.
  * A task class contains a RequestQueue, and other tasks send requests
  * using methods of the class - the exact payload of the request is
@@ -65,18 +87,18 @@ class RequestQueue
   public:
     struct queueEntry 
     {
-        InterTaskRequest* req;
-        P payload;
+        InterTaskRequest* req;  //!< pointer to structure holding request status / instrumentation
+        P payload; //!< request content
     };
 
     RequestQueue(int length) { queue = xQueueCreate(length, sizeof(queueEntry)); }
 
-    // send a request
-    //
-    // note that items are queued by copying their value, so the req 
-    // parameter can disappear once the request has been queued
-    //
-    // fails if request instance is already busy, or can't add it to the queue
+    //! Send a request.
+    //!
+    //! note that items are queued by copying their value, so the req 
+    //! parameter can disappear once the request has been queued
+    //!
+    //! fails if request instance is already busy, or can't add it to the queue
     InterTaskRequest::Result request(queueEntry& req, TickType_t timeout = 0) 
     { 
         InterTaskRequest::Result result = InterTaskRequest::Result::pending;
@@ -94,7 +116,7 @@ class RequestQueue
         return result; 
     }
     
-    // receive a request
+    //! receive a request
     BaseType_t getRequest(queueEntry* req, int timeout)
     {
         BaseType_t result = xQueueReceive(queue, req, timeout);
@@ -106,7 +128,7 @@ class RequestQueue
         return result;
     }
 
-    // retrieve a request's payload
+    //! retrieve a request's payload.
     // assumes it's all done with
     BaseType_t getPayload(P& payload, int timeout, uint32_t* pRequested = nullptr)
     {
@@ -126,7 +148,8 @@ class RequestQueue
     }
 
 
-    // polled in task's loop
+    //! De-queue a request and execute it.
+    //! Polled in task's loop; does nothing if no requests are pending
     InterTaskRequest::Result executeRequest(T& instance, int timeout)
     {
         InterTaskRequest::Result result = InterTaskRequest::Result::inactive; // did nothing
@@ -143,6 +166,7 @@ class RequestQueue
         return result;
     }
 
+    //! \return count of messages waiting in the request queue
     UBaseType_t messagesWaiting(void) { return uxQueueMessagesWaiting(queue); }
 };
 
@@ -636,35 +660,55 @@ class StripTask : public FaderMonsterTask
 //    888                               
 //    888                               
 //    888                               
-//  
-// pots, faders and port expanders are all on the
-// same SPI bus, so need to be dealt with together
+// 
+
+/**
+    Pots task.
+    pots, faders and port expanders are all on the
+    same SPI bus, so need to be dealt with together
+ */
 class PotsTask : public FaderMonsterTask
 { 
+    //! record of MIDI request sent for each pot
     static struct MIDIreq
     {
-        InterTaskRequest req;
-        int lastValue;
+        InterTaskRequest req; //!< request status
+        int lastValue;        //!< last-sent value
     } midiReqs[NUM_POTS];
 
-    static ContinuousPot allPots[NUM_POTS];
-    static StripTask* stripTasks[NUM_POTS];
+    static ContinuousPot allPots[NUM_POTS]; //!< status for all pots
+    static StripTask* stripTasks[NUM_POTS]; //!< pointers to strip tasks that "own" each pot
     
+    //! Update ADC readings
     void updateADCs(void);
-    float raw2volts(uint16_t raw) { return (float) raw / 65535.0f * 5.0f; }
+
+    //! Convert raw ADC reading to volts
+    // \return voltage level
+    float raw2volts(uint16_t raw) //!< raw ADC reading
+        { return (float) raw / 65535.0f * 5.0f; }
 
   public:
-    PotsTask(const char* _name, 
-              configSTACK_DEPTH_TYPE _stackDepth, 
-              void* _params,
-              UBaseType_t _priority)
+    PotsTask(const char* _name, //!< task name
+              configSTACK_DEPTH_TYPE _stackDepth, //!< task stack size (in 32-bit words)
+              void* _params, //!< parameters
+              UBaseType_t _priority) //!< priority
     : FaderMonsterTask{_name, _stackDepth, _params, _priority}
     {}
     
-    void run(void) override;
-    ContinuousPot& getPot(int n) { return allPots[n]; }
-    void setOwner(StripTask* pTask, int n) { stripTasks[n] = pTask; }
-    void notifyOwner(int n) 
+    void run(void) override;    //!< FreeRTOS task
+
+    //! \return reference to a specific pot instance
+    ContinuousPot& getPot(int n) //!< instance index
+        { return allPots[n]; }
+
+    //! Inform pots task of the strip task that "owns" a pot instance        
+    void setOwner(StripTask* pTask, //!< pointer to a strip task instance
+                  int n) //!< pot instance index
+                  { stripTasks[n] = pTask; }
+
+    //! Notify strip task that the pot it owns has changed value.
+    //! Also sends a MIDI message if the value is different from the previous one.
+    void notifyOwner(int n) //!< pot instance index
     { 
         static elapsedMillis lastMIDI = 0;
         if (nullptr != stripTasks[n]) 
