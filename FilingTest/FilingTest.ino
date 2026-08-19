@@ -6,38 +6,38 @@ FaderMonsterSettings faderMonsterSettings;
 //StripColours stripColours;
 
 const char* testStrings[] = {
-	"stripsConfig.0.colours.ringLEDs.colour", 
-	"stripsConfig.0.colours.ringLEDs.pattern", // 1
-	"stripsConfig.0.colours.buttonLED.colour",
-	"stripsConfig.0.colours.scribble.fg", //3
-	"stripsConfig.0.colours.scribble.bg",
-	"stripsConfig.0.colours.scribble.txt",
-	"stripsConfig.0.controls.fader.controlType", // 6
-	"stripsConfig.0.controls.fader.minVal", // 7
-	"stripsConfig.0.controls.fader.maxVal",
-	"stripsConfig.0.controls.fader.channel",
-	"stripsConfig.0.controls.fader.controlNum",
-	"stripsConfig.0.controls.fader.name",
-	"stripsConfig.0.controls.pot.controlType",
-	"stripsConfig.0.controls.pot.minVal",
-	"stripsConfig.0.controls.pot.maxVal",
-	"stripsConfig.0.controls.pot.channel",
-	"stripsConfig.0.controls.pot.controlNum",
-	"stripsConfig.0.controls.pot.name",
-	"stripsConfig.0.controls.button.controlType",
-	"stripsConfig.0.controls.button.minVal",
-	"stripsConfig.0.controls.button.maxVal",
-	"stripsConfig.0.controls.button.channel",
-	"stripsConfig.0.controls.button.controlNum",
-	"stripsConfig.0.controls.button.name", //23
+	"stripsConfig.colours.0.ringLEDs.colour", 
+	"stripsConfig.colours.0.ringLEDs.pattern", // 1
+	"stripsConfig.colours.0.buttonLED.colour",
+	"stripsConfig.colours.0.scribble.fg", //3
+	"stripsConfig.colours.0.scribble.bg",
+	"stripsConfig.colours.0.scribble.txt",
+	"stripsConfig.controls.0.fader.controlType", // 6
+	"stripsConfig.controls.0.fader.minVal", // 7
+	"stripsConfig.controls.0.fader.maxVal",
+	"stripsConfig.controls.0.fader.channel",
+	"stripsConfig.controls.0.fader.controlNum",
+	"stripsConfig.controls.0.fader.name",
+	"stripsConfig.controls.0.pot.controlType",
+	"stripsConfig.controls.0.pot.minVal",
+	"stripsConfig.controls.0.pot.maxVal",
+	"stripsConfig.controls.0.pot.channel",
+	"stripsConfig.controls.0.pot.controlNum",
+	"stripsConfig.controls.0.pot.name",
+	"stripsConfig.controls.0.button.controlType",
+	"stripsConfig.controls.0.button.minVal",
+	"stripsConfig.controls.0.button.maxVal",
+	"stripsConfig.controls.0.button.channel",
+	"stripsConfig.controls.0.button.controlNum",
+	"stripsConfig.controls.0.button.name", //23
 
-	"stripsConfig.1.colours.ringLEDs.colour",
-	"stripsConfig.1.controls.button.name",
+	"stripsConfig.colours.1.ringLEDs.colour",
+	"stripsConfig.controls.1.button.name",
 
-	"stripsConfig.7.colours.ringLEDs.colour",
-	"stripsConfig.7.controls.button.name",
+	"stripsConfig.colours.7.ringLEDs.colour",
+	"stripsConfig.controls.7.button.name",
 
-	"stripsConfig.0.controls"
+	"stripsConfig.controls"
 
 };
 
@@ -118,7 +118,7 @@ bool setuint16_t(void* dst, const char* src)
 
 //===================================================================
 bool getint(char* dst, void* src) { sprintf(dst, "0x%X", *(int*) src); return false; }
-bool getchar(char* dst, void* src) { sprintf(dst, "%s", (char*) src); return false; }
+bool getchar(char* dst, void* src) { sprintf(dst, "\"%s\"", (char*) src); return false; }
 bool getpattern_t(char* dst, void* src) 
 { 
   pattern_t& patt = *(pattern_t*) src;
@@ -179,8 +179,53 @@ void testCfgBase(CfgBaseOffset& cfgbo, int indent = 0)
   }
 }
 
+int CSVlineCount;
+void testToCSV(CfgBaseOffset& cfgbo, //!< structure to save
+               char* buf,            //!< text buffer: must be big enough!
+               const int bufOff=0)   //!< where to append
+{
+  int mc = cfgbo.getMemberCount();
+  char* base = (char*) &cfgbo;
+
+  if (0 == bufOff)
+    Serial.printf("\nCSV for %s settings\n", cfgbo.getName(-1));
+
+  for (int i=0;i<mc;i++)
+  {
+    int dummy;
+    const char* nm = cfgbo.getName(i);
+    offsetResult ofs = cfgbo.toOffset(nm, dummy); // information on this member
+    //Serial.printf("%s has %d elements of size %d\n", nm, ofs.count, ofs.size);
+    for (int n=0;n<ofs.count;n++) // deal with array members
+    {
+      int newOff;
+      if (1 == ofs.count)
+        newOff = bufOff + sprintf(buf + bufOff, ".%s", nm);
+      else
+        newOff = bufOff + sprintf(buf + bufOff, ".%s.%d", nm, n+1);
+
+      if (nullptr == ofs.getter) // not a leaf
+      {
+        testToCSV(*(CfgBaseOffset*)(base + ofs.offset + n*ofs.size), buf, newOff);
+      }
+      else 
+      {
+        newOff = newOff + sprintf(buf + newOff, ", "); // add CSV separator
+        ofs.getter(buf+newOff,base + ofs.offset + n*ofs.size);
+        Serial.println(buf+1); // omit spurious leading '.'
+        CSVlineCount++;
+      }
+      if (1 != ofs.count)
+        Serial.println();
+    }
+  }
+}
+
 void setup() 
 {
+  pinMode(TFT_BLK, OUTPUT);
+  digitalWriteFast(TFT_BLK, 0);
+
   offsetResult offsetS;
   char* base = (char*) &faderMonsterSettings;
   char buf[50];
@@ -189,8 +234,8 @@ void setup()
     ;
   Serial.println("\n=======\nStarted"); Serial.flush();
   Serial.printf("sizeof faderMonsterSettings is %d\n", sizeof faderMonsterSettings);
-  Serial.printf("sizeof stripsConfig[0] is %d\n", sizeof faderMonsterSettings.stripsConfig[0]);
-  Serial.printf("address of stripsConfig.0.colours.scribble.fg is %08X\n", (uint32_t) &faderMonsterSettings.stripsConfig[0].colours.scribble.fg);
+  Serial.printf("sizeof stripsConfig.colours[0] is %d\n", sizeof faderMonsterSettings.stripsConfig.colours[0]);
+  Serial.printf("address of stripsConfig.colours.0.scribble.fg is %08X\n", (uint32_t) &faderMonsterSettings.stripsConfig.colours[0].scribble.fg);
 
   for (int i=0;i<COUNT_OF(testStrings); i++)
   {
@@ -210,7 +255,7 @@ void setup()
         // setpattern_t(base+offset, pattern2);
         offsetS.setter(base+offset, pattern2);
         for (int j=0;j<LEDS_PER_RING;j++)
-          Serial.printf("%06X ", faderMonsterSettings.stripsConfig[0].colours.ringLEDs.pattern[j]);
+          Serial.printf("%06X ", faderMonsterSettings.stripsConfig.colours[0].ringLEDs.pattern[j]);
         Serial.println('\n');
         break;  
         
@@ -221,9 +266,9 @@ void setup()
         offsetS.setter(base+offset, buf);
         if (5 == i)
           Serial.printf("%04hX,%04hX,%04hX\n\n",
-            faderMonsterSettings.stripsConfig[0].colours.scribble.fg,
-            faderMonsterSettings.stripsConfig[0].colours.scribble.bg,
-            faderMonsterSettings.stripsConfig[0].colours.scribble.txt
+            faderMonsterSettings.stripsConfig.colours[0].scribble.fg,
+            faderMonsterSettings.stripsConfig.colours[0].scribble.bg,
+            faderMonsterSettings.stripsConfig.colours[0].scribble.txt
                         );
         break;
 
@@ -231,7 +276,7 @@ void setup()
         sprintf(buf,"%d", 42);
         // setMIDIcontrolType(base+offset, buf);
         offsetS.setter(base+offset, buf);
-        Serial.printf("%d\n\n", faderMonsterSettings.stripsConfig[0].controls.fader.controlType);
+        Serial.printf("%d\n\n", faderMonsterSettings.stripsConfig.controls[0].fader.controlType);
         break;  
         
       // stripsConfig.0.controls.button.name
@@ -239,7 +284,7 @@ void setup()
         sprintf(buf,"Button name");
         // setchar(base+offset, buf);
         offsetS.setter(base+offset, buf);
-        Serial.printf("%s\n\n", faderMonsterSettings.stripsConfig[0].controls.button.name);
+        Serial.printf("%s\n\n", faderMonsterSettings.stripsConfig.controls[0].button.name);
         break;  
         
     }
@@ -249,8 +294,43 @@ void setup()
     MIDIcontrolSetting mcs;
     Serial.printf("%s has %d members\n", mcs.getName(-1), mcs.getMemberCount());
     
-    StripColours sc;
-    testCfgBase(sc);
+    {
+      char buf[300];
+      StripColours sc;
+      testCfgBase(sc);
+
+      CSVlineCount = 0;
+      testToCSV(sc, buf);
+      Serial.printf("// %d settings lines\n\n", CSVlineCount);
+    }
+
+    {
+      char buf[300];
+      FaderMonsterSettings sc;
+      for (int i=0;i<NUM_POTS;i++)
+      {
+        sprintf(sc.stripsConfig.controls[i].fader.name, "Fader%d", i+1);
+        sprintf(sc.stripsConfig.controls[i].pot.name, "Pot%d", i+1);
+        sprintf(sc.stripsConfig.controls[i].button.name, "Button%d", i+1);
+      }
+
+      CSVlineCount = 0;
+      testToCSV(sc, buf);
+      Serial.printf("// %d settings lines\n\n", CSVlineCount);
+
+      // save the strip colour scheme
+      // there's probably a better way of doing this...
+      CSVlineCount = 0;
+      for (int i=0;i<NUM_POTS;i++)
+      {
+        CfgBaseOffset* psc2 = sc.stripsConfig.colours+i;
+        int offset = sprintf(buf, ".stripsConfig.colours.%d", i+1);
+        testToCSV(*psc2, buf, offset);
+        Serial.println();
+      }
+      Serial.printf("// %d settings lines\n\n", CSVlineCount);
+
+    }
   }
 }
 

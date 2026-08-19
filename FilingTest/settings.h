@@ -3,83 +3,83 @@
 
 #define TO_OFFSET_LEAF_ARRAY(...)
 
-// types: {'StripSettings', 'FaderMonsterSettings', 'StripControls', 'cfgRingLEDs', 'MIDIcontrolSetting', 'TFTcolours', 'StripColours', 'cfgButtonLED'}
+// types: {'cfgRingLEDs', 'StripControls', 'StripColours', 'FaderMonsterSettings', 'StripSettings', 'cfgButtonLED', 'TFTcolours', 'MIDIcontrolSetting'}
 /*
-stripsConfig.1
-stripsConfig.1.colours
-stripsConfig.1.colours.ringLEDs
-int stripsConfig.1.colours.ringLEDs.colour
-pattern_t stripsConfig.1.colours.ringLEDs.pattern
-stripsConfig.1.colours.buttonLED
-int stripsConfig.1.colours.buttonLED.colour
-stripsConfig.1.colours.scribble
-uint16_t stripsConfig.1.colours.scribble.fg
-uint16_t stripsConfig.1.colours.scribble.bg
-uint16_t stripsConfig.1.colours.scribble.txt
-stripsConfig.1.controls
-stripsConfig.1.controls.fader
-MIDIcontrolType stripsConfig.1.controls.fader.controlType
-int stripsConfig.1.controls.fader.minVal
-int stripsConfig.1.controls.fader.maxVal
-int stripsConfig.1.controls.fader.channel
-int stripsConfig.1.controls.fader.controlNum
-char stripsConfig.1.controls.fader.name
-stripsConfig.1.controls.pot
-MIDIcontrolType stripsConfig.1.controls.pot.controlType
-int stripsConfig.1.controls.pot.minVal
-int stripsConfig.1.controls.pot.maxVal
-int stripsConfig.1.controls.pot.channel
-int stripsConfig.1.controls.pot.controlNum
-char stripsConfig.1.controls.pot.name
-stripsConfig.1.controls.button
-MIDIcontrolType stripsConfig.1.controls.button.controlType
-int stripsConfig.1.controls.button.minVal
-int stripsConfig.1.controls.button.maxVal
-int stripsConfig.1.controls.button.channel
-int stripsConfig.1.controls.button.controlNum
-char stripsConfig.1.controls.button.name
+stripsConfig
+stripsConfig.colours.1
+stripsConfig.colours.1.ringLEDs
+int stripsConfig.colours.1.ringLEDs.colour
+pattern_t stripsConfig.colours.1.ringLEDs.pattern
+stripsConfig.colours.1.buttonLED
+int stripsConfig.colours.1.buttonLED.colour
+stripsConfig.colours.1.scribble
+uint16_t stripsConfig.colours.1.scribble.fg
+uint16_t stripsConfig.colours.1.scribble.bg
+uint16_t stripsConfig.colours.1.scribble.txt
+stripsConfig.controls.1
+stripsConfig.controls.1.fader
+MIDIcontrolType stripsConfig.controls.1.fader.controlType
+int stripsConfig.controls.1.fader.minVal
+int stripsConfig.controls.1.fader.maxVal
+int stripsConfig.controls.1.fader.channel
+int stripsConfig.controls.1.fader.controlNum
+char stripsConfig.controls.1.fader.name
+stripsConfig.controls.1.pot
+MIDIcontrolType stripsConfig.controls.1.pot.controlType
+int stripsConfig.controls.1.pot.minVal
+int stripsConfig.controls.1.pot.maxVal
+int stripsConfig.controls.1.pot.channel
+int stripsConfig.controls.1.pot.controlNum
+char stripsConfig.controls.1.pot.name
+stripsConfig.controls.1.button
+MIDIcontrolType stripsConfig.controls.1.button.controlType
+int stripsConfig.controls.1.button.minVal
+int stripsConfig.controls.1.button.maxVal
+int stripsConfig.controls.1.button.channel
+int stripsConfig.controls.1.button.controlNum
+char stripsConfig.controls.1.button.name
 
-{'MIDIcontrolType', 'char', 'pattern_t', 'uint16_t', 'int'}
+{'uint16_t', 'pattern_t', 'int', 'MIDIcontrolType', 'char'}
 
 24 leaves:
-stripsConfig.1.colours.ringLEDs.colour
-stripsConfig.1.colours.ringLEDs.pattern
-stripsConfig.1.colours.buttonLED.colour
-stripsConfig.1.colours.scribble.fg
-stripsConfig.1.colours.scribble.bg
-stripsConfig.1.colours.scribble.txt
-stripsConfig.1.controls.fader.controlType
-stripsConfig.1.controls.fader.minVal
-stripsConfig.1.controls.fader.maxVal
-stripsConfig.1.controls.fader.channel
-stripsConfig.1.controls.fader.controlNum
-stripsConfig.1.controls.fader.name
-stripsConfig.1.controls.pot.controlType
-stripsConfig.1.controls.pot.minVal
-stripsConfig.1.controls.pot.maxVal
-stripsConfig.1.controls.pot.channel
-stripsConfig.1.controls.pot.controlNum
-stripsConfig.1.controls.pot.name
-stripsConfig.1.controls.button.controlType
-stripsConfig.1.controls.button.minVal
-stripsConfig.1.controls.button.maxVal
-stripsConfig.1.controls.button.channel
-stripsConfig.1.controls.button.controlNum
-stripsConfig.1.controls.button.name
+stripsConfig.colours.1.ringLEDs.colour
+stripsConfig.colours.1.ringLEDs.pattern
+stripsConfig.colours.1.buttonLED.colour
+stripsConfig.colours.1.scribble.fg
+stripsConfig.colours.1.scribble.bg
+stripsConfig.colours.1.scribble.txt
+stripsConfig.controls.1.fader.controlType
+stripsConfig.controls.1.fader.minVal
+stripsConfig.controls.1.fader.maxVal
+stripsConfig.controls.1.fader.channel
+stripsConfig.controls.1.fader.controlNum
+stripsConfig.controls.1.fader.name
+stripsConfig.controls.1.pot.controlType
+stripsConfig.controls.1.pot.minVal
+stripsConfig.controls.1.pot.maxVal
+stripsConfig.controls.1.pot.channel
+stripsConfig.controls.1.pot.controlNum
+stripsConfig.controls.1.pot.name
+stripsConfig.controls.1.button.controlType
+stripsConfig.controls.1.button.minVal
+stripsConfig.controls.1.button.maxVal
+stripsConfig.controls.1.button.channel
+stripsConfig.controls.1.button.controlNum
+stripsConfig.controls.1.button.name
 
 */
 //========================================
+extern bool setuint16_t(void* dst, const char* src);
+extern bool setpattern_t(void* dst, const char* src);
+extern bool setint(void* dst, const char* src);
 extern bool setMIDIcontrolType(void* dst, const char* src);
 extern bool setchar(void* dst, const char* src);
-extern bool setpattern_t(void* dst, const char* src);
-extern bool setuint16_t(void* dst, const char* src);
-extern bool setint(void* dst, const char* src);
 
+extern bool getuint16_t(char* dst, void* src);
+extern bool getpattern_t(char* dst, void* src);
+extern bool getint(char* dst, void* src);
 extern bool getMIDIcontrolType(char* dst, void* src);
 extern bool getchar(char* dst, void* src);
-extern bool getpattern_t(char* dst, void* src);
-extern bool getuint16_t(char* dst, void* src);
-extern bool getint(char* dst, void* src);
 //========================================
 
 class TFTcolours : public CfgBaseOffset
@@ -95,7 +95,7 @@ class TFTcolours : public CfgBaseOffset
     //-------------------------------------------------
     virtual offsetResult toOffset(const char* str, int& consume)
     {
-        offsetResult result{-1}; // not found
+        offsetResult result{-1, 1, 0, nullptr, nullptr}; // not found
         [[maybe_unused]] int consumed = 0;
         do
         {
@@ -121,7 +121,7 @@ class cfgRingLEDs : public CfgBaseOffset
     //-------------------------------------------------
     virtual offsetResult toOffset(const char* str, int& consume)
     {
-        offsetResult result{-1}; // not found
+        offsetResult result{-1, 1, 0, nullptr, nullptr}; // not found
         [[maybe_unused]] int consumed = 0;
         do
         {
@@ -145,7 +145,7 @@ class cfgButtonLED : public CfgBaseOffset
     //-------------------------------------------------
     virtual offsetResult toOffset(const char* str, int& consume)
     {
-        offsetResult result{-1}; // not found
+        offsetResult result{-1, 1, 0, nullptr, nullptr}; // not found
         [[maybe_unused]] int consumed = 0;
         do
         {
@@ -170,7 +170,7 @@ class MIDIcontrolSetting : public CfgBaseOffset
     //-------------------------------------------------
     virtual offsetResult toOffset(const char* str, int& consume)
     {
-        offsetResult result{-1}; // not found
+        offsetResult result{-1, 1, 0, nullptr, nullptr}; // not found
         [[maybe_unused]] int consumed = 0;
         do
         {
@@ -198,7 +198,7 @@ class StripControls : public CfgBaseOffset
     //-------------------------------------------------
     virtual offsetResult toOffset(const char* str, int& consume)
     {
-        offsetResult result{-1}; // not found
+        offsetResult result{-1, 1, 0, nullptr, nullptr}; // not found
         [[maybe_unused]] int consumed = 0;
         do
         {
@@ -225,7 +225,7 @@ class StripColours : public CfgBaseOffset
     //-------------------------------------------------
     virtual offsetResult toOffset(const char* str, int& consume)
     {
-        offsetResult result{-1}; // not found
+        offsetResult result{-1, 1, 0, nullptr, nullptr}; // not found
         [[maybe_unused]] int consumed = 0;
         do
         {
@@ -242,8 +242,8 @@ class StripSettings : public CfgBaseOffset
   public:
     static constexpr const char* className{"StripSettings"};
     const char* getName(int n) { return n<0?className:memberNames[n]; }
-    StripColours colours;
-    StripControls controls;
+    StripColours colours[NUM_POTS];
+    StripControls controls[NUM_POTS];
 
     static constexpr const char* memberNames[]{"colours", "controls"};
     int getMemberCount(void) { return 2; }
@@ -251,12 +251,12 @@ class StripSettings : public CfgBaseOffset
     //-------------------------------------------------
     virtual offsetResult toOffset(const char* str, int& consume)
     {
-        offsetResult result{-1}; // not found
+        offsetResult result{-1, 1, 0, nullptr, nullptr}; // not found
         [[maybe_unused]] int consumed = 0;
         do
         {
-            TO_OFFSET(colours);
-            TO_OFFSET(controls);
+            TO_OFFSET_ARRAY(colours);
+            TO_OFFSET_ARRAY(controls);
         } while (0);
         return result;
     }
@@ -267,7 +267,7 @@ class FaderMonsterSettings : public CfgBaseOffset
   public:
     static constexpr const char* className{"FaderMonsterSettings"};
     const char* getName(int n) { return n<0?className:memberNames[n]; }
-    StripSettings stripsConfig[NUM_POTS];
+    StripSettings stripsConfig;
 
     static constexpr const char* memberNames[]{"stripsConfig"};
     int getMemberCount(void) { return 1; }
@@ -275,11 +275,11 @@ class FaderMonsterSettings : public CfgBaseOffset
     //-------------------------------------------------
     virtual offsetResult toOffset(const char* str, int& consume)
     {
-        offsetResult result{-1}; // not found
+        offsetResult result{-1, 1, 0, nullptr, nullptr}; // not found
         [[maybe_unused]] int consumed = 0;
         do
         {
-            TO_OFFSET_ARRAY(stripsConfig);
+            TO_OFFSET(stripsConfig);
         } while (0);
         return result;
     }

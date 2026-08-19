@@ -37,13 +37,13 @@ d1 = {
 
     "StripSettings":
         [
-            ("StripColours", "colours"),
-            ("StripControls", "controls"),            
+            ("StripColours", "colours", "NUM_POTS"),
+            ("StripControls", "controls", "NUM_POTS"), 
         ],
 
     "FaderMonsterSettings": 
         [
-            ("StripSettings", "stripsConfig", "NUM_POTS")
+            ("StripSettings", "stripsConfig")
         ],
 }
 
@@ -117,7 +117,7 @@ def dictToClasses(d):
     //-------------------------------------------------
     virtual offsetResult toOffset(const char* str, int& consume)
     {
-        offsetResult result{-1}; // not found
+        offsetResult result{-1, 1, 0, nullptr, nullptr}; // not found
         [[maybe_unused]] int consumed = 0;
         do
         {""")

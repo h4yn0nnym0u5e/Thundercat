@@ -19,6 +19,8 @@ class pattern_t
 typedef struct 
         {
             int offset; //!< offset of member in class
+            int count;  //!< number of items in an array member
+            int size;   //!< size of entry in array member
             bool (*setter)(void* dst, const char* src); //!< function to convert string into structure value
             bool (*getter)(char* dst, void* src); //!< retrieve value in string format
         } 
@@ -72,9 +74,10 @@ enum class MIDIcontrolType : int
         if (0 == strncmp(str, #mbr, mbrlen) && ('.' == str[mbrlen] || 0 == str[mbrlen])) \
         { \
             result.offset = (char*) &mbr - (char*) this; consumed += mbrlen+1; str += mbrlen; \
-            if (0 == *str) { Serial.println(str); result.offset = -1; break; } /* isn't .n. */ \
+            result.size = sizeof mbr[0]; result.count = sizeof mbr / result.size; \
+            if (0 == *str) break; /* isn't .n. : still useful */ \
             int index, n; n = sscanf(str+1,"%d%n",&index,&mbrlen); \
-            if (n<1) {Serial.println(str); result.offset = -1; break; } else { result.offset += index*(sizeof mbr[0]); str += mbrlen+1; } \
+            if (n<1) { result.offset = -1; break; } else { result.offset += index*(sizeof mbr[0]); str += mbrlen+1; } \
             if (0 != *str) { offsetResult extra = mbr[0].toOffset(str+1, consume); \
                              if (extra.offset >= 0) extra.offset += result.offset; \
                              result = extra; } \
