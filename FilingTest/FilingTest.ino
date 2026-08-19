@@ -35,7 +35,10 @@ const char* testStrings[] = {
 	"stripsConfig.1.controls.button.name",
 
 	"stripsConfig.7.colours.ringLEDs.colour",
-	"stripsConfig.7.controls.button.name"
+	"stripsConfig.7.controls.button.name",
+
+	"stripsConfig.0.controls"
+
 };
 
 const char* pattern = "1,2,3,0xcafe,0xbabe,6,7,8,9,0xA, \n 11,12,13,14,15,0x10,17,18,0xDEAD,0xBEEF";
@@ -112,20 +115,73 @@ bool setuint16_t(void* dst, const char* src)
 
   return ok;
 }
+
+//===================================================================
+bool getint(char* dst, void* src) { sprintf(dst, "0x%X", *(int*) src); return false; }
+bool getchar(char* dst, void* src) { sprintf(dst, "%s", (char*) src); return false; }
+bool getpattern_t(char* dst, void* src) 
+{ 
+  pattern_t& patt = *(pattern_t*) src;
+  const char* sep = "";
+  for (int i=0;i<LEDS_PER_RING;i++)
+  {
+    dst += sprintf(dst, "%s0x%06X", sep, patt[i] & 0xFFFFFF);
+    sep = ", ";
+  }
+  return false; 
+}
+bool getMIDIcontrolType(char* dst, void* src) { return getint(dst,src); }
+bool getuint16_t(char* dst, void* src) { sprintf(dst, "0x%04X", *(uint16_t*) src); return false; }
+
 //===================================================================
 
-int testToOffset(const char* str)
+offsetResult testToOffset(const char* str)
 {
   char* base = (char*) &faderMonsterSettings;
-  int dummy, offset = faderMonsterSettings.toOffset(str, dummy);
-  Serial.printf("Test '%s'; offset is %d; address is %08X\n", str, offset, base+offset);
-  return offset;
+  int dummy;
+  offsetResult offsetS = faderMonsterSettings.toOffset(str, dummy);
+  int offset = offsetS.offset;
+  Serial.printf("Test '%s'; offset is %d; address is %08X", str, offset, base+offset);
+  if (nullptr != offsetS.getter)
+    Serial.printf("; setter at 0x%08x; getter at 0x%08x\n", (uint32_t) offsetS.setter, (uint32_t) offsetS.getter);
+  else
+    Serial.println();    
+  return offsetS;
 }
 
+void testCfgBase(CfgBaseOffset& cfgbo, int indent = 0)
+{
+  char indt[indent+1];
+  memset(indt, ' ', indent);
+  indt[indent] = 0;
+
+  int mc = cfgbo.getMemberCount();
+  char* base = (char*) &cfgbo;
+
+  Serial.printf("%s%s has %d members\n", indt, cfgbo.getName(-1), mc);
+  for (int i=0;i<mc;i++)
+  {
+    int dummy;
+    const char* nm = cfgbo.getName(i);
+    offsetResult ofs = cfgbo.toOffset(nm, dummy);
+    if (nullptr == ofs.getter) // not a leaf
+    {
+      Serial.printf("%s  %s\n", indt, nm);
+      testCfgBase(*(CfgBaseOffset*)(base+ofs.offset), indent+4);
+    }
+    else 
+    {
+      char buf[200]; // patterns are big!
+      ofs.getter(buf,base+ofs.offset);
+      Serial.printf("%s  %s = %s\n", indt, nm, buf);
+    }
+
+  }
+}
 
 void setup() 
 {
-  int offset;
+  offsetResult offsetS;
   char* base = (char*) &faderMonsterSettings;
   char buf[50];
 
@@ -138,7 +194,8 @@ void setup()
 
   for (int i=0;i<COUNT_OF(testStrings); i++)
   {
-    offset = testToOffset(testStrings[i]);
+    offsetS = testToOffset(testStrings[i]);
+    int offset = offsetS.offset;
     switch (i)
     {
       default:
@@ -150,7 +207,8 @@ void setup()
         Serial.println(); break;
 
       case 1:
-        setpattern_t(base+offset, pattern2);
+        // setpattern_t(base+offset, pattern2);
+        offsetS.setter(base+offset, pattern2);
         for (int j=0;j<LEDS_PER_RING;j++)
           Serial.printf("%06X ", faderMonsterSettings.stripsConfig[0].colours.ringLEDs.pattern[j]);
         Serial.println('\n');
@@ -159,7 +217,8 @@ void setup()
 
       case 3 ... 5:
         sprintf(buf,"0x%04x", i*0x1111);
-        setuint16_t(base+offset, buf);
+        // setuint16_t(base+offset, buf);
+        offsetS.setter(base+offset, buf);
         if (5 == i)
           Serial.printf("%04hX,%04hX,%04hX\n\n",
             faderMonsterSettings.stripsConfig[0].colours.scribble.fg,
@@ -170,18 +229,28 @@ void setup()
 
       case 6:
         sprintf(buf,"%d", 42);
-        setMIDIcontrolType(base+offset, buf);
+        // setMIDIcontrolType(base+offset, buf);
+        offsetS.setter(base+offset, buf);
         Serial.printf("%d\n\n", faderMonsterSettings.stripsConfig[0].controls.fader.controlType);
         break;  
         
       // stripsConfig.0.controls.button.name
       case 23:
         sprintf(buf,"Button name");
-        setchar(base+offset, buf);
+        // setchar(base+offset, buf);
+        offsetS.setter(base+offset, buf);
         Serial.printf("%s\n\n", faderMonsterSettings.stripsConfig[0].controls.button.name);
         break;  
         
     }
+  }
+
+  {
+    MIDIcontrolSetting mcs;
+    Serial.printf("%s has %d members\n", mcs.getName(-1), mcs.getMemberCount());
+    
+    StripColours sc;
+    testCfgBase(sc);
   }
 }
 

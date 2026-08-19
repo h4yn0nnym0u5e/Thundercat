@@ -49,10 +49,17 @@ d1 = {
 
 types = set()
 
-def myPrint(s):
+def myPrint(s, addNewline = True):
     global f
     #print(str(s))
-    f.write(str(s)+"\n")
+    f.write(str(s))
+    if addNewline:
+        f.write("\n")
+
+def myAdd(s, addNewline = True):
+    if addNewline:
+        s += '\n'
+    return s        
 
 def varToList(name):
     newnames = name.split(',') # in case of multiple members of same type
@@ -61,21 +68,23 @@ def varToList(name):
 def listToMembers(l,td):
     global types
     names = []
+    s = ""
     for m in l:
         sz = ""
         if 3 == len(m): # array
             type, name, sz = m
             sz2 = sz.strip('-')
-            myPrint(f"    {type} {name}[{sz2}];")
+            s += myAdd(f"    {type} {name}[{sz2}];")
         else: # simple type or class
             type, name = m
-            myPrint(f"    {type} {name};")
+            s += myAdd(f"    {type} {name};")
 
         l = varToList(name)
         names += l
         for n in l:
             td[n] = (type, sz)
-    return names # all the members' names
+
+    return (s,names) # all the members' names
 
 def dictToStructs(d):
     global types
@@ -89,18 +98,26 @@ def dictToStructs(d):
 
 def dictToClasses(d):
     global types
+    s = ""
     for t in d:
         types |= {t}
         td = {}
-        myPrint(f"class {t} : public CfgBaseOffset\n{{\n  public:")
-        names = listToMembers(d[t], td)
+        s += myAdd(f"class {t} : public CfgBaseOffset\n{{\n  public:")
+        s += myAdd(f"""    static constexpr const char* className{{"{t}"}};""")
+        s += myAdd( """    const char* getName(int n) { return n<0?className:memberNames[n]; }""")
+        ns, names = listToMembers(d[t], td)
+        s += myAdd(ns)
         #myPrint(names)
 
-        myPrint("""
+        nameStringArrayValue = '", "'.join(names)
+        s += myAdd(f"""    static constexpr const char* memberNames[]{{"{nameStringArrayValue}"}};""")
+        s += myAdd(f"""    int getMemberCount(void) {{ return {len(names)}; }}""")
+
+        s += myAdd("""
     //-------------------------------------------------
-    virtual int toOffset(const char* str, int& consume)
+    virtual offsetResult toOffset(const char* str, int& consume)
     {
-        int result = -1; // not found
+        offsetResult result{-1}; // not found
         [[maybe_unused]] int consumed = 0;
         do
         {""")
@@ -110,15 +127,17 @@ def dictToClasses(d):
             if td[n][1] != "" and td[n][1][0] != '-':
                 extra = "_ARRAY"                
             if td[n][0] in types:
-                myPrint(f"            TO_OFFSET{extra}({n});")
+                s += myAdd(f"            TO_OFFSET{extra}({n});")
             else:
-                myPrint(f"            TO_OFFSET_LEAF{extra}({n});")
+                s += myAdd(f"            TO_OFFSET_LEAF{extra}({n}, {td[n][0]});")
 
-        myPrint("""        } while (0);
+        s += myAdd("""        } while (0);
         return result;
     }""")
 
-        myPrint("};\n")
+        s += myAdd("};\n")
+
+    return s        
 
 setTypes = set()
 leaves = []
@@ -147,6 +166,10 @@ def makeExternSetters(types):
     for type in types:
         myPrint(f"extern bool set{type}(void* dst, const char* src);")
 
+def makeExternGetters(types):
+    for type in types:
+        myPrint(f"extern bool get{type}(char* dst, void* src);")
+
 ##########################################################
 #dictToStructs(d1)
 f = open("settings.h", "w")
@@ -156,8 +179,9 @@ f.write("""
 #define TO_OFFSET_LEAF_ARRAY(...)
 
 """)
-dictToClasses(d1)
-myPrint("")
+
+clss = dictToClasses(d1)
+
 myPrint("// types: " + str(types))
 myPrint("/*")
 printAllPaths(d1,"FaderMonsterSettings","")
@@ -169,11 +193,21 @@ for leaf in leaves:
     myPrint(leaf)
 myPrint("")
 myPrint("*/")
-myPrint("")
+
+myPrint("//========================================")
 makeExternSetters(setTypes)
+myPrint("")
+makeExternGetters(setTypes)
+myPrint("//========================================\n")
+
+myPrint(clss)
+
 f.close()
 
 ##########################################################
 
 f = open("settings.csv", "w")
+for i in range(1,9):
+    for leaf in leaves:
+        myPrint(leaf.replace('.1.', f".{i}.") + ",")
 f.close()

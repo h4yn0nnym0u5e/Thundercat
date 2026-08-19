@@ -3,171 +3,7 @@
 
 #define TO_OFFSET_LEAF_ARRAY(...)
 
-class TFTcolours : public CfgBaseOffset
-{
-  public:
-    uint16_t fg, bg, txt;
-
-    //-------------------------------------------------
-    virtual int toOffset(const char* str, int& consume)
-    {
-        int result = -1; // not found
-        [[maybe_unused]] int consumed = 0;
-        do
-        {
-            TO_OFFSET_LEAF(fg);
-            TO_OFFSET_LEAF(bg);
-            TO_OFFSET_LEAF(txt);
-        } while (0);
-        return result;
-    }
-};
-
-class cfgRingLEDs : public CfgBaseOffset
-{
-  public:
-    int colour;
-    pattern_t pattern;
-
-    //-------------------------------------------------
-    virtual int toOffset(const char* str, int& consume)
-    {
-        int result = -1; // not found
-        [[maybe_unused]] int consumed = 0;
-        do
-        {
-            TO_OFFSET_LEAF(colour);
-            TO_OFFSET_LEAF(pattern);
-        } while (0);
-        return result;
-    }
-};
-
-class cfgButtonLED : public CfgBaseOffset
-{
-  public:
-    int colour;
-
-    //-------------------------------------------------
-    virtual int toOffset(const char* str, int& consume)
-    {
-        int result = -1; // not found
-        [[maybe_unused]] int consumed = 0;
-        do
-        {
-            TO_OFFSET_LEAF(colour);
-        } while (0);
-        return result;
-    }
-};
-
-class MIDIcontrolSetting : public CfgBaseOffset
-{
-  public:
-    MIDIcontrolType controlType;
-    int minVal, maxVal, channel, controlNum;
-    char name[MAX_NAME_LENGTH];
-
-    //-------------------------------------------------
-    virtual int toOffset(const char* str, int& consume)
-    {
-        int result = -1; // not found
-        [[maybe_unused]] int consumed = 0;
-        do
-        {
-            TO_OFFSET_LEAF(controlType);
-            TO_OFFSET_LEAF(minVal);
-            TO_OFFSET_LEAF(maxVal);
-            TO_OFFSET_LEAF(channel);
-            TO_OFFSET_LEAF(controlNum);
-            TO_OFFSET_LEAF(name);
-        } while (0);
-        return result;
-    }
-};
-
-class StripControls : public CfgBaseOffset
-{
-  public:
-    MIDIcontrolSetting fader, pot, button;
-
-    //-------------------------------------------------
-    virtual int toOffset(const char* str, int& consume)
-    {
-        int result = -1; // not found
-        [[maybe_unused]] int consumed = 0;
-        do
-        {
-            TO_OFFSET(fader);
-            TO_OFFSET(pot);
-            TO_OFFSET(button);
-        } while (0);
-        return result;
-    }
-};
-
-class StripColours : public CfgBaseOffset
-{
-  public:
-    cfgRingLEDs ringLEDs;
-    cfgButtonLED buttonLED;
-    TFTcolours scribble;
-
-    //-------------------------------------------------
-    virtual int toOffset(const char* str, int& consume)
-    {
-        int result = -1; // not found
-        [[maybe_unused]] int consumed = 0;
-        do
-        {
-            TO_OFFSET(ringLEDs);
-            TO_OFFSET(buttonLED);
-            TO_OFFSET(scribble);
-        } while (0);
-        return result;
-    }
-};
-
-class StripSettings : public CfgBaseOffset
-{
-  public:
-    StripColours colours;
-    StripControls controls;
-
-    //-------------------------------------------------
-    virtual int toOffset(const char* str, int& consume)
-    {
-        int result = -1; // not found
-        [[maybe_unused]] int consumed = 0;
-        do
-        {
-            TO_OFFSET(colours);
-            TO_OFFSET(controls);
-        } while (0);
-        return result;
-    }
-};
-
-class FaderMonsterSettings : public CfgBaseOffset
-{
-  public:
-    StripSettings stripsConfig[NUM_POTS];
-
-    //-------------------------------------------------
-    virtual int toOffset(const char* str, int& consume)
-    {
-        int result = -1; // not found
-        [[maybe_unused]] int consumed = 0;
-        do
-        {
-            TO_OFFSET_ARRAY(stripsConfig);
-        } while (0);
-        return result;
-    }
-};
-
-
-// types: {'cfgRingLEDs', 'StripControls', 'FaderMonsterSettings', 'cfgButtonLED', 'MIDIcontrolSetting', 'StripSettings', 'StripColours', 'TFTcolours'}
+// types: {'StripSettings', 'FaderMonsterSettings', 'StripControls', 'cfgRingLEDs', 'MIDIcontrolSetting', 'TFTcolours', 'StripColours', 'cfgButtonLED'}
 /*
 stripsConfig.1
 stripsConfig.1.colours
@@ -203,7 +39,7 @@ int stripsConfig.1.controls.button.channel
 int stripsConfig.1.controls.button.controlNum
 char stripsConfig.1.controls.button.name
 
-{'uint16_t', 'MIDIcontrolType', 'int', 'pattern_t', 'char'}
+{'MIDIcontrolType', 'char', 'pattern_t', 'uint16_t', 'int'}
 
 24 leaves:
 stripsConfig.1.colours.ringLEDs.colour
@@ -232,9 +68,221 @@ stripsConfig.1.controls.button.controlNum
 stripsConfig.1.controls.button.name
 
 */
-
-extern bool setuint16_t(void* dst, const char* src);
+//========================================
 extern bool setMIDIcontrolType(void* dst, const char* src);
-extern bool setint(void* dst, const char* src);
-extern bool setpattern_t(void* dst, const char* src);
 extern bool setchar(void* dst, const char* src);
+extern bool setpattern_t(void* dst, const char* src);
+extern bool setuint16_t(void* dst, const char* src);
+extern bool setint(void* dst, const char* src);
+
+extern bool getMIDIcontrolType(char* dst, void* src);
+extern bool getchar(char* dst, void* src);
+extern bool getpattern_t(char* dst, void* src);
+extern bool getuint16_t(char* dst, void* src);
+extern bool getint(char* dst, void* src);
+//========================================
+
+class TFTcolours : public CfgBaseOffset
+{
+  public:
+    static constexpr const char* className{"TFTcolours"};
+    const char* getName(int n) { return n<0?className:memberNames[n]; }
+    uint16_t fg, bg, txt;
+
+    static constexpr const char* memberNames[]{"fg", "bg", "txt"};
+    int getMemberCount(void) { return 3; }
+
+    //-------------------------------------------------
+    virtual offsetResult toOffset(const char* str, int& consume)
+    {
+        offsetResult result{-1}; // not found
+        [[maybe_unused]] int consumed = 0;
+        do
+        {
+            TO_OFFSET_LEAF(fg, uint16_t);
+            TO_OFFSET_LEAF(bg, uint16_t);
+            TO_OFFSET_LEAF(txt, uint16_t);
+        } while (0);
+        return result;
+    }
+};
+
+class cfgRingLEDs : public CfgBaseOffset
+{
+  public:
+    static constexpr const char* className{"cfgRingLEDs"};
+    const char* getName(int n) { return n<0?className:memberNames[n]; }
+    int colour;
+    pattern_t pattern;
+
+    static constexpr const char* memberNames[]{"colour", "pattern"};
+    int getMemberCount(void) { return 2; }
+
+    //-------------------------------------------------
+    virtual offsetResult toOffset(const char* str, int& consume)
+    {
+        offsetResult result{-1}; // not found
+        [[maybe_unused]] int consumed = 0;
+        do
+        {
+            TO_OFFSET_LEAF(colour, int);
+            TO_OFFSET_LEAF(pattern, pattern_t);
+        } while (0);
+        return result;
+    }
+};
+
+class cfgButtonLED : public CfgBaseOffset
+{
+  public:
+    static constexpr const char* className{"cfgButtonLED"};
+    const char* getName(int n) { return n<0?className:memberNames[n]; }
+    int colour;
+
+    static constexpr const char* memberNames[]{"colour"};
+    int getMemberCount(void) { return 1; }
+
+    //-------------------------------------------------
+    virtual offsetResult toOffset(const char* str, int& consume)
+    {
+        offsetResult result{-1}; // not found
+        [[maybe_unused]] int consumed = 0;
+        do
+        {
+            TO_OFFSET_LEAF(colour, int);
+        } while (0);
+        return result;
+    }
+};
+
+class MIDIcontrolSetting : public CfgBaseOffset
+{
+  public:
+    static constexpr const char* className{"MIDIcontrolSetting"};
+    const char* getName(int n) { return n<0?className:memberNames[n]; }
+    MIDIcontrolType controlType;
+    int minVal, maxVal, channel, controlNum;
+    char name[MAX_NAME_LENGTH];
+
+    static constexpr const char* memberNames[]{"controlType", "minVal", "maxVal", "channel", "controlNum", "name"};
+    int getMemberCount(void) { return 6; }
+
+    //-------------------------------------------------
+    virtual offsetResult toOffset(const char* str, int& consume)
+    {
+        offsetResult result{-1}; // not found
+        [[maybe_unused]] int consumed = 0;
+        do
+        {
+            TO_OFFSET_LEAF(controlType, MIDIcontrolType);
+            TO_OFFSET_LEAF(minVal, int);
+            TO_OFFSET_LEAF(maxVal, int);
+            TO_OFFSET_LEAF(channel, int);
+            TO_OFFSET_LEAF(controlNum, int);
+            TO_OFFSET_LEAF(name, char);
+        } while (0);
+        return result;
+    }
+};
+
+class StripControls : public CfgBaseOffset
+{
+  public:
+    static constexpr const char* className{"StripControls"};
+    const char* getName(int n) { return n<0?className:memberNames[n]; }
+    MIDIcontrolSetting fader, pot, button;
+
+    static constexpr const char* memberNames[]{"fader", "pot", "button"};
+    int getMemberCount(void) { return 3; }
+
+    //-------------------------------------------------
+    virtual offsetResult toOffset(const char* str, int& consume)
+    {
+        offsetResult result{-1}; // not found
+        [[maybe_unused]] int consumed = 0;
+        do
+        {
+            TO_OFFSET(fader);
+            TO_OFFSET(pot);
+            TO_OFFSET(button);
+        } while (0);
+        return result;
+    }
+};
+
+class StripColours : public CfgBaseOffset
+{
+  public:
+    static constexpr const char* className{"StripColours"};
+    const char* getName(int n) { return n<0?className:memberNames[n]; }
+    cfgRingLEDs ringLEDs;
+    cfgButtonLED buttonLED;
+    TFTcolours scribble;
+
+    static constexpr const char* memberNames[]{"ringLEDs", "buttonLED", "scribble"};
+    int getMemberCount(void) { return 3; }
+
+    //-------------------------------------------------
+    virtual offsetResult toOffset(const char* str, int& consume)
+    {
+        offsetResult result{-1}; // not found
+        [[maybe_unused]] int consumed = 0;
+        do
+        {
+            TO_OFFSET(ringLEDs);
+            TO_OFFSET(buttonLED);
+            TO_OFFSET(scribble);
+        } while (0);
+        return result;
+    }
+};
+
+class StripSettings : public CfgBaseOffset
+{
+  public:
+    static constexpr const char* className{"StripSettings"};
+    const char* getName(int n) { return n<0?className:memberNames[n]; }
+    StripColours colours;
+    StripControls controls;
+
+    static constexpr const char* memberNames[]{"colours", "controls"};
+    int getMemberCount(void) { return 2; }
+
+    //-------------------------------------------------
+    virtual offsetResult toOffset(const char* str, int& consume)
+    {
+        offsetResult result{-1}; // not found
+        [[maybe_unused]] int consumed = 0;
+        do
+        {
+            TO_OFFSET(colours);
+            TO_OFFSET(controls);
+        } while (0);
+        return result;
+    }
+};
+
+class FaderMonsterSettings : public CfgBaseOffset
+{
+  public:
+    static constexpr const char* className{"FaderMonsterSettings"};
+    const char* getName(int n) { return n<0?className:memberNames[n]; }
+    StripSettings stripsConfig[NUM_POTS];
+
+    static constexpr const char* memberNames[]{"stripsConfig"};
+    int getMemberCount(void) { return 1; }
+
+    //-------------------------------------------------
+    virtual offsetResult toOffset(const char* str, int& consume)
+    {
+        offsetResult result{-1}; // not found
+        [[maybe_unused]] int consumed = 0;
+        do
+        {
+            TO_OFFSET_ARRAY(stripsConfig);
+        } while (0);
+        return result;
+    }
+};
+
+

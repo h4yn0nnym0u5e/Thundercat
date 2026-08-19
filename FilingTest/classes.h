@@ -15,11 +15,25 @@ class pattern_t
     int* getPointer(void) { return &values[0]; }
 };
 
-//! Find offset of class member given its name as a string
+//! what we need to know about a setting item to read or write it
+typedef struct 
+        {
+            int offset; //!< offset of member in class
+            bool (*setter)(void* dst, const char* src); //!< function to convert string into structure value
+            bool (*getter)(char* dst, void* src); //!< retrieve value in string format
+        } 
+        offsetResult;
+
+//! Class for saving and loading settings
 class CfgBaseOffset
 {
   public:
-    virtual int toOffset(const char* str, int& consume) = 0;
+    //! Find offset of class member given its name as a string
+    virtual offsetResult toOffset(const char* str, int& consume) = 0;
+    //! Get names of class and its members
+    virtual const char* getName(int n) = 0;
+    //! Get number of members in class
+    virtual int getMemberCount(void) = 0;
 };
 
 //! structure to 
@@ -40,26 +54,30 @@ enum class MIDIcontrolType : int
 #define TO_OFFSET(mbr) \
         { int mbrlen = strlen(#mbr); \
         if (0 == strncmp(str, #mbr, mbrlen) && ('.' == str[mbrlen] || 0 == str[mbrlen])) \
-            { result = (char*) &mbr - (char*) this; consumed += mbrlen+1; str += mbrlen;\
-                if (0 != *str) { int extra = mbr.toOffset(str+1, consume); result = extra<0?extra:(result+extra); }\
-                break; }}
+            { result.offset = (char*) &mbr - (char*) this; consumed += mbrlen+1; str += mbrlen; \
+              if (0 != *str) { offsetResult extra = mbr.toOffset(str+1, consume); \
+                               if (extra.offset >= 0) extra.offset += result.offset; \
+                               result = extra; } \
+              break; }}
 
-#define TO_OFFSET_LEAF(mbr) \
+#define TO_OFFSET_LEAF(mbr, typ) \
         { int mbrlen = strlen(#mbr); \
+        result.getter = get##typ; result.setter = set##typ;    \
         if (0 == strncmp(str, #mbr, mbrlen) && ('.' == str[mbrlen]  || 0 == str[mbrlen])) \
-            { result = (char*) &mbr - (char*) this; consumed += mbrlen+1; str += mbrlen;\
+            { result.offset = (char*) &mbr - (char*) this; consumed += mbrlen+1; str += mbrlen;\
                 break; }}
 
 #define TO_OFFSET_ARRAY(mbr) \
         { int mbrlen = strlen(#mbr); \
         if (0 == strncmp(str, #mbr, mbrlen) && ('.' == str[mbrlen] || 0 == str[mbrlen])) \
         { \
-            result = (char*) &mbr - (char*) this; consumed += mbrlen+1; str += mbrlen; \
-            if (0 == *str) { Serial.println(str); result = -1; break; } /* isn't .n. */ \
+            result.offset = (char*) &mbr - (char*) this; consumed += mbrlen+1; str += mbrlen; \
+            if (0 == *str) { Serial.println(str); result.offset = -1; break; } /* isn't .n. */ \
             int index, n; n = sscanf(str+1,"%d%n",&index,&mbrlen); \
-            if (n<1) {Serial.println(str); result = -1; break; } else { result += index*(sizeof mbr[0]); str += mbrlen+1; } \
-            if (0 != *str) \
-                { int extra = mbr[0].toOffset(str+1, consume); result = extra<0?extra:(result+extra); }\
+            if (n<1) {Serial.println(str); result.offset = -1; break; } else { result.offset += index*(sizeof mbr[0]); str += mbrlen+1; } \
+            if (0 != *str) { offsetResult extra = mbr[0].toOffset(str+1, consume); \
+                             if (extra.offset >= 0) extra.offset += result.offset; \
+                             result = extra; } \
             break; }}
 
 
