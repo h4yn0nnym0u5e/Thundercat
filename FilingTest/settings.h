@@ -3,16 +3,6 @@
 
 #define TO_OFFSET_LEAF_ARRAY(...)
 
-enum class MIDIcontrolType : int 
-{
-    undefined = 0,
-    CC = 1,     //!< control change
-    RPN = 2,    //!< registered parameter number
-    NRPN = 3,   //!< non-registered parameter number
-    BEND = 4,   //!< pitch bend
-    PC = 5,     //!< program change
-    AT = 6      //!< aftertouch
-};
 class TFTcolours : public CfgBaseOffset
 {
   public:
@@ -176,7 +166,8 @@ class FaderMonsterSettings : public CfgBaseOffset
     }
 };
 
-// types: {'cfgRingLEDs', 'StripSettings', 'StripControls', 'TFTcolours', 'cfgButtonLED', 'StripColours', 'MIDIcontrolSetting', 'FaderMonsterSettings'}
+
+// types: {'cfgRingLEDs', 'StripControls', 'FaderMonsterSettings', 'cfgButtonLED', 'MIDIcontrolSetting', 'StripSettings', 'StripColours', 'TFTcolours'}
 /*
 stripsConfig.1
 stripsConfig.1.colours
@@ -212,8 +203,9 @@ int stripsConfig.1.controls.button.channel
 int stripsConfig.1.controls.button.controlNum
 char stripsConfig.1.controls.button.name
 
-{'char', 'pattern_t', 'uint16_t', 'int', 'MIDIcontrolType'}
+{'uint16_t', 'MIDIcontrolType', 'int', 'pattern_t', 'char'}
 
+24 leaves:
 stripsConfig.1.colours.ringLEDs.colour
 stripsConfig.1.colours.ringLEDs.pattern
 stripsConfig.1.colours.buttonLED.colour
@@ -240,3 +232,9 @@ stripsConfig.1.controls.button.controlNum
 stripsConfig.1.controls.button.name
 
 */
+
+extern bool setuint16_t(void* dst, const char* src);
+extern bool setMIDIcontrolType(void* dst, const char* src);
+extern bool setint(void* dst, const char* src);
+extern bool setpattern_t(void* dst, const char* src);
+extern bool setchar(void* dst, const char* src);

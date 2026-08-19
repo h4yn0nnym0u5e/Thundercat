@@ -143,7 +143,11 @@ def printAllPaths(d, elem, s):
             if e[0] in d:
                 printAllPaths(d, e[0], s2+'.')
 
+def makeExternSetters(types):
+    for type in types:
+        myPrint(f"extern bool set{type}(void* dst, const char* src);")
 
+##########################################################
 #dictToStructs(d1)
 f = open("settings.h", "w")
 f.write("""
@@ -151,26 +155,25 @@ f.write("""
 
 #define TO_OFFSET_LEAF_ARRAY(...)
 
-enum class MIDIcontrolType : int 
-{
-    undefined = 0,
-    CC = 1,     //!< control change
-    RPN = 2,    //!< registered parameter number
-    NRPN = 3,   //!< non-registered parameter number
-    BEND = 4,   //!< pitch bend
-    PC = 5,     //!< program change
-    AT = 6      //!< aftertouch
-};
 """)
 dictToClasses(d1)
+myPrint("")
 myPrint("// types: " + str(types))
 myPrint("/*")
 printAllPaths(d1,"FaderMonsterSettings","")
 myPrint("")
 myPrint(setTypes)
 myPrint("")
+myPrint(f"{len(leaves)} leaves:")
 for leaf in leaves:
     myPrint(leaf)
 myPrint("")
 myPrint("*/")
+myPrint("")
+makeExternSetters(setTypes)
+f.close()
+
+##########################################################
+
+f = open("settings.csv", "w")
 f.close()

@@ -1,5 +1,5 @@
 #include "config.h" // gives us some sizes we need
-#include <string.h> 
+#include <string.h>
 /*
  * Configuration for a strip
  * This is outside the strip, as we want a convenient method to
@@ -22,6 +22,20 @@ class CfgBaseOffset
     virtual int toOffset(const char* str, int& consume) = 0;
 };
 
+//! structure to 
+
+//! Possible MIDI control types
+enum class MIDIcontrolType : int 
+{
+    undefined = 0,
+    CC = 1,     //!< control change
+    RPN = 2,    //!< registered parameter number
+    NRPN = 3,   //!< non-registered parameter number
+    BEND = 4,   //!< pitch bend
+    PC = 5,     //!< program change
+    AT = 6,     //!< aftertouch
+    NOTE = 7    //!< note on / off (button)
+};
 
 #define TO_OFFSET(mbr) \
         { int mbrlen = strlen(#mbr); \
@@ -48,120 +62,7 @@ class CfgBaseOffset
                 { int extra = mbr[0].toOffset(str+1, consume); result = extra<0?extra:(result+extra); }\
             break; }}
 
-/*
-//! colour settings for a TFT display
-class TFTcolours : public CfgBaseOffset
-{
-  public:
-    uint16_t fg,bg,txt;
 
-    //-------------------------------------------------
-    virtual int toOffset(const char* str, int& consume)
-    {
-        int result = -1; // not found
-        int consumed = 0;
-        do
-        {
-            TO_OFFSET_LEAF(fg);
-            TO_OFFSET_LEAF(bg);
-            TO_OFFSET_LEAF(txt);
-        } while (0);
-        return result;
-    }
-};
-
-//! colour settings for a strip
-class StripColours : public CfgBaseOffset
-{
-  public:
-    // ring LEDs
-    class : public CfgBaseOffset {
-      public:
-        int colour; // colour
-        pattern_t pattern; // pattern
-
-        //-------------------------------------------------
-        virtual int toOffset(const char* str, int& consume)
-        {
-            int result = -1; // not found
-            int consumed = 0;
-            do
-            {
-                TO_OFFSET_LEAF(colour);
-                TO_OFFSET_LEAF(pattern);
-            } while (0);
-            return result;
-        }    
-    } ringLEDs;
-
-    // button LED
-    class : public CfgBaseOffset {
-      public:
-        int colour; // colour
-
-        //-------------------------------------------------
-        virtual int toOffset(const char* str, int& consume)
-        {
-            int result = -1; // not found
-            int consumed = 0;
-            do
-            {
-                TO_OFFSET_LEAF(colour);
-            } while (0);
-            return result;
-        }    
-    } buttonLED;
-
-    // scribble display
-    TFTcolours scribble;
-    //-------------------------------------------------
-    virtual int toOffset(const char* str, int& consume)
-    {
-        int result = -1; // not found
-        int consumed = 0;
-        do
-        {
-            TO_OFFSET(ringLEDs);
-            TO_OFFSET(buttonLED);
-            TO_OFFSET(scribble);
-        } while (0);
-        return result;
-    }
-};
-
-
-/ *
- * MIDI control
- * The underlying hardware will generate values in the 
- * range ±1.0f - we map these accordingly
- * /
-class MIDIcontrolSetting
-{
-  public:
-    enum class ControlType : int 
-    {
-        undefined = 0,
-        CC = 1,     //!< control change
-        RPN = 2,    //!< registered parameter number
-        NRPN = 3,   //!< non-registered parameter number
-        BEND = 4,   //!< pitch bend
-        PC = 5,     //!< program change
-        AT = 6      //!< aftertouch
-    };
-
-    ControlType controlType;
-    int minVal,     //!< minimum value - -1.0f maps to this
-        maxVal,     //!< maximum value - +1.0f maps to this
-        channel;    //!< MIDI channel
-    // Add setting for how button reacts to various presses?
-    // Add scaling scheme (linear / log / computed)?
-};
-
-class StripControls
-{
-  public:
-    MIDIcontrolSetting fader, pot, button;
-};
 
 //                      888    888    d8b                            
 //                      888    888    Y8P                            
@@ -175,23 +76,7 @@ class StripControls
 //                                                 Y8b d88P          
 //                                                  "Y88P"           
 //
-
-//! settings for one strip
-class StripSettings
-{
-  public:
-    StripColours  colours;  //!< strip colour choices
-    StripControls controls; //!< strip control choices
-};
-
-class FaderMonsterSettings
-{
-  public:
-    StripSettings stripsConfig[NUM_POTS];
-    // something here for main LCD and SmartKnob?
-};
-*/
-
+// from configMaker.py:
 #include "settings.h"
 
 /*
