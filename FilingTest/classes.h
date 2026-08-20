@@ -11,6 +11,9 @@ class pattern_t
 {
     int values[LEDS_PER_RING];
   public:
+    pattern_t(int c) : values{c} {}
+    pattern_t(int c, int c2) : values{c,c2} {}
+    pattern_t() {}
     int& operator[](int n) { return values[n]; }
     int* getPointer(void) { return &values[0]; }
 };

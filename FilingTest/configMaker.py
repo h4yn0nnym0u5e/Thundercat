@@ -1,49 +1,64 @@
 d1 = {
     "TFTcolours":
         [
-            ("uint16_t", "fg, bg, txt")
+            "colours for use on a TFT display",
+            {"type": "uint16_t", "name": "fg",  "default": "0xE3DC", "doc": "foreground"},
+            {"type": "uint16_t", "name": "bg",  "default": "0x7BEF", "doc": "background"},
+            {"type": "uint16_t", "name": "txt", "default": "0xD69A", "doc": "text"},
         ],
 
     "cfgRingLEDs":
         [
-            ("int", "colour"),
-            ("pattern_t", "pattern")
+            "colour and pattern for use on an LED ring",
+            {"type": "int", "name": "colour", "default": "0xFFFF00", "doc": "colour (24-bit RGB)"},
+            {"type": "pattern_t", "name": "pattern", "default": "0x00FFFF", "doc": "20x colours (24-bit RGB)"}
         ],
 
     "cfgButtonLED":
         [
-            ("int", "colour"),
+            "colour for use on a button",
+            {"type": "int", "name": "colour", "default": "0xFF00FF", "doc": "colour (24-bit RGB)"},
         ],
 
     "MIDIcontrolSetting":
         [
-            ("MIDIcontrolType", "controlType"),
-            ("int", "minVal, maxVal, channel, controlNum"),
-            ("char", "name", "-MAX_NAME_LENGTH")
+            "settings to specify MIDI output generated when a control is changed",
+            {"type": "MIDIcontrolType", "name": "controlType", "doc": "message type: note / CC / bend etc."},
+            {"type": "int", "name": "minVal",  "doc": "minimum value to send"},
+            {"type": "int", "name": "maxVal", "default": "127", "doc": "maximum value to send"},
+            {"type": "int", "name": "channel", "doc": "MIDI channel to send on"},
+            {"type": "int", "name": "controlNum", "default": "2", "doc": "control / note number"},
+            {"type": "char", "name": "name",  "default": '"<unnamed>"', "count": "-MAX_NAME_LENGTH", "doc": "name to display on scribble strip"} # char array, but treated as one item
         ],
 
     "StripControls":
         [
-            ("MIDIcontrolSetting", "fader, pot, button"),
+            "settings for strip MIDI controls",
+            {"type": "MIDIcontrolSetting", "name": "fader", "doc": "fader MIDI settings"},
+            {"type": "MIDIcontrolSetting", "name": "pot", "doc": "continuous pot MIDI settings"},
+            {"type": "MIDIcontrolSetting", "name": "button", "doc": "button MIDI settings"},
         ],
 
 
     "StripColours":
         [
-            ("cfgRingLEDs", "ringLEDs"),
-            ("cfgButtonLED", "buttonLED"),
-            ("TFTcolours", "scribble")
+            "settings for strip colours (display and LEDs)",
+            {"type": "cfgRingLEDs", "name": "ringLEDs", "doc": "ring LEDs settings"},
+            {"type": "cfgButtonLED", "name": "buttonLED", "doc": "button LED settings"},
+            {"type": "TFTcolours", "name": "scribble", "doc": "scribble display colours"}
         ],
 
     "StripSettings":
         [
-            ("StripColours", "colours", "NUM_POTS"),
-            ("StripControls", "controls", "NUM_POTS"), 
+            "settings for the strips",
+            {"type": "StripColours", "name": "colours", "count": "NUM_POTS", "doc": "array of settings for strip colours"},
+            {"type": "StripControls", "name": "controls", "count": "NUM_POTS", "doc": "array of settings for strip MIDI outputs"}, 
         ],
 
     "FaderMonsterSettings": 
         [
-            ("StripSettings", "stripsConfig")
+            "all settings",
+            {"type": "StripSettings", "name": "stripsConfig", "doc": "settings for strips"}
         ],
 }
 
@@ -65,26 +80,48 @@ def varToList(name):
     newnames = name.split(',') # in case of multiple members of same type
     return [n.strip() for n in newnames]
 
+defValues = {'MIDIcontrolType': 'MIDIcontrolType::CC', 
+             'pattern_t': '0', 
+             'int': '0', 
+             'uint16_t': '0', 
+             'char': '0'}
+
 def listToMembers(l,td):
     global types
     names = []
+    memberTypes = []
     s = ""
     for m in l:
         sz = ""
-        if 3 == len(m): # array
-            type, name, sz = m
-            sz2 = sz.strip('-')
-            s += myAdd(f"    {type} {name}[{sz2}];")
-        else: # simple type or class
-            type, name = m
-            s += myAdd(f"    {type} {name};")
+        doc = ""
+        defv = ""
+        if isinstance(m,str):
+            pass
+        else:
+            type, name = (m["type"], m["name"])
+            try:
+                if "default" in m:
+                    defv = f"{{{m["default"]}}}"
+                else:
+                    defv = f"{{{defValues[m["type"]]}}}"
+            except:
+                pass                
+            if "doc" in m:
+                doc = f" //!< {m['doc']}"
+            if "count" in m: # array
+                sz = m["count"]
+                sz2 = sz.strip('-')
+                s += myAdd(f"    {type} {name}[{sz2}]{defv};{doc}")
+            else: # simple type or class
+                s += myAdd(f"    {type} {name}{defv};{doc}")
 
-        l = varToList(name)
-        names += l
-        for n in l:
-            td[n] = (type, sz)
+            l = varToList(name)
+            names += l
+            memberTypes += [type]*len(l)
+            for n in l:
+                td[n] = (type, sz)
 
-    return (s,names) # all the members' names
+    return (s,names,memberTypes) # all the members' names
 
 def dictToStructs(d):
     global types
@@ -102,10 +139,24 @@ def dictToClasses(d):
     for t in d:
         types |= {t}
         td = {}
+        if isinstance(d[t][0], str):
+            s += myAdd(f"//! {d[t][0]}")
         s += myAdd(f"class {t} : public CfgBaseOffset\n{{\n  public:")
         s += myAdd(f"""    static constexpr const char* className{{"{t}"}};""")
         s += myAdd( """    const char* getName(int n) { return n<0?className:memberNames[n]; }""")
-        ns, names = listToMembers(d[t], td)
+        ns, names, memberTypes = listToMembers(d[t], td)
+
+        params = ""
+        inits = ""
+        sep = ""
+        for i in range(0,len(names)):
+            params += f"{sep}{memberTypes[i]} _{names[i]}"
+            inits += f"{sep}{names[i]}{{_{names[i]}}}"
+            sep = ", "
+
+        s += myAdd(f"    {t}({params})")
+        s += myAdd(f"    : {inits} {{}}")
+        s += myAdd(f"    {t}() {{}}\n")
         s += myAdd(ns)
         #myPrint(names)
 
@@ -145,22 +196,23 @@ def printAllPaths(d, elem, s):
     global setTypes, leaves
     root = d[elem]
     for e in root:
-        l = varToList(e[1])
-        index = ""
-        if len(e) > 2 and e[2][0] != '-':
-            index = ".1"
-        for n in l:
-            s2 = s+n+index
-            type = e[0]
-            if type in d:
-                type = ""
-            else:     
-                setTypes |= {type}           
-                type += " "
-                leaves += [s2]
-            myPrint(f"{type}{s2}")
-            if e[0] in d:
-                printAllPaths(d, e[0], s2+'.')
+        if isinstance(e, dict):
+            l = varToList(e["name"])
+            index = ""
+            if "count" in e and e["count"][0] != '-':
+                index = ".1"
+            for n in l:
+                s2 = s+n+index
+                type = e["type"]
+                if type in d:
+                    type = ""
+                else:     
+                    setTypes |= {type}           
+                    type += " "
+                    leaves += [s2]
+                myPrint(f"{type}{s2}")
+                if e["type"] in d:
+                    printAllPaths(d, e["type"], s2+'.')
 
 def makeExternSetters(types):
     for type in types:
@@ -171,26 +223,32 @@ def makeExternGetters(types):
         myPrint(f"extern bool get{type}(char* dst, void* src);")
 
 ##########################################################
+includeGuard = "_SETTINGS_CLASSES_"
 #dictToStructs(d1)
 f = open("settings.h", "w")
-f.write("""
+f.write(f"""
+#if !defined({includeGuard})
+#define {includeGuard}
+
 #include "config.h"
 
 #define TO_OFFSET_LEAF_ARRAY(...)
 
 """)
 
-clss = dictToClasses(d1)
+clss = dictToClasses(d1) # creates types
 
 myPrint("// types: " + str(types))
 myPrint("/*")
-printAllPaths(d1,"FaderMonsterSettings","")
+printAllPaths(d1,"FaderMonsterSettings","") # creates leaves and setTypes
 myPrint("")
 myPrint(setTypes)
 myPrint("")
 myPrint(f"{len(leaves)} leaves:")
+n = 0
 for leaf in leaves:
-    myPrint(leaf)
+    myPrint(f'"{leaf}", // {n}')
+    n += 1
 myPrint("")
 myPrint("*/")
 
@@ -201,6 +259,7 @@ makeExternGetters(setTypes)
 myPrint("//========================================\n")
 
 myPrint(clss)
+myPrint(f"#endif // !defined({includeGuard})")
 
 f.close()
 

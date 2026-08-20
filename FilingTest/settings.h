@@ -1,9 +1,12 @@
 
+#if !defined(_SETTINGS_CLASSES_)
+#define _SETTINGS_CLASSES_
+
 #include "config.h"
 
 #define TO_OFFSET_LEAF_ARRAY(...)
 
-// types: {'cfgRingLEDs', 'StripControls', 'StripColours', 'FaderMonsterSettings', 'StripSettings', 'cfgButtonLED', 'TFTcolours', 'MIDIcontrolSetting'}
+// types: {'MIDIcontrolSetting', 'StripSettings', 'TFTcolours', 'StripColours', 'FaderMonsterSettings', 'cfgRingLEDs', 'cfgButtonLED', 'StripControls'}
 /*
 stripsConfig
 stripsConfig.colours.1
@@ -39,55 +42,62 @@ int stripsConfig.controls.1.button.channel
 int stripsConfig.controls.1.button.controlNum
 char stripsConfig.controls.1.button.name
 
-{'uint16_t', 'pattern_t', 'int', 'MIDIcontrolType', 'char'}
+{'int', 'uint16_t', 'char', 'pattern_t', 'MIDIcontrolType'}
 
 24 leaves:
-stripsConfig.colours.1.ringLEDs.colour
-stripsConfig.colours.1.ringLEDs.pattern
-stripsConfig.colours.1.buttonLED.colour
-stripsConfig.colours.1.scribble.fg
-stripsConfig.colours.1.scribble.bg
-stripsConfig.colours.1.scribble.txt
-stripsConfig.controls.1.fader.controlType
-stripsConfig.controls.1.fader.minVal
-stripsConfig.controls.1.fader.maxVal
-stripsConfig.controls.1.fader.channel
-stripsConfig.controls.1.fader.controlNum
-stripsConfig.controls.1.fader.name
-stripsConfig.controls.1.pot.controlType
-stripsConfig.controls.1.pot.minVal
-stripsConfig.controls.1.pot.maxVal
-stripsConfig.controls.1.pot.channel
-stripsConfig.controls.1.pot.controlNum
-stripsConfig.controls.1.pot.name
-stripsConfig.controls.1.button.controlType
-stripsConfig.controls.1.button.minVal
-stripsConfig.controls.1.button.maxVal
-stripsConfig.controls.1.button.channel
-stripsConfig.controls.1.button.controlNum
-stripsConfig.controls.1.button.name
+"stripsConfig.colours.1.ringLEDs.colour", // 0
+"stripsConfig.colours.1.ringLEDs.pattern", // 1
+"stripsConfig.colours.1.buttonLED.colour", // 2
+"stripsConfig.colours.1.scribble.fg", // 3
+"stripsConfig.colours.1.scribble.bg", // 4
+"stripsConfig.colours.1.scribble.txt", // 5
+"stripsConfig.controls.1.fader.controlType", // 6
+"stripsConfig.controls.1.fader.minVal", // 7
+"stripsConfig.controls.1.fader.maxVal", // 8
+"stripsConfig.controls.1.fader.channel", // 9
+"stripsConfig.controls.1.fader.controlNum", // 10
+"stripsConfig.controls.1.fader.name", // 11
+"stripsConfig.controls.1.pot.controlType", // 12
+"stripsConfig.controls.1.pot.minVal", // 13
+"stripsConfig.controls.1.pot.maxVal", // 14
+"stripsConfig.controls.1.pot.channel", // 15
+"stripsConfig.controls.1.pot.controlNum", // 16
+"stripsConfig.controls.1.pot.name", // 17
+"stripsConfig.controls.1.button.controlType", // 18
+"stripsConfig.controls.1.button.minVal", // 19
+"stripsConfig.controls.1.button.maxVal", // 20
+"stripsConfig.controls.1.button.channel", // 21
+"stripsConfig.controls.1.button.controlNum", // 22
+"stripsConfig.controls.1.button.name", // 23
 
 */
 //========================================
-extern bool setuint16_t(void* dst, const char* src);
-extern bool setpattern_t(void* dst, const char* src);
 extern bool setint(void* dst, const char* src);
-extern bool setMIDIcontrolType(void* dst, const char* src);
+extern bool setuint16_t(void* dst, const char* src);
 extern bool setchar(void* dst, const char* src);
+extern bool setpattern_t(void* dst, const char* src);
+extern bool setMIDIcontrolType(void* dst, const char* src);
 
-extern bool getuint16_t(char* dst, void* src);
-extern bool getpattern_t(char* dst, void* src);
 extern bool getint(char* dst, void* src);
-extern bool getMIDIcontrolType(char* dst, void* src);
+extern bool getuint16_t(char* dst, void* src);
 extern bool getchar(char* dst, void* src);
+extern bool getpattern_t(char* dst, void* src);
+extern bool getMIDIcontrolType(char* dst, void* src);
 //========================================
 
+//! colours for use on a TFT display
 class TFTcolours : public CfgBaseOffset
 {
   public:
     static constexpr const char* className{"TFTcolours"};
     const char* getName(int n) { return n<0?className:memberNames[n]; }
-    uint16_t fg, bg, txt;
+    TFTcolours(uint16_t _fg, uint16_t _bg, uint16_t _txt)
+    : fg{_fg}, bg{_bg}, txt{_txt} {}
+    TFTcolours() {}
+
+    uint16_t fg{0xE3DC}; //!< foreground
+    uint16_t bg{0x7BEF}; //!< background
+    uint16_t txt{0xD69A}; //!< text
 
     static constexpr const char* memberNames[]{"fg", "bg", "txt"};
     int getMemberCount(void) { return 3; }
@@ -107,13 +117,18 @@ class TFTcolours : public CfgBaseOffset
     }
 };
 
+//! colour and pattern for use on an LED ring
 class cfgRingLEDs : public CfgBaseOffset
 {
   public:
     static constexpr const char* className{"cfgRingLEDs"};
     const char* getName(int n) { return n<0?className:memberNames[n]; }
-    int colour;
-    pattern_t pattern;
+    cfgRingLEDs(int _colour, pattern_t _pattern)
+    : colour{_colour}, pattern{_pattern} {}
+    cfgRingLEDs() {}
+
+    int colour{0xFFFF00}; //!< colour (24-bit RGB)
+    pattern_t pattern{0x00FFFF}; //!< 20x colours (24-bit RGB)
 
     static constexpr const char* memberNames[]{"colour", "pattern"};
     int getMemberCount(void) { return 2; }
@@ -132,12 +147,17 @@ class cfgRingLEDs : public CfgBaseOffset
     }
 };
 
+//! colour for use on a button
 class cfgButtonLED : public CfgBaseOffset
 {
   public:
     static constexpr const char* className{"cfgButtonLED"};
     const char* getName(int n) { return n<0?className:memberNames[n]; }
-    int colour;
+    cfgButtonLED(int _colour)
+    : colour{_colour} {}
+    cfgButtonLED() {}
+
+    int colour{0xFF00FF}; //!< colour (24-bit RGB)
 
     static constexpr const char* memberNames[]{"colour"};
     int getMemberCount(void) { return 1; }
@@ -155,14 +175,22 @@ class cfgButtonLED : public CfgBaseOffset
     }
 };
 
+//! settings to specify MIDI output generated when a control is changed
 class MIDIcontrolSetting : public CfgBaseOffset
 {
   public:
     static constexpr const char* className{"MIDIcontrolSetting"};
     const char* getName(int n) { return n<0?className:memberNames[n]; }
-    MIDIcontrolType controlType;
-    int minVal, maxVal, channel, controlNum;
-    char name[MAX_NAME_LENGTH];
+    MIDIcontrolSetting(MIDIcontrolType _controlType, int _minVal, int _maxVal, int _channel, int _controlNum, char _name)
+    : controlType{_controlType}, minVal{_minVal}, maxVal{_maxVal}, channel{_channel}, controlNum{_controlNum}, name{_name} {}
+    MIDIcontrolSetting() {}
+
+    MIDIcontrolType controlType{MIDIcontrolType::CC}; //!< message type: note / CC / bend etc.
+    int minVal{0}; //!< minimum value to send
+    int maxVal{127}; //!< maximum value to send
+    int channel{0}; //!< MIDI channel to send on
+    int controlNum{2}; //!< control / note number
+    char name[MAX_NAME_LENGTH]{"<unnamed>"}; //!< name to display on scribble strip
 
     static constexpr const char* memberNames[]{"controlType", "minVal", "maxVal", "channel", "controlNum", "name"};
     int getMemberCount(void) { return 6; }
@@ -185,12 +213,19 @@ class MIDIcontrolSetting : public CfgBaseOffset
     }
 };
 
+//! settings for strip MIDI controls
 class StripControls : public CfgBaseOffset
 {
   public:
     static constexpr const char* className{"StripControls"};
     const char* getName(int n) { return n<0?className:memberNames[n]; }
-    MIDIcontrolSetting fader, pot, button;
+    StripControls(MIDIcontrolSetting _fader, MIDIcontrolSetting _pot, MIDIcontrolSetting _button)
+    : fader{_fader}, pot{_pot}, button{_button} {}
+    StripControls() {}
+
+    MIDIcontrolSetting fader; //!< fader MIDI settings
+    MIDIcontrolSetting pot; //!< continuous pot MIDI settings
+    MIDIcontrolSetting button; //!< button MIDI settings
 
     static constexpr const char* memberNames[]{"fader", "pot", "button"};
     int getMemberCount(void) { return 3; }
@@ -210,14 +245,19 @@ class StripControls : public CfgBaseOffset
     }
 };
 
+//! settings for strip colours (display and LEDs)
 class StripColours : public CfgBaseOffset
 {
   public:
     static constexpr const char* className{"StripColours"};
     const char* getName(int n) { return n<0?className:memberNames[n]; }
-    cfgRingLEDs ringLEDs;
-    cfgButtonLED buttonLED;
-    TFTcolours scribble;
+    StripColours(cfgRingLEDs _ringLEDs, cfgButtonLED _buttonLED, TFTcolours _scribble)
+    : ringLEDs{_ringLEDs}, buttonLED{_buttonLED}, scribble{_scribble} {}
+    StripColours() {}
+
+    cfgRingLEDs ringLEDs; //!< ring LEDs settings
+    cfgButtonLED buttonLED; //!< button LED settings
+    TFTcolours scribble; //!< scribble display colours
 
     static constexpr const char* memberNames[]{"ringLEDs", "buttonLED", "scribble"};
     int getMemberCount(void) { return 3; }
@@ -237,13 +277,18 @@ class StripColours : public CfgBaseOffset
     }
 };
 
+//! settings for the strips
 class StripSettings : public CfgBaseOffset
 {
   public:
     static constexpr const char* className{"StripSettings"};
     const char* getName(int n) { return n<0?className:memberNames[n]; }
-    StripColours colours[NUM_POTS];
-    StripControls controls[NUM_POTS];
+    StripSettings(StripColours _colours, StripControls _controls)
+    : colours{_colours}, controls{_controls} {}
+    StripSettings() {}
+
+    StripColours colours[NUM_POTS]; //!< array of settings for strip colours
+    StripControls controls[NUM_POTS]; //!< array of settings for strip MIDI outputs
 
     static constexpr const char* memberNames[]{"colours", "controls"};
     int getMemberCount(void) { return 2; }
@@ -262,12 +307,17 @@ class StripSettings : public CfgBaseOffset
     }
 };
 
+//! all settings
 class FaderMonsterSettings : public CfgBaseOffset
 {
   public:
     static constexpr const char* className{"FaderMonsterSettings"};
     const char* getName(int n) { return n<0?className:memberNames[n]; }
-    StripSettings stripsConfig;
+    FaderMonsterSettings(StripSettings _stripsConfig)
+    : stripsConfig{_stripsConfig} {}
+    FaderMonsterSettings() {}
+
+    StripSettings stripsConfig; //!< settings for strips
 
     static constexpr const char* memberNames[]{"stripsConfig"};
     int getMemberCount(void) { return 1; }
@@ -286,3 +336,4 @@ class FaderMonsterSettings : public CfgBaseOffset
 };
 
 
+#endif // !defined(_SETTINGS_CLASSES_)

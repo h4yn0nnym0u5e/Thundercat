@@ -54,7 +54,7 @@ const char* pattern2 = "0xFF0000, \n"
 
 //===================================================================
 //! MIDI control type
-bool setMIDIcontrolType(void* dst, const char* src) 
+FLASHMEM bool setMIDIcontrolType(void* dst, const char* src) 
 {
   return setint(dst, src);
 }
@@ -63,7 +63,7 @@ bool setMIDIcontrolType(void* dst, const char* src)
 //! Source string must have a one-character separator
 //! between colour values, which can be hex or decimal;
 //! use 0x prefix to force hex and avoid ambiguity
-bool setpattern_t(void* dst, const char* src) 
+FLASHMEM bool setpattern_t(void* dst, const char* src) 
 {
   bool ok = true;
 
@@ -92,7 +92,7 @@ bool setpattern_t(void* dst, const char* src)
 }
 
 //! hex or decimal integer - hex is preferred, use 0xXXXX
-bool setint(void* dst, const char* src) 
+FLASHMEM bool setint(void* dst, const char* src) 
 { 
   bool ok = false;
   if (strlen(src) > 2 && 'x' == src[1])
@@ -103,9 +103,9 @@ bool setint(void* dst, const char* src)
   return ok;
 }
 
-bool setchar(void* dst, const char* src) { strcpy((char*) dst, src);  return true; }
+FLASHMEM bool setchar(void* dst, const char* src) { strcpy((char*) dst, src);  return true; }
 
-bool setuint16_t(void* dst, const char* src)
+FLASHMEM bool setuint16_t(void* dst, const char* src)
 { 
   bool ok = false;
   if (strlen(src) > 2 && 'x' == src[1])
@@ -117,9 +117,9 @@ bool setuint16_t(void* dst, const char* src)
 }
 
 //===================================================================
-bool getint(char* dst, void* src) { sprintf(dst, "0x%X", *(int*) src); return false; }
-bool getchar(char* dst, void* src) { sprintf(dst, "\"%s\"", (char*) src); return false; }
-bool getpattern_t(char* dst, void* src) 
+FLASHMEM bool getint(char* dst, void* src) { sprintf(dst, "0x%X", *(int*) src); return false; }
+FLASHMEM bool getchar(char* dst, void* src) { sprintf(dst, "\"%s\"", (char*) src); return false; }
+FLASHMEM bool getpattern_t(char* dst, void* src) 
 { 
   pattern_t& patt = *(pattern_t*) src;
   const char* sep = "";
@@ -130,11 +130,12 @@ bool getpattern_t(char* dst, void* src)
   }
   return false; 
 }
-bool getMIDIcontrolType(char* dst, void* src) { return getint(dst,src); }
-bool getuint16_t(char* dst, void* src) { sprintf(dst, "0x%04X", *(uint16_t*) src); return false; }
+FLASHMEM bool getMIDIcontrolType(char* dst, void* src) { return getint(dst,src); }
+FLASHMEM bool getuint16_t(char* dst, void* src) { sprintf(dst, "0x%04X", *(uint16_t*) src); return false; }
 
 //===================================================================
 
+FLASHMEM
 offsetResult testToOffset(const char* str)
 {
   char* base = (char*) &faderMonsterSettings;
@@ -149,6 +150,7 @@ offsetResult testToOffset(const char* str)
   return offsetS;
 }
 
+FLASHMEM
 void testCfgBase(CfgBaseOffset& cfgbo, int indent = 0)
 {
   char indt[indent+1];
@@ -180,6 +182,7 @@ void testCfgBase(CfgBaseOffset& cfgbo, int indent = 0)
 }
 
 int CSVlineCount;
+FLASHMEM
 void testToCSV(CfgBaseOffset& cfgbo, //!< structure to save
                char* buf,            //!< text buffer: must be big enough!
                const int bufOff=0)   //!< where to append
@@ -221,6 +224,7 @@ void testToCSV(CfgBaseOffset& cfgbo, //!< structure to save
   }
 }
 
+FLASHMEM
 void setup() 
 {
   pinMode(TFT_BLK, OUTPUT);
@@ -306,7 +310,13 @@ void setup()
 
     {
       char buf[300];
-      FaderMonsterSettings sc;
+      FaderMonsterSettings sc{{{},{  }}};
+
+      TFTcolours tftc{4,5,6};
+      cfgRingLEDs rlc{1, {2,3}};
+      StripColours si({1,{2}}, {3}, {4,5,6});
+      sc.stripsConfig.colours[0] = si;
+
       for (int i=0;i<NUM_POTS;i++)
       {
         sprintf(sc.stripsConfig.controls[i].fader.name, "Fader%d", i+1);
