@@ -67,7 +67,7 @@ void setup() {
   /*
   if ((ok = FRAMfs.begin(FRAM_CS))) // use SPI bus
   /*/
-  if ((ok = FRAMfs.begin(FRAM_CS, flexSPI, false))) // use FlexIOSPI, configured above
+  if ((ok = FRAMfs.begin(FRAM_CS, flexSPI, true))) // use FlexIOSPI, configured above
   //*/
   {}//  MTP.addFilesystem(FRAMfs, FRAMfs.name());
   else

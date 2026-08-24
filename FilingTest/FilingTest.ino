@@ -51,6 +51,138 @@ const char* pattern2 = "0xFF0000, \n"
 "    0x111111, 0x222222, 0x333333";
 //"    0x4000E0, 0x6000A0, 0x8000A0";
 
+#if 0 // test class initialisation syntax
+#if 1
+FaderMonsterSettings f1 
+ {
+  { 
+  {
+      {{ /* colour, */ /* pattern, */}, { /* colour, */}, { /* fg, */ /* bg, */ /* txt, */}, }, 
+      {{ /* colour, */ /* pattern, */}, { /* colour, */}, { /* fg, */ /* bg, */ /* txt, */}, }, 
+      {{ /* colour, */ /* pattern, */}, { /* colour, */}, { /* fg, */ /* bg, */ /* txt, */}, }, 
+      {{ /* colour, */ /* pattern, */}, { /* colour, */}, { /* fg, */ /* bg, */ /* txt, */}, }, 
+      {{ /* colour, */ /* pattern, */}, { /* colour, */}, { /* fg, */ /* bg, */ /* txt, */}, }, 
+      {{ /* colour, */ /* pattern, */}, { /* colour, */}, { /* fg, */ /* bg, */ /* txt, */}, }, 
+      {{ /* colour, */ /* pattern, */}, { /* colour, */}, { /* fg, */ /* bg, */ /* txt, */}, }, 
+      {{ /* colour, */ /* pattern, */}, { /* colour, */}, { /* fg, */ /* bg, */ /* txt, */}, }, 
+     },
+  {
+      {{ /* controlType, */ /* minVal, */ /* maxVal, */ /* channel, */ /* controlNum, */ /* name, */}, { /* controlType, */ /* minVal, */ /* maxVal, */ /* channel, */ /* controlNum, */ /* name, */}, { /* controlType, */ /* minVal, */ /* maxVal, */ /* channel, */ /* controlNum, */ /* name, */}, }, 
+      {{ /* controlType, */ /* minVal, */ /* maxVal, */ /* channel, */ /* controlNum, */ /* name, */}, { /* controlType, */ /* minVal, */ /* maxVal, */ /* channel, */ /* controlNum, */ /* name, */}, { /* controlType, */ /* minVal, */ /* maxVal, */ /* channel, */ /* controlNum, */ /* name, */}, }, 
+      {{ /* controlType, */ /* minVal, */ /* maxVal, */ /* channel, */ /* controlNum, */ /* name, */}, { /* controlType, */ /* minVal, */ /* maxVal, */ /* channel, */ /* controlNum, */ /* name, */}, { /* controlType, */ /* minVal, */ /* maxVal, */ /* channel, */ /* controlNum, */ /* name, */}, }, 
+      {{ /* controlType, */ /* minVal, */ /* maxVal, */ /* channel, */ /* controlNum, */ /* name, */}, { /* controlType, */ /* minVal, */ /* maxVal, */ /* channel, */ /* controlNum, */ /* name, */}, { /* controlType, */ /* minVal, */ /* maxVal, */ /* channel, */ /* controlNum, */ /* name, */}, }, 
+      {{ /* controlType, */ /* minVal, */ /* maxVal, */ /* channel, */ /* controlNum, */ /* name, */}, { /* controlType, */ /* minVal, */ /* maxVal, */ /* channel, */ /* controlNum, */ /* name, */}, { /* controlType, */ /* minVal, */ /* maxVal, */ /* channel, */ /* controlNum, */ /* name, */}, }, 
+      {{ /* controlType, */ /* minVal, */ /* maxVal, */ /* channel, */ /* controlNum, */ /* name, */}, { /* controlType, */ /* minVal, */ /* maxVal, */ /* channel, */ /* controlNum, */ /* name, */}, { /* controlType, */ /* minVal, */ /* maxVal, */ /* channel, */ /* controlNum, */ /* name, */}, }, 
+      {{ /* controlType, */ /* minVal, */ /* maxVal, */ /* channel, */ /* controlNum, */ /* name, */}, { /* controlType, */ /* minVal, */ /* maxVal, */ /* channel, */ /* controlNum, */ /* name, */}, { /* controlType, */ /* minVal, */ /* maxVal, */ /* channel, */ /* controlNum, */ /* name, */}, }, 
+      {{ /* controlType, */ /* minVal, */ /* maxVal, */ /* channel, */ /* controlNum, */ /* name, */}, { /* controlType, */ /* minVal, */ /* maxVal, */ /* channel, */ /* controlNum, */ /* name, */}, { /* controlType, */ /* minVal, */ /* maxVal, */ /* channel, */ /* controlNum, */ /* name, */}, }, 
+     }
+    }
+ };
+#endif
+
+StripColours sc1
+      {{ /* colour, */ /* pattern, */}, { /* colour, */}, { /* fg, */ /* bg, */ /* txt, */}, }
+    ;
+
+StripColours sca[8]
+  {
+      {{ /* colour, */ /* pattern, */}, { /* colour, */}, { /* fg, */ /* bg, */ /* txt, */}, }, 
+      {{ /* colour, */ /* pattern, */}, { /* colour, */}, { /* fg, */ /* bg, */ /* txt, */}, }, 
+      {{ /* colour, */ /* pattern, */}, { /* colour, */}, { /* fg, */ /* bg, */ /* txt, */}, }, 
+      {{ /* colour, */ /* pattern, */}, { /* colour, */}, { /* fg, */ /* bg, */ /* txt, */}, }, 
+      {{ /* colour, */ /* pattern, */}, { /* colour, */}, { /* fg, */ /* bg, */ /* txt, */}, }, 
+      {{ /* colour, */ /* pattern, */}, { /* colour, */}, { /* fg, */ /* bg, */ /* txt, */}, }, 
+      {{ /* colour, */ /* pattern, */}, { /* colour, */}, { /* fg, */ /* bg, */ /* txt, */}, }, 
+      {{ /* colour, */ /* pattern, */}, { /* colour, */}, { /* fg, */ /* bg, */ /* txt, */}, } 
+  };
+
+StripColours scb[2]
+  {
+      {{ /* colour, */ /* pattern, */}, { /* colour, */}, { /* fg, */ /* bg, */ /* txt, */}, }, 
+      {{ /* colour, */ /* pattern, */}, { /* colour, */}, { /* fg, */ /* bg, */ /* txt, */}, }, 
+  };
+
+StripColours scc[2]  
+{
+  {{},{},{}}, // three parameters
+  {} // no parameters
+};
+
+
+MIDIcontrolSetting mcs 
+{
+  MIDIcontrolType::CC,2,"hi",3,4,5
+};
+
+StripControls sx 
+{
+  {MIDIcontrolType::CC,2,"hi", 3,4,5},
+  {MIDIcontrolType::CC,2,"hi", 3,4,5},
+  {MIDIcontrolType::CC,2,"hi", 3,4,5},
+};
+
+StripControls sxa[8]
+{
+     {{ MIDIcontrolType::CC /* controlNum, */ /* name, */ /* minVal, */ /* maxVal, */ /* channel, */}, { /* controlType, */ /* controlNum, */ /* name, */ /* minVal, */ /* maxVal, */ /* channel, */}, { /* controlType, */ /* controlNum, */ /* name, */ /* minVal, */ /* maxVal, */ /* channel, */}, }, 
+     {{ /* controlType, */ /* controlNum, */ /* name, */ /* minVal, */ /* maxVal, */ /* channel, */}, { /* controlType, */ /* controlNum, */ /* name, */ /* minVal, */ /* maxVal, */ /* channel, */}, { /* controlType, */ /* controlNum, */ /* name, */ /* minVal, */ /* maxVal, */ /* channel, */}, }, 
+     {{ /* controlType, */ /* controlNum, */ /* name, */ /* minVal, */ /* maxVal, */ /* channel, */}, { /* controlType, */ /* controlNum, */ /* name, */ /* minVal, */ /* maxVal, */ /* channel, */}, { /* controlType, */ /* controlNum, */ /* name, */ /* minVal, */ /* maxVal, */ /* channel, */}, }, 
+     {{ /* controlType, */ /* controlNum, */ /* name, */ /* minVal, */ /* maxVal, */ /* channel, */}, { /* controlType, */ /* controlNum, */ /* name, */ /* minVal, */ /* maxVal, */ /* channel, */}, { /* controlType, */ /* controlNum, */ /* name, */ /* minVal, */ /* maxVal, */ /* channel, */}, }, 
+     {{ /* controlType, */ /* controlNum, */ /* name, */ /* minVal, */ /* maxVal, */ /* channel, */}, { /* controlType, */ /* controlNum, */ /* name, */ /* minVal, */ /* maxVal, */ /* channel, */}, { /* controlType, */ /* controlNum, */ /* name, */ /* minVal, */ /* maxVal, */ /* channel, */}, }, 
+     {{ /* controlType, */ /* controlNum, */ /* name, */ /* minVal, */ /* maxVal, */ /* channel, */}, { /* controlType, */ /* controlNum, */ /* name, */ /* minVal, */ /* maxVal, */ /* channel, */}, { /* controlType, */ /* controlNum, */ /* name, */ /* minVal, */ /* maxVal, */ /* channel, */}, }, 
+     {{ /* controlType, */ /* controlNum, */ /* name, */ /* minVal, */ /* maxVal, */ /* channel, */}, { /* controlType, */ /* controlNum, */ /* name, */ /* minVal, */ /* maxVal, */ /* channel, */}, { /* controlType, */ /* controlNum, */ /* name, */ /* minVal, */ /* maxVal, */ /* channel, */}, }, 
+     {{ /* controlType, */ /* controlNum, */ /* name, */ /* minVal, */ /* maxVal, */ /* channel, */}, { /* controlType, */ /* controlNum, */ /* name, */ /* minVal, */ /* maxVal, */ /* channel, */}, { /* controlType, */ /* controlNum, */ /* name, */ /* minVal, */ /* maxVal, */ /* channel, */}, }, 
+};
+
+StripSettings ss 
+{
+  sca, sxa
+};
+
+StripSettings ss2
+{
+  {
+    
+  },
+  sxa
+};
+
+#if 0
+StripSettings ss3
+{
+  {
+      {{ /* colour, */ /* pattern, */}, { /* colour, */}, { /* fg, */ /* bg, */ /* txt, */}, }, 
+      {{ /* colour, */ /* pattern, */}, { /* colour, */}, { /* fg, */ /* bg, */ /* txt, */}, }, 
+      {{ /* colour, */ /* pattern, */}, { /* colour, */}, { /* fg, */ /* bg, */ /* txt, */}, }, 
+      {{ /* colour, */ /* pattern, */}, { /* colour, */}, { /* fg, */ /* bg, */ /* txt, */}, }, 
+      {{ /* colour, */ /* pattern, */}, { /* colour, */}, { /* fg, */ /* bg, */ /* txt, */}, }, 
+      {{ /* colour, */ /* pattern, */}, { /* colour, */}, { /* fg, */ /* bg, */ /* txt, */}, }, 
+      {{ /* colour, */ /* pattern, */}, { /* colour, */}, { /* fg, */ /* bg, */ /* txt, */}, }, 
+      {{ /* colour, */ /* pattern, */}, { /* colour, */}, { /* fg, */ /* bg, */ /* txt, */}, } 
+  },
+  {
+      {{ /* controlType, */ /* minVal, */ /* maxVal, */ /* channel, */ /* controlNum, */ /* name, */}, { /* controlType, */ /* minVal, */ /* maxVal, */ /* channel, */ /* controlNum, */ /* name, */}, { /* controlType, */ /* minVal, */ /* maxVal, */ /* channel, */ /* controlNum, */ /* name, */}, }, 
+      {{ /* controlType, */ /* minVal, */ /* maxVal, */ /* channel, */ /* controlNum, */ /* name, */}, { /* controlType, */ /* minVal, */ /* maxVal, */ /* channel, */ /* controlNum, */ /* name, */}, { /* controlType, */ /* minVal, */ /* maxVal, */ /* channel, */ /* controlNum, */ /* name, */}, }, 
+      {{ /* controlType, */ /* minVal, */ /* maxVal, */ /* channel, */ /* controlNum, */ /* name, */}, { /* controlType, */ /* minVal, */ /* maxVal, */ /* channel, */ /* controlNum, */ /* name, */}, { /* controlType, */ /* minVal, */ /* maxVal, */ /* channel, */ /* controlNum, */ /* name, */}, }, 
+      {{ /* controlType, */ /* minVal, */ /* maxVal, */ /* channel, */ /* controlNum, */ /* name, */}, { /* controlType, */ /* minVal, */ /* maxVal, */ /* channel, */ /* controlNum, */ /* name, */}, { /* controlType, */ /* minVal, */ /* maxVal, */ /* channel, */ /* controlNum, */ /* name, */}, }, 
+      {{ /* controlType, */ /* minVal, */ /* maxVal, */ /* channel, */ /* controlNum, */ /* name, */}, { /* controlType, */ /* minVal, */ /* maxVal, */ /* channel, */ /* controlNum, */ /* name, */}, { /* controlType, */ /* minVal, */ /* maxVal, */ /* channel, */ /* controlNum, */ /* name, */}, }, 
+      {{ /* controlType, */ /* minVal, */ /* maxVal, */ /* channel, */ /* controlNum, */ /* name, */}, { /* controlType, */ /* minVal, */ /* maxVal, */ /* channel, */ /* controlNum, */ /* name, */}, { /* controlType, */ /* minVal, */ /* maxVal, */ /* channel, */ /* controlNum, */ /* name, */}, }, 
+      {{ /* controlType, */ /* minVal, */ /* maxVal, */ /* channel, */ /* controlNum, */ /* name, */}, { /* controlType, */ /* minVal, */ /* maxVal, */ /* channel, */ /* controlNum, */ /* name, */}, { /* controlType, */ /* minVal, */ /* maxVal, */ /* channel, */ /* controlNum, */ /* name, */}, }, 
+      {{ /* controlType, */ /* minVal, */ /* maxVal, */ /* channel, */ /* controlNum, */ /* name, */}, { /* controlType, */ /* minVal, */ /* maxVal, */ /* channel, */ /* controlNum, */ /* name, */}, { /* controlType, */ /* minVal, */ /* maxVal, */ /* channel, */ /* controlNum, */ /* name, */}, }
+     }
+
+};
+#endif
+
+FaderMonsterSettings f2 
+{
+  {sca,sxa}
+};
+
+FaderMonsterSettings f3
+{
+  ss2
+};
+#endif // test class initialisation
 
 //===================================================================
 //! MIDI control type
@@ -205,7 +337,7 @@ void testToCSV(CfgBaseOffset& cfgbo, //!< structure to save
       if (1 == ofs.count)
         newOff = bufOff + sprintf(buf + bufOff, ".%s", nm);
       else
-        newOff = bufOff + sprintf(buf + bufOff, ".%s.%d", nm, n+1);
+        newOff = bufOff + sprintf(buf + bufOff, ".%s.%d", nm, n);
 
       if (nullptr == ofs.getter) // not a leaf
       {
@@ -237,6 +369,13 @@ void setup()
   while (!Serial)
     ;
   Serial.println("\n=======\nStarted"); Serial.flush();
+  if (CrashReport)
+  {
+    Serial.println(CrashReport);
+    while (1)
+      delay(100);
+  }
+
   Serial.printf("sizeof faderMonsterSettings is %d\n", sizeof faderMonsterSettings);
   Serial.printf("sizeof stripsConfig.colours[0] is %d\n", sizeof faderMonsterSettings.stripsConfig.colours[0]);
   Serial.printf("address of stripsConfig.colours.0.scribble.fg is %08X\n", (uint32_t) &faderMonsterSettings.stripsConfig.colours[0].scribble.fg);
@@ -309,16 +448,22 @@ void setup()
     }
 
     {
+      //==============================================================================
       char buf[300];
-      FaderMonsterSettings sc{{{},{  }}};
+      FaderMonsterSettings sc;//{{{},{  }}};
 
+      //*
       TFTcolours tftc{4,5,6};
       cfgRingLEDs rlc{1, {2,3}};
       StripColours si({1,{2}}, {3}, {4,5,6});
       sc.stripsConfig.colours[0] = si;
+      //*/
 
       for (int i=0;i<NUM_POTS;i++)
       {
+        sc.stripsConfig.controls[i].fader.controlNum  = 0x10+i;
+        sc.stripsConfig.controls[i].pot.controlNum    = 0x20+i;
+        sc.stripsConfig.controls[i].button.controlNum = 0x30+i;
         sprintf(sc.stripsConfig.controls[i].fader.name, "Fader%d", i+1);
         sprintf(sc.stripsConfig.controls[i].pot.name, "Pot%d", i+1);
         sprintf(sc.stripsConfig.controls[i].button.name, "Button%d", i+1);
@@ -328,13 +473,23 @@ void setup()
       testToCSV(sc, buf);
       Serial.printf("// %d settings lines\n\n", CSVlineCount);
 
+      //==============================================================================
       // save the strip colour scheme
       // there's probably a better way of doing this...
       CSVlineCount = 0;
+
+      offsetResult offsetS = testToOffset("stripsConfig.colours.6.ringLEDs.pattern");
+      int offset = offsetS.offset;
+      base = (char*) &sc;
+      if (offset >= 0)
+        offsetS.setter(base+offset, pattern2);
+      else
+        Serial.println("Failed to find entry");        
+
       for (int i=0;i<NUM_POTS;i++)
       {
         CfgBaseOffset* psc2 = sc.stripsConfig.colours+i;
-        int offset = sprintf(buf, ".stripsConfig.colours.%d", i+1);
+        int offset = sprintf(buf, ".stripsConfig.colours.%d", i);
         testToCSV(*psc2, buf, offset);
         Serial.println();
       }

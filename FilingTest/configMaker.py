@@ -24,11 +24,11 @@ d1 = {
         [
             "settings to specify MIDI output generated when a control is changed",
             {"type": "MIDIcontrolType", "name": "controlType", "doc": "message type: note / CC / bend etc."},
+            {"type": "int", "name": "controlNum", "default": "2", "doc": "control / note number"},
+            {"type": "char", "name": "name",  "default": '"<unnamed>"', "count": "-MAX_NAME_LENGTH", "doc": "name to display on scribble strip"}, # char array, but treated as one item
             {"type": "int", "name": "minVal",  "doc": "minimum value to send"},
             {"type": "int", "name": "maxVal", "default": "127", "doc": "maximum value to send"},
             {"type": "int", "name": "channel", "doc": "MIDI channel to send on"},
-            {"type": "int", "name": "controlNum", "default": "2", "doc": "control / note number"},
-            {"type": "char", "name": "name",  "default": '"<unnamed>"', "count": "-MAX_NAME_LENGTH", "doc": "name to display on scribble strip"} # char array, but treated as one item
         ],
 
     "StripControls":
@@ -90,6 +90,8 @@ def listToMembers(l,td):
     global types
     names = []
     memberTypes = []
+    sizes = []
+    defaults = []
     s = ""
     for m in l:
         sz = ""
@@ -105,23 +107,26 @@ def listToMembers(l,td):
                 else:
                     defv = f"{{{defValues[m["type"]]}}}"
             except:
-                pass                
+                pass
+            sz2 = "" # assume not an array, no dimension                
             if "doc" in m:
                 doc = f" //!< {m['doc']}"
             if "count" in m: # array
                 sz = m["count"]
-                sz2 = sz.strip('-')
-                s += myAdd(f"    {type} {name}[{sz2}]{defv};{doc}")
+                sz2 = sz.strip('-') # array dimension
+                s += myAdd(f"    {type} {name}[{sz2}]{defv};{doc}") # array class member
             else: # simple type or class
-                s += myAdd(f"    {type} {name}{defv};{doc}")
+                s += myAdd(f"    {type} {name}{defv};{doc}") # non-array class member
 
             l = varToList(name)
             names += l
             memberTypes += [type]*len(l)
+            sizes += [sz2]*len(l)
+            defaults += [defv]*len(l)
             for n in l:
                 td[n] = (type, sz)
 
-    return (s,names,memberTypes) # all the members' names
+    return (s,names,memberTypes,sizes,defaults) # all the members' names
 
 def dictToStructs(d):
     global types
@@ -144,19 +149,38 @@ def dictToClasses(d):
         s += myAdd(f"class {t} : public CfgBaseOffset\n{{\n  public:")
         s += myAdd(f"""    static constexpr const char* className{{"{t}"}};""")
         s += myAdd( """    const char* getName(int n) { return n<0?className:memberNames[n]; }""")
-        ns, names, memberTypes = listToMembers(d[t], td)
+        ns, names, memberTypes, sizes, defaults = listToMembers(d[t], td)
 
         params = ""
         inits = ""
         sep = ""
+        initSep = ""
+        initCode = ""
         for i in range(0,len(names)):
-            params += f"{sep}{memberTypes[i]} _{names[i]}"
-            inits += f"{sep}{names[i]}{{_{names[i]}}}"
+            defv = ""
+            const = ""
+            if "" != sep and "" != defaults[i]:
+                defv = f" = {defaults[i].strip('{}')}"
+                if "char" == memberTypes[i]:
+                    const = "const "
+                    
+            if "" == sizes[i]: # generate init code fragment
+                params += f"{sep}{const}{memberTypes[i]} _{names[i]}{defv}"
+                inits += f"{initSep}{names[i]}{{_{names[i]}}}"
+                initSep = ", "
+            else: # can't initialize arrays - do in code
+                params += f"{sep}{const}{memberTypes[i]} _{names[i]}[{sizes[i]}]{defv}"
+                initCode += f"      for (int i = 0; i < {sizes[i]}; i++) {names[i]}[i] = _{names[i]}[i];\n"
             sep = ", "
 
-        s += myAdd(f"    {t}({params})")
-        s += myAdd(f"    : {inits} {{}}")
-        s += myAdd(f"    {t}() {{}}\n")
+        s += myAdd(f"    {t}({params})") # constructor with parameters
+        if "" != inits:
+            s += myAdd(f"    : {inits}", False) # initialisers
+        if "" == initCode:
+            s += myAdd(" {}")
+        else:
+            s += myAdd(f"    {{\n{initCode}    }}")            
+        s += myAdd(f"    {t}() {{}}\n") # constructor with no parameters
         s += myAdd(ns)
         #myPrint(names)
 
@@ -214,6 +238,37 @@ def printAllPaths(d, elem, s):
                 if e["type"] in d:
                     printAllPaths(d, e["type"], s2+'.')
 
+counts = {"NUM_POTS": 8}
+def printInitBraces(d, elem, indt = ""):
+    root = d[elem]
+    s = ""
+    for e in root:
+        if isinstance(e, dict):
+            l = varToList(e["name"])
+            for n in l:
+                type = e['type']
+                count = 1
+                try:
+                    count = counts[e["count"]]
+                except:
+                    pass                    
+                if type in d:
+                    if 1 == count:
+                        myPrint("{", False)
+                        printInitBraces(d, type, indt+"    ")
+                        myPrint("}, ", False)
+                    else:
+                        myPrint(f" {{\n{indt}", False) # opening array brace
+                        for i in range(0, count):
+                            myPrint(" {", False)
+                            printInitBraces(d, type, indt+"    ")
+                            myPrint(f"}}, \n{indt}", False)
+                        myPrint("},\n", False) # closing array brace
+
+                else:                    
+                    myPrint(f" /* {n}, */", False)
+
+
 def makeExternSetters(types):
     for type in types:
         myPrint(f"extern bool set{type}(void* dst, const char* src);")
@@ -239,6 +294,9 @@ f.write(f"""
 clss = dictToClasses(d1) # creates types
 
 myPrint("// types: " + str(types))
+myPrint("#if 0")
+printInitBraces(d1, "FaderMonsterSettings")
+myPrint("\n#endif\n")
 myPrint("/*")
 printAllPaths(d1,"FaderMonsterSettings","") # creates leaves and setTypes
 myPrint("")

@@ -6,7 +6,31 @@
 
 #define TO_OFFSET_LEAF_ARRAY(...)
 
-// types: {'MIDIcontrolSetting', 'StripSettings', 'TFTcolours', 'StripColours', 'FaderMonsterSettings', 'cfgRingLEDs', 'cfgButtonLED', 'StripControls'}
+// types: {'cfgButtonLED', 'cfgRingLEDs', 'FaderMonsterSettings', 'TFTcolours', 'MIDIcontrolSetting', 'StripControls', 'StripColours', 'StripSettings'}
+#if 0
+{ {
+     {{ /* colour, */ /* pattern, */}, { /* colour, */}, { /* fg, */ /* bg, */ /* txt, */}, }, 
+     {{ /* colour, */ /* pattern, */}, { /* colour, */}, { /* fg, */ /* bg, */ /* txt, */}, }, 
+     {{ /* colour, */ /* pattern, */}, { /* colour, */}, { /* fg, */ /* bg, */ /* txt, */}, }, 
+     {{ /* colour, */ /* pattern, */}, { /* colour, */}, { /* fg, */ /* bg, */ /* txt, */}, }, 
+     {{ /* colour, */ /* pattern, */}, { /* colour, */}, { /* fg, */ /* bg, */ /* txt, */}, }, 
+     {{ /* colour, */ /* pattern, */}, { /* colour, */}, { /* fg, */ /* bg, */ /* txt, */}, }, 
+     {{ /* colour, */ /* pattern, */}, { /* colour, */}, { /* fg, */ /* bg, */ /* txt, */}, }, 
+     {{ /* colour, */ /* pattern, */}, { /* colour, */}, { /* fg, */ /* bg, */ /* txt, */}, }, 
+    },
+ {
+     {{ /* controlType, */ /* controlNum, */ /* name, */ /* minVal, */ /* maxVal, */ /* channel, */}, { /* controlType, */ /* controlNum, */ /* name, */ /* minVal, */ /* maxVal, */ /* channel, */}, { /* controlType, */ /* controlNum, */ /* name, */ /* minVal, */ /* maxVal, */ /* channel, */}, }, 
+     {{ /* controlType, */ /* controlNum, */ /* name, */ /* minVal, */ /* maxVal, */ /* channel, */}, { /* controlType, */ /* controlNum, */ /* name, */ /* minVal, */ /* maxVal, */ /* channel, */}, { /* controlType, */ /* controlNum, */ /* name, */ /* minVal, */ /* maxVal, */ /* channel, */}, }, 
+     {{ /* controlType, */ /* controlNum, */ /* name, */ /* minVal, */ /* maxVal, */ /* channel, */}, { /* controlType, */ /* controlNum, */ /* name, */ /* minVal, */ /* maxVal, */ /* channel, */}, { /* controlType, */ /* controlNum, */ /* name, */ /* minVal, */ /* maxVal, */ /* channel, */}, }, 
+     {{ /* controlType, */ /* controlNum, */ /* name, */ /* minVal, */ /* maxVal, */ /* channel, */}, { /* controlType, */ /* controlNum, */ /* name, */ /* minVal, */ /* maxVal, */ /* channel, */}, { /* controlType, */ /* controlNum, */ /* name, */ /* minVal, */ /* maxVal, */ /* channel, */}, }, 
+     {{ /* controlType, */ /* controlNum, */ /* name, */ /* minVal, */ /* maxVal, */ /* channel, */}, { /* controlType, */ /* controlNum, */ /* name, */ /* minVal, */ /* maxVal, */ /* channel, */}, { /* controlType, */ /* controlNum, */ /* name, */ /* minVal, */ /* maxVal, */ /* channel, */}, }, 
+     {{ /* controlType, */ /* controlNum, */ /* name, */ /* minVal, */ /* maxVal, */ /* channel, */}, { /* controlType, */ /* controlNum, */ /* name, */ /* minVal, */ /* maxVal, */ /* channel, */}, { /* controlType, */ /* controlNum, */ /* name, */ /* minVal, */ /* maxVal, */ /* channel, */}, }, 
+     {{ /* controlType, */ /* controlNum, */ /* name, */ /* minVal, */ /* maxVal, */ /* channel, */}, { /* controlType, */ /* controlNum, */ /* name, */ /* minVal, */ /* maxVal, */ /* channel, */}, { /* controlType, */ /* controlNum, */ /* name, */ /* minVal, */ /* maxVal, */ /* channel, */}, }, 
+     {{ /* controlType, */ /* controlNum, */ /* name, */ /* minVal, */ /* maxVal, */ /* channel, */}, { /* controlType, */ /* controlNum, */ /* name, */ /* minVal, */ /* maxVal, */ /* channel, */}, { /* controlType, */ /* controlNum, */ /* name, */ /* minVal, */ /* maxVal, */ /* channel, */}, }, 
+    },
+}, 
+#endif
+
 /*
 stripsConfig
 stripsConfig.colours.1
@@ -22,27 +46,27 @@ uint16_t stripsConfig.colours.1.scribble.txt
 stripsConfig.controls.1
 stripsConfig.controls.1.fader
 MIDIcontrolType stripsConfig.controls.1.fader.controlType
+int stripsConfig.controls.1.fader.controlNum
+char stripsConfig.controls.1.fader.name
 int stripsConfig.controls.1.fader.minVal
 int stripsConfig.controls.1.fader.maxVal
 int stripsConfig.controls.1.fader.channel
-int stripsConfig.controls.1.fader.controlNum
-char stripsConfig.controls.1.fader.name
 stripsConfig.controls.1.pot
 MIDIcontrolType stripsConfig.controls.1.pot.controlType
+int stripsConfig.controls.1.pot.controlNum
+char stripsConfig.controls.1.pot.name
 int stripsConfig.controls.1.pot.minVal
 int stripsConfig.controls.1.pot.maxVal
 int stripsConfig.controls.1.pot.channel
-int stripsConfig.controls.1.pot.controlNum
-char stripsConfig.controls.1.pot.name
 stripsConfig.controls.1.button
 MIDIcontrolType stripsConfig.controls.1.button.controlType
+int stripsConfig.controls.1.button.controlNum
+char stripsConfig.controls.1.button.name
 int stripsConfig.controls.1.button.minVal
 int stripsConfig.controls.1.button.maxVal
 int stripsConfig.controls.1.button.channel
-int stripsConfig.controls.1.button.controlNum
-char stripsConfig.controls.1.button.name
 
-{'int', 'uint16_t', 'char', 'pattern_t', 'MIDIcontrolType'}
+{'int', 'MIDIcontrolType', 'uint16_t', 'pattern_t', 'char'}
 
 24 leaves:
 "stripsConfig.colours.1.ringLEDs.colour", // 0
@@ -52,37 +76,37 @@ char stripsConfig.controls.1.button.name
 "stripsConfig.colours.1.scribble.bg", // 4
 "stripsConfig.colours.1.scribble.txt", // 5
 "stripsConfig.controls.1.fader.controlType", // 6
-"stripsConfig.controls.1.fader.minVal", // 7
-"stripsConfig.controls.1.fader.maxVal", // 8
-"stripsConfig.controls.1.fader.channel", // 9
-"stripsConfig.controls.1.fader.controlNum", // 10
-"stripsConfig.controls.1.fader.name", // 11
+"stripsConfig.controls.1.fader.controlNum", // 7
+"stripsConfig.controls.1.fader.name", // 8
+"stripsConfig.controls.1.fader.minVal", // 9
+"stripsConfig.controls.1.fader.maxVal", // 10
+"stripsConfig.controls.1.fader.channel", // 11
 "stripsConfig.controls.1.pot.controlType", // 12
-"stripsConfig.controls.1.pot.minVal", // 13
-"stripsConfig.controls.1.pot.maxVal", // 14
-"stripsConfig.controls.1.pot.channel", // 15
-"stripsConfig.controls.1.pot.controlNum", // 16
-"stripsConfig.controls.1.pot.name", // 17
+"stripsConfig.controls.1.pot.controlNum", // 13
+"stripsConfig.controls.1.pot.name", // 14
+"stripsConfig.controls.1.pot.minVal", // 15
+"stripsConfig.controls.1.pot.maxVal", // 16
+"stripsConfig.controls.1.pot.channel", // 17
 "stripsConfig.controls.1.button.controlType", // 18
-"stripsConfig.controls.1.button.minVal", // 19
-"stripsConfig.controls.1.button.maxVal", // 20
-"stripsConfig.controls.1.button.channel", // 21
-"stripsConfig.controls.1.button.controlNum", // 22
-"stripsConfig.controls.1.button.name", // 23
+"stripsConfig.controls.1.button.controlNum", // 19
+"stripsConfig.controls.1.button.name", // 20
+"stripsConfig.controls.1.button.minVal", // 21
+"stripsConfig.controls.1.button.maxVal", // 22
+"stripsConfig.controls.1.button.channel", // 23
 
 */
 //========================================
 extern bool setint(void* dst, const char* src);
-extern bool setuint16_t(void* dst, const char* src);
-extern bool setchar(void* dst, const char* src);
-extern bool setpattern_t(void* dst, const char* src);
 extern bool setMIDIcontrolType(void* dst, const char* src);
+extern bool setuint16_t(void* dst, const char* src);
+extern bool setpattern_t(void* dst, const char* src);
+extern bool setchar(void* dst, const char* src);
 
 extern bool getint(char* dst, void* src);
-extern bool getuint16_t(char* dst, void* src);
-extern bool getchar(char* dst, void* src);
-extern bool getpattern_t(char* dst, void* src);
 extern bool getMIDIcontrolType(char* dst, void* src);
+extern bool getuint16_t(char* dst, void* src);
+extern bool getpattern_t(char* dst, void* src);
+extern bool getchar(char* dst, void* src);
 //========================================
 
 //! colours for use on a TFT display
@@ -91,7 +115,7 @@ class TFTcolours : public CfgBaseOffset
   public:
     static constexpr const char* className{"TFTcolours"};
     const char* getName(int n) { return n<0?className:memberNames[n]; }
-    TFTcolours(uint16_t _fg, uint16_t _bg, uint16_t _txt)
+    TFTcolours(uint16_t _fg, uint16_t _bg = 0x7BEF, uint16_t _txt = 0xD69A)
     : fg{_fg}, bg{_bg}, txt{_txt} {}
     TFTcolours() {}
 
@@ -123,7 +147,7 @@ class cfgRingLEDs : public CfgBaseOffset
   public:
     static constexpr const char* className{"cfgRingLEDs"};
     const char* getName(int n) { return n<0?className:memberNames[n]; }
-    cfgRingLEDs(int _colour, pattern_t _pattern)
+    cfgRingLEDs(int _colour, pattern_t _pattern = 0x00FFFF)
     : colour{_colour}, pattern{_pattern} {}
     cfgRingLEDs() {}
 
@@ -181,18 +205,20 @@ class MIDIcontrolSetting : public CfgBaseOffset
   public:
     static constexpr const char* className{"MIDIcontrolSetting"};
     const char* getName(int n) { return n<0?className:memberNames[n]; }
-    MIDIcontrolSetting(MIDIcontrolType _controlType, int _minVal, int _maxVal, int _channel, int _controlNum, char _name)
-    : controlType{_controlType}, minVal{_minVal}, maxVal{_maxVal}, channel{_channel}, controlNum{_controlNum}, name{_name} {}
+    MIDIcontrolSetting(MIDIcontrolType _controlType, int _controlNum = 2, const char _name[MAX_NAME_LENGTH] = "<unnamed>", int _minVal = 0, int _maxVal = 127, int _channel = 0)
+    : controlType{_controlType}, controlNum{_controlNum}, minVal{_minVal}, maxVal{_maxVal}, channel{_channel}    {
+      for (int i = 0; i < MAX_NAME_LENGTH; i++) name[i] = _name[i];
+    }
     MIDIcontrolSetting() {}
 
     MIDIcontrolType controlType{MIDIcontrolType::CC}; //!< message type: note / CC / bend etc.
+    int controlNum{2}; //!< control / note number
+    char name[MAX_NAME_LENGTH]{"<unnamed>"}; //!< name to display on scribble strip
     int minVal{0}; //!< minimum value to send
     int maxVal{127}; //!< maximum value to send
     int channel{0}; //!< MIDI channel to send on
-    int controlNum{2}; //!< control / note number
-    char name[MAX_NAME_LENGTH]{"<unnamed>"}; //!< name to display on scribble strip
 
-    static constexpr const char* memberNames[]{"controlType", "minVal", "maxVal", "channel", "controlNum", "name"};
+    static constexpr const char* memberNames[]{"controlType", "controlNum", "name", "minVal", "maxVal", "channel"};
     int getMemberCount(void) { return 6; }
 
     //-------------------------------------------------
@@ -203,11 +229,11 @@ class MIDIcontrolSetting : public CfgBaseOffset
         do
         {
             TO_OFFSET_LEAF(controlType, MIDIcontrolType);
+            TO_OFFSET_LEAF(controlNum, int);
+            TO_OFFSET_LEAF(name, char);
             TO_OFFSET_LEAF(minVal, int);
             TO_OFFSET_LEAF(maxVal, int);
             TO_OFFSET_LEAF(channel, int);
-            TO_OFFSET_LEAF(controlNum, int);
-            TO_OFFSET_LEAF(name, char);
         } while (0);
         return result;
     }
@@ -283,8 +309,11 @@ class StripSettings : public CfgBaseOffset
   public:
     static constexpr const char* className{"StripSettings"};
     const char* getName(int n) { return n<0?className:memberNames[n]; }
-    StripSettings(StripColours _colours, StripControls _controls)
-    : colours{_colours}, controls{_controls} {}
+    StripSettings(StripColours _colours[NUM_POTS], StripControls _controls[NUM_POTS])
+    {
+      for (int i = 0; i < NUM_POTS; i++) colours[i] = _colours[i];
+      for (int i = 0; i < NUM_POTS; i++) controls[i] = _controls[i];
+    }
     StripSettings() {}
 
     StripColours colours[NUM_POTS]; //!< array of settings for strip colours
