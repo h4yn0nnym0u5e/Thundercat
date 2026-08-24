@@ -37,6 +37,8 @@ void setup() {
   pinMode(USB_T_4, OUTPUT); // 6V enable
 
   initDPEX();
+  initButtonLEDs();
+  initRings();
 
   // Open serial communications and wait for port to open:
   while (!Serial) { // && millis() < 5000) {
@@ -92,14 +94,19 @@ void loop()
   static uint16_t U5bits;
   static elapsedMillis em = 0;
 //  MTP.loop();
+
   procSerial();
+  updateButtonLEDs();
+
   if (em >= 500)
   {
     em = 0;
     digitalWriteFast(LED_BUILTIN, LEDstate & 1);
     //writeU5(0x13,  LEDstate?0x02:0); // set B.1 output
     writeU5(0x13,  LEDstate&2); // set B.1 output
-    digitalWriteFast(USB_T_4, LEDstate & 4); // toggle 6V supply
+    //digitalWriteFast(USB_T_4, LEDstate & 4); // toggle 6V supply
+    if (LEDstate & 4)
+      digitalWriteFast(USB_T_4, HIGH); // enable 6V supply
     LEDstate++;
     //Serial.printf("%04X\n", U5bits);
   }
@@ -192,14 +199,26 @@ bool dumpFile(const char* buf)
 void procSerial(void)
 {
   int ch = Serial.read();
-  if (ch >= 0)
+
+  // rings uses # for off, 0-9 for brightness
+  if (updateRings(ch) && ch >= 0) // not used, parse to string
   {
     buf[idx] = ch;
     if (idx < BUF_MAX)
       idx++;
-    if (ch < 32)
+
+    do
     {
-      buf[idx-1] = 0;
+      if (ch >= 32) // not terminator - done
+        break;
+
+      buf[idx-1] = 0; // terminate string
+      if (1 == idx)   // zero-length string - ignore
+      {
+        idx = 0;
+        break;
+      }
+
       Serial.println(buf);
 
       bool ok = dumpFile(buf);
@@ -218,6 +237,6 @@ void procSerial(void)
       }
       //halt_cpu();
       idx = 0;
-    }
+    } while (0);
   }
 }

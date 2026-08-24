@@ -1,3 +1,6 @@
+#if !defined(_HARDWARE_H_)
+#define _HARDWARE_H_
+
 // ADCs - pots and faders
 #define ADCS_COMMON_CS 7
 #define ADCS_FADERS_CS 9
@@ -97,3 +100,5 @@
 #define USB_T_1 3
 #define USB_T_3 24
 #define USB_T_4 25 // 6V enable: active high
+
+#endif // !defined(_HARDWARE_H_)

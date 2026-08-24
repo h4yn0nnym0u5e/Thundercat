@@ -1,3 +1,5 @@
+#if !defined(_EXPANDERS_H_)
+#define _EXPANDERS_H_
 // U3 has A0 connected high, and U5 has A2 connected high,
 // so they're at addresses 1 and 4 respectively:
 #define ADDR_U3 1
@@ -94,8 +96,10 @@ class MCP23S17_SETTINGS
             GPPUB  = 0b0010'0100;
     };
 };
+#endif // !defined(_EXPANDERS_H_)
 
-#if 0
+//#if 0
+#if defined(CREATE_BUTTON_LEDS)
 extern ButtonLED buttonLED_PCB4;
 extern ButtonLED buttonLED_REAR_FN;
 extern ButtonLED buttonLED_PCB3;
