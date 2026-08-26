@@ -26,7 +26,7 @@ static WS2812Serial buttonLEDstring(numled, displayMemory, buttonLEDmemory, pin,
 #define PURPLE 0x4000FF
 #define CYAN   0x00C0E0
 
-uint32_t colours[]{RED,GREEN,BLUE,YELLOW,PINK,ORANGE,WHITE,PURPLE};
+static uint32_t colours[]{RED,GREEN,BLUE,YELLOW,PINK,ORANGE,WHITE,PURPLE};
 
 //==================================================================================
 class ButtonLED
@@ -134,6 +134,15 @@ void cycleFirstLED(void)
     if (n > 7)
       n=0;
   }
+}
+
+void setFirstLED(int n)
+{
+  int colour = 0;
+  if (n>=0 && n<=7)
+    colour = colours[n];
+  buttonLEDstring.setPixel(0, colour);
+  buttonLEDstring.show();
 }
 
 

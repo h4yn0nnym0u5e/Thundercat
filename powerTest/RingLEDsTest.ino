@@ -6,8 +6,8 @@ void initRings()
   while (!Serial)
     ;
 
-  pinMode(SCRIBBLE_BL, OUTPUT);
-  digitalWriteFast(SCRIBBLE_BL, LOW);
+  //pinMode(SCRIBBLE_BL, OUTPUT);
+  //digitalWriteFast(SCRIBBLE_BL, LOW);
 
   Serial.println("\n\nstarted");
 

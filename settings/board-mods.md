@@ -10,3 +10,6 @@ Add PSRAM
 
 ## LED Ring v2.18c R1 ##
 Check cable - power / DIN need swapping
+
+## Scribble strip v1.06 ##
+Check cable - top / bottom rows need swapping

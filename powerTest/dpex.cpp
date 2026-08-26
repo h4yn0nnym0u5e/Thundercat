@@ -1,16 +1,8 @@
+#include <Arduino.h>
+#include <SPI.h>
 #include "hardware.h"
 #include "expanders.h"
-
-// we assume IOCON.BANK = 0
-// Unfortunately IOCON moves its own address when the 
-// bank bit is changed! This constitutes Poor Design...
-#define REG_IODIRA 0x00
-#define REG_IODIRB 0x01
-#define REG_GPPUA  0x0C
-#define REG_GPPUB  0x0D
-#define REG_GPIOA  0x12 // can use for read or write
-#define REG_GPIOB  0x13
-
+#include "dpex.h"
 
 
 SPISettings U5_SPIsettings{10'000'000, MSBFIRST, SPI_MODE0};
@@ -35,8 +27,14 @@ void writeU5(uint8_t reg, uint8_t val)
   DPEX_SPI.endTransaction();
 }
 
-void writeU5_16(uint8_t reg, uint16_t val)
+void writeU5_16(uint8_t reg, uint16_t val, uint16_t mask)
 {
+  if (0xFFFF != mask)
+  {
+    uint16_t curVal = readU5_16(reg);
+    val &= mask;
+    val |= curVal & ~mask;
+  }
   uint8_t buf[4]{0b01000000 | (MCP23S17_SETTINGS::U5::ADDR<<1), reg, (uint8_t) (val>>8), (uint8_t) (val & 0xFF)};
   DPEX_SPI.beginTransaction(U5_SPIsettings);
   digitalWriteFast(DPEX_CS, LOW);
@@ -55,4 +53,23 @@ uint16_t readU5_16(uint8_t reg)
   DPEX_SPI.endTransaction();
 
   return ((uint16_t) buf[2] << 8) | buf[3];
+}
+
+#define _GET_DPEX_MASK(u,p,b,d) (1<<b)
+#define GET_DPEX_MASK(dp) _GET_DPEX_MASK(dp)
+void scribbleReset(void)
+{
+  uint16_t U5state = readU5_16(REG_GPIOA);
+  uint16_t mask = GET_DPEX_MASK(LCD_RESET);
+  Serial.printf("LCD_RESET mask is %04hX\n", mask);
+
+  U5state |= mask;
+  writeU5_16(REG_GPIOA, U5state, mask);
+  delay(20);
+  U5state &= ~mask;
+  writeU5_16(REG_GPIOA, U5state, mask);
+  delay(1);
+  U5state |= mask;
+  writeU5_16(REG_GPIOA, U5state, mask);
+  delay(1);
 }

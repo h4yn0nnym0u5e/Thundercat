@@ -12,6 +12,7 @@
 //#include <TeensyDebug.h>
 #include "Touches.h"
 #include "hardware.h"
+#include "dpex.h"
 
 /*
    There are two wrapper classes available for use with LittleFS:
@@ -32,13 +33,15 @@ extern bool dumpFile(const char* buf);
 void setup() {
   Serial.begin(2'000'000);
   // **********************************************************************
-  pinMode(LED_BUILTIN, OUTPUT); // ****** THIS WILL BREAK SPI USE! ********
+  //pinMode(LED_BUILTIN, OUTPUT); // ****** THIS WILL BREAK SPI USE! ********
   // **********************************************************************
   pinMode(USB_T_4, OUTPUT); // 6V enable
+  digitalWriteFast(USB_T_4, HIGH); 
 
   initDPEX();
   initButtonLEDs();
   initRings();
+  initScribble();
 
   // Open serial communications and wait for port to open:
   while (!Serial) { // && millis() < 5000) {
@@ -48,7 +51,7 @@ void setup() {
 
   //writeU5(0x01, ~0x02); // B.1 is output
   Serial.printf("IODIRx set to %04X\n", readU5_16(0));
-  writeU5(0x13,  0x02); // set B.1 output high
+  writeU5_16(REG_GPIOA,  0x02, 0x02); // set B.1 output high
   
   if (CrashReport) {
     Serial.print(CrashReport);
@@ -97,13 +100,14 @@ void loop()
 
   procSerial();
   updateButtonLEDs();
+  updateScribble();
 
   if (em >= 500)
   {
     em = 0;
-    digitalWriteFast(LED_BUILTIN, LEDstate & 1);
+    //digitalWriteFast(LED_BUILTIN, LEDstate & 1);
     //writeU5(0x13,  LEDstate?0x02:0); // set B.1 output
-    writeU5(0x13,  LEDstate&2); // set B.1 output
+    writeU5_16(REG_GPIOA,  LEDstate&2,  LEDstate&2); // set B.1 output
     //digitalWriteFast(USB_T_4, LEDstate & 4); // toggle 6V supply
     if (LEDstate & 4)
       digitalWriteFast(USB_T_4, HIGH); // enable 6V supply
