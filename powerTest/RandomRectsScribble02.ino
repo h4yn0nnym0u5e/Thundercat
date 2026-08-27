@@ -275,15 +275,15 @@ void updateScribble()
   {
     em = 999;
 
-    if (0 == rectCount % 9600)
-      Serial.printf("\n%d: ", millis());
+    //if (0 == rectCount % 9600)
+    //  Serial.printf("\n%d: ", millis());
 
     FN_TFTS(randomRect);
   
     rectCount += 8;
     if (0 == rectCount % 96)
     {
-      Serial.print('.');
+      //Serial.print('.');
     }
   }
 }

@@ -15,8 +15,10 @@ def toIODIR(s):
 
 # Pull-up bits set to 1 in GPPUx
 def toGPPU(s):
-    rv = re.sub('U', '1', s)
-    rv = re.sub('[^1]', '0', rv)
+    #rv = re.sub('U', '1', s)
+    #rv = re.sub('[^1]', '0', rv)
+    rv = re.sub('[IO]', '0', s)
+    rv = re.sub('[^0]', '1', rv)
     return fmtB(rv)
 
 # Create class with static values for pin settings

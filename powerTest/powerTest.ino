@@ -12,7 +12,13 @@
 //#include <TeensyDebug.h>
 #include "Touches.h"
 #include "hardware.h"
+#include "expanders.h"
 #include "dpex.h"
+
+#include <usb_names.h>
+extern struct usb_string_descriptor_struct usb_string_serial_number;
+
+extern DPex U3, U5;
 
 /*
    There are two wrapper classes available for use with LittleFS:
@@ -29,6 +35,14 @@ FlexIOSPI flexSPI{36,34,37}; // MOSI, MISO, SCK - FaderMonster
 LittleFS_SPIFram FRAMfs;
 
 extern bool dumpFile(const char* buf);
+
+void getSerialNumber(char* sernum)
+{
+  //char sernum[10];
+  for (size_t i = 0; i < 10; i++)
+    sernum[i] = usb_string_serial_number.wString[i];
+  sernum[10] = 0;    
+}
 
 void setup() {
   Serial.begin(2'000'000);
@@ -50,15 +64,21 @@ void setup() {
   Serial.println('\n');
 
   //writeU5(0x01, ~0x02); // B.1 is output
-  Serial.printf("IODIRx set to %04X\n", readU5_16(0));
-  writeU5_16(REG_GPIOA,  0x02, 0x02); // set B.1 output high
+  Serial.printf("IODIRx set to %04X\n", U5.read16(REG_IODIRA));
+  //writeU5_16(REG_GPIOA,  0x02, 0x02); // set B.1 output high
+  SET_BIT(USB_X_3, 1);
   
   if (CrashReport) {
     Serial.print(CrashReport);
   }
 
   Serial.println("\n" __FILE__ " " __DATE__ " " __TIME__);
-  delay(100);
+  {
+    char buf[11];
+    getSerialNumber(buf);
+    Serial.printf("Teensy serial number is: %s\n", buf);
+  }
+  //delay(100);
   //halt_cpu();
 
   // Now let's try our LittleFS SPI
@@ -74,7 +94,18 @@ void setup() {
   /*/
   if ((ok = FRAMfs.begin(FRAM_CS, flexSPI, true))) // use FlexIOSPI, configured above
   //*/
-  {}//  MTP.addFilesystem(FRAMfs, FRAMfs.name());
+  {
+    const size_t uidsz = 19;
+    uint8_t buffer[uidsz];
+
+    FRAMfs.getUniqueID(buffer,uidsz);
+
+    Serial.printf("MRAM mfr ID: %02X %02X; unique ID: ", buffer[3], buffer[4]);
+    for (size_t i=5;i<uidsz;i++)
+      Serial.printf("%02X ", buffer[i]);
+    Serial.println();      
+
+  }//  MTP.addFilesystem(FRAMfs, FRAMfs.name());
   else
     Serial.printf("\nStorage not added for pin %d", FRAM_CS);  
 
@@ -94,7 +125,6 @@ uint8_t LEDstate;
 TouchStatus powerButton;
 void loop() 
 {
-  static uint16_t U5bits;
   static elapsedMillis em = 0;
 //  MTP.loop();
 
@@ -102,27 +132,35 @@ void loop()
   updateButtonLEDs();
   updateScribble();
 
+  // update to / from port expanders
+  U3.poll();
+  U5.poll();
+
   if (em >= 500)
   {
     em = 0;
-    //digitalWriteFast(LED_BUILTIN, LEDstate & 1);
-    //writeU5(0x13,  LEDstate?0x02:0); // set B.1 output
-    writeU5_16(REG_GPIOA,  LEDstate&2,  LEDstate&2); // set B.1 output
-    //digitalWriteFast(USB_T_4, LEDstate & 4); // toggle 6V supply
+    SET_BIT(USB_X_3, 1); // set USB_X_3 - power LED
     if (LEDstate & 4)
       digitalWriteFast(USB_T_4, HIGH); // enable 6V supply
     LEDstate++;
-    //Serial.printf("%04X\n", U5bits);
   }
 
+  // monitor strip buttons
+  static uint16_t lastPins;
+  uint16_t newPins = U3.getGPIO() ^ 0xFFFF;
+  if (lastPins != newPins)
+  {
+    lastPins = newPins;
+    Serial.printf("U3 pins: %04X\n", newPins);
+  }
+
+  // monitor power button
   static elapsedMillis psw = 0;
   if (psw >= 5)
   {
     psw = 0;
-    U5bits = readU5_16(0x12);
 
-    uint16_t U5bits2 = ~U5bits & 0x0020;
-    powerButton = U5bits2; // update power button status
+    powerButton = GET_BUTTON(USB_X_4); //U5bits2; // update power button status
     /*
     if (0 != (power_switch ^ U5bits2))
     {
@@ -157,10 +195,12 @@ void loop()
           digitalWriteFast(USB_T_4, LOW); // 6V supply off
           delay(1000);
           Serial.print("power LED ... ");
-          writeU5(0x13,  0); // clear power LED B.1 output
+          SET_BIT(USB_X_3,0); // clear power LED B.1 output
+          //writeU5(0x13,  0); // clear power LED B.1 output
           delay(1000);
           Serial.println("shutdown!");
-          writeU5(0x12, 0x80); // shutdown!
+          //writeU5(0x12, 0x80); // shutdown!
+          SET_BIT(USB_X_1, 1); // shutdown!
           for (int i=0;i<100;i++)
           {
             Serial.print('.');
