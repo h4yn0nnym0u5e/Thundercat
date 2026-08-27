@@ -9,7 +9,7 @@
 using namespace TeensyTimerTool;
 
 
-static uint8_t NmbOfADC = 2;            // Number of ADCs in series. This can only be two as of right now (03/09/19)
+static uint8_t NmbOfADC = 3;            // Number of ADCs in series. This can only be two as of right now (03/09/19)
 static ADS8688 bank = ADS8688(ADC_CS, ADC_SPI);  // Instantiate ADS8688 with PIN 7 as CS, default to SPI
 
 ContinuousPot PotsTask::allPots[NUM_POTS]
@@ -182,15 +182,15 @@ void initSPItimer(TaskHandle_t* pHandle)
 void PotsTask::updateADCs(void) 
 {
   {
-    uint16_t* buffer = ADCbuffer;    
+    uint16_t* buffer = ADCbuffer+1;    
 
     // Given a potMap[] of {4,2,0,6}, we get a buffer of 16 values thus
     // 2A, 6A,  2B, 6B,   1A, 5A,  1B, 5B,   0A, 4A,  0B, 4B,   3A, 7A,  3B, 7B
     for (int i=0;i<NUM_POTS/2;i++) // each ADC hosts 4 pots
     {
-      allPots[i+0].update(raw2volts(buffer[potMap[i]*2  ]), raw2volts(buffer[potMap[i]*2+2]));
+      allPots[i+0].update(raw2volts(buffer[potMap[i]*3  ]), raw2volts(buffer[potMap[i]*3+3]));
       if (allPots[i+0].available()) notifyOwner(i+0);
-      allPots[i+4].update(raw2volts(buffer[potMap[i]*2+1]), raw2volts(buffer[potMap[i]*2+3]));
+      allPots[i+4].update(raw2volts(buffer[potMap[i]*3+1]), raw2volts(buffer[potMap[i]*3+4]));
       if (allPots[i+4].available()) notifyOwner(i+4);
     }
   }

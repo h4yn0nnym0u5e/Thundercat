@@ -97,6 +97,7 @@ class MCP23S17_SETTINGS
     };
 };
 
+class ButtonLED;
 extern ButtonLED buttonLED_PCB4;
 extern ButtonLED buttonLED_REAR_FN;
 extern ButtonLED buttonLED_PCB3;

@@ -22,6 +22,7 @@ ContinuousPot allPots[NUM_POTS]
     {4.096f, CH1_POL, CH2_POL, 0.1f}
   };
 
+  extern DPex U3, U5;
 
 //================================================================
 // some default settings
@@ -254,10 +255,22 @@ void setup()
   while (!Serial)
     ;
 
+  // enable 6V    
+  pinMode(USB_T_4, arduino::OUTPUT);
+  digitalWriteFast(USB_T_4, arduino::HIGH);
+
+  delay(100); // wait for it to stabilise (?)
+
+  // some startup things are on the port expanders:
+  initDPEX();
+  ADCsReset();
+  scribbleReset();
+
   pinMode(TFT_BLK, arduino::OUTPUT);
   digitalWriteFast(TFT_BLK, arduino::LOW);
 
-  doReset();
+  //doReset();
+
 
   // hardware "server" tasks - independent of one another
   touchTask.create(); // creates task - doesn't start it
