@@ -238,18 +238,6 @@ void SuperTask::run(void)
 //                                      888      
 //                                      888      
 //
-void doReset()
-{
-  // reset ADCs and touch chip
-  pinMode(RST_PIN,arduino::OUTPUT);
-  digitalWrite(RST_PIN,arduino::HIGH);
-  delay(1);
-  digitalWrite(RST_PIN,arduino::LOW);
-  delay(1);
-  digitalWrite(RST_PIN,arduino::HIGH);
-  delay(1);
-}
-
 void setup() 
 {
   while (!Serial)
@@ -266,11 +254,12 @@ void setup()
   ADCsReset();
   scribbleReset();
 
-  pinMode(TFT_BLK, arduino::OUTPUT);
-  digitalWriteFast(TFT_BLK, arduino::LOW);
-
-  //doReset();
-
+  // switch display backlights off
+  pinMode(SCRIBBLE_BL, arduino::OUTPUT);
+  digitalWriteFast(SCRIBBLE_BL, arduino::LOW);
+  pinMode(MAINLCD_BL, arduino::OUTPUT);
+  digitalWriteFast(MAINLCD_BL, arduino::LOW);
+  
 
   // hardware "server" tasks - independent of one another
   touchTask.create(); // creates task - doesn't start it

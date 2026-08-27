@@ -4,7 +4,7 @@
 
 // ============== Pot board ==============
 // common reset pin
-#define RST_PIN 6
+// #define RST_PIN 6 // on a port expander now
 
 // touch controller
 #define TOUCH_WIRE Wire1
@@ -41,13 +41,13 @@
 #define xBLACK  0x000000
 
 // ============== Scribble board ==============
-#define MUX_A     38
-#define MUX_B     39
-#define MUX_C     40
-#define MUX_G     41
+#define MUX_A     SCRIBBLE_MUX_A
+#define MUX_B     SCRIBBLE_MUX_B
+#define MUX_C     SCRIBBLE_MUX_C
+#define MUX_G     SCRIBBLE_CS
 
-#define TFT_BLK    9
-#define TFT_TYPE TFT_eSPI
+#define TFT_BLK   SCRIBBLE_BL
+#define TFT_TYPE  TFT_eSPI
 
 // TFT_RST should be set to -1 in hardware select file, 
 // we need a different value
@@ -58,7 +58,7 @@
 #undef TFT_RST
 #endif // defined(TFT_RST)
 
-#define TFT_RST    8
+// #define TFT_RST    8 // on a port expander now
 // #define TFT_DC    10 // in user config file
 
 #define SCRIBBLE_SPI SPI

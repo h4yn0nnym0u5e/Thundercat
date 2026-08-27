@@ -112,11 +112,14 @@ InterTaskRequest& ScribbleTask::updateDirty(InterTaskRequest& req,  // request t
 //----------------------------------------------------------------------------
 void ScribbleTask::initDisplayPins(void)
 {
+  // TFT reset is not on a Teensy pin!
+#if defined(TFT_RST)
   if (TFT_RST < 0)
     Serial.printf("TFT_RST set to %d - probably an error!\n", TFT_RST);
+#endif // defined(TFT_RST)
     
   pinMode(TFT_BLK,arduino::OUTPUT);
-  pinMode(TFT_RST,arduino::OUTPUT);
+  //pinMode(TFT_RST,arduino::OUTPUT);
   pinMode(MUX_A,arduino::OUTPUT);
   pinMode(MUX_B,arduino::OUTPUT);
   pinMode(MUX_C,arduino::OUTPUT);
@@ -126,11 +129,13 @@ void ScribbleTask::initDisplayPins(void)
   digitalWriteFast(TFT_BLK, arduino::LOW);
 
   // reset display
+  /*
   digitalWriteFast(TFT_RST, arduino::HIGH);
   vTaskDelay(1);
   digitalWriteFast(TFT_RST, arduino::LOW);
   vTaskDelay(1);
   digitalWriteFast(TFT_RST, arduino::HIGH);
+  */
 }
 
 
