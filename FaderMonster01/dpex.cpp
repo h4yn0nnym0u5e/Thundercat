@@ -27,7 +27,8 @@ void initDPEX(void)
 void DPex::write16(uint8_t reg, uint16_t val, uint16_t mask)
 {
   val = (val & mask) | (gpio & ~mask); // mask in only the bits we want to change
-  uint32_t buf{((0b01000000ul | (addr<<1)) << 24) | ( reg<<16 ) | val};
+  // uint32_t buf{((0b01000000ul | (addr<<1)) << 24) | ( reg<<16 ) | val};
+  uint32_t buf = makeTransactionWord(reg, true, val);
   DPEX_SPI.beginTransaction(spiSettings);
   digitalWriteFast(DPEX_CS, LOW);
   DPEX_SPI.transfer32(buf);
@@ -35,10 +36,20 @@ void DPex::write16(uint8_t reg, uint16_t val, uint16_t mask)
   DPEX_SPI.endTransaction();
 }
 
+void DPex::write16async(uint8_t reg, uint16_t val, EventResponderRef event_responder, uint16_t mask)
+{
+  val = (val & mask) | (gpio & ~mask); // mask in only the bits we want to change
+  asyncTx = makeTransactionWord(reg, true, val);
+  asyncTx = htonl(asyncTx);
+  assertCS();
+  DPEX_SPI.transfer(&asyncTx, nullptr, 4, event_responder);
+}
+
 uint16_t DPex::read16(uint8_t reg)
 {
   //uint8_t buf[4]{0b01000001 | (MCP23S17_SETTINGS::U5::ADDR<<1), reg};
-  uint32_t buf{((0b01000001ul | (addr<<1)) << 24) | ( reg<<16 )};
+  // uint32_t buf{((0b01000001ul | (addr<<1)) << 24) | ( reg<<16 )};
+  uint32_t buf = makeTransactionWord(reg);
   DPEX_SPI.beginTransaction(spiSettings);
   digitalWriteFast(DPEX_CS, LOW);
   uint32_t result32 = DPEX_SPI.transfer32(buf);
@@ -46,6 +57,15 @@ uint16_t DPex::read16(uint8_t reg)
   DPEX_SPI.endTransaction();
 
   return (uint16_t)(result32 & 0xFFFF);
+}
+
+
+void DPex::read16async(uint8_t reg, EventResponderRef event_responder)
+{
+  asyncTx = makeTransactionWord(reg);
+  asyncTx = htonl(asyncTx);
+  assertCS();
+  DPEX_SPI.transfer(&asyncTx, &asyncResult, 4, event_responder);
 }
 
 

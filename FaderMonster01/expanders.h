@@ -83,7 +83,7 @@ class MCP23S17_SETTINGS
             IODIRA = 0b1111'1111,
             GPPUA  = 0b1111'1111,
             IODIRB = 0b1111'1111,
-            GPPUB  = 0b0000'0000;
+            GPPUB  = 0b1111'1111;
     };
 
     struct U5
@@ -91,7 +91,7 @@ class MCP23S17_SETTINGS
         static const uint8_t
             ADDR   = 4,
             IODIRA = 0b0111'1111,
-            GPPUA  = 0b0011'1111,
+            GPPUA  = 0b0111'1111,
             IODIRB = 0b0010'1100,
             GPPUB  = 0b0010'0100;
     };

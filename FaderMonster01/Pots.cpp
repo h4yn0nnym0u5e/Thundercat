@@ -132,6 +132,73 @@ static void transferComplete(EventResponderRef evref)
           src += stride;
         }
       }
+
+    //-------------------------------------------------------------
+    // Deal with digital port expanders.
+    // We have two of these, which we need to write if they're
+    // "dirty", and read every time
+    // fallthrough
+#if 11
+    case 100:
+      DPex::beginTransaction(); // will always do something
+#if 1
+      ADCtoDo = 101;
+      if (U3.isDirty())
+      {
+        U3.assertCS();
+        U3.write16async(REG_GPIOA, U3.getGPIO(), SPIresponder);
+        ADCtoDo = 102;
+        break;
+      }
+
+    // fallthrough if U3 didn't need a write
+    case 101:
+    case 102:
+      if (102 == ADCtoDo) // write occurred
+      {
+        U3.negateCS();    // new transfer needed
+        delayNanoseconds(100); // Table 1-4 item 3
+      }
+      ADCtoDo = 103;
+      if (U5.isDirty())
+      {
+        U5.assertCS();
+        U5.write16async(REG_GPIOA, U5.getGPIO(), SPIresponder);
+        ADCtoDo = 104;
+        break;
+      }
+
+    // fallthrough if U5 didn't need a write
+    case 103:
+    case 104:
+      if (104 == ADCtoDo) // write occurred
+      {
+        U5.negateCS();    // new transfer needed
+        delayNanoseconds(100); // Table 1-4 item 3
+      }
+#endif // 0      
+      U3.assertCS();
+      U3.read16async(REG_GPIOA, SPIresponder);
+      ADCtoDo = 105;
+      break;
+
+    case 105:
+      U3.negateCS();    // new transfer needed
+      delayNanoseconds(100); // Table 1-4 item 3
+      U3.setGPIO(U3.convertAsyncRead());
+
+      U5.assertCS();
+      U5.read16async(REG_GPIOA, SPIresponder);
+      ADCtoDo = 106;
+      break;
+
+    case 106:
+      U5.negateCS();    // new transfer needed
+      delayNanoseconds(100); // Table 1-4 item 3
+      U5.setGPIO(U5.convertAsyncRead());
+      DPEX_SPI.endTransaction();
+#endif // 00
+
       ADCtoDo = -1; // extra flag to say we're done
       ADCupdateMicros = micros() - now;
 

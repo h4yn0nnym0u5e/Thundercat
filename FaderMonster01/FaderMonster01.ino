@@ -118,6 +118,10 @@ void SuperTask::loopFn(void)
       em = 0;
       if (enableADCprint)
         printADCs();
+
+      static bool pwrLED;
+      pwrLED = !pwrLED;
+      SET_BIT(USB_X_3, pwrLED);
     }
   }
 
@@ -125,6 +129,18 @@ void SuperTask::loopFn(void)
   {
     dbgWritten = false;
     Serial.print(dbgBuffer);
+  }
+
+  {
+    static uint16_t lastU5;
+    const uint16_t mask = 0b1011'1111'0010'1100;
+    uint16_t u5 = U5.getGPIO() & mask;
+    if (lastU5 != u5)
+    {
+      lastU5 = u5;
+      Serial.printf("U5: %04hX; pwr: %s\n", u5 ^ mask, GET_BIT(USB_X_4)?"released":"pressed");
+
+    }
   }
 
   // deal with a string of commands all in one go,
