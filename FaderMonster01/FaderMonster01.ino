@@ -109,6 +109,50 @@ bool dbgWritten;
 
 bool enableADCprint;
 
+TouchStatus powerButton;
+void pollPowerButton(void)
+{
+  if (powerButton.isChangedStatus())
+  {
+    static bool hadLongPress = false;
+    TouchStatus::eStatus e = powerButton.getExtendedStatus();
+    Serial.printf("Power button status is %d\n", e);
+
+    switch (e)
+    {
+      default:
+        break;
+
+      case TouchStatus::eStatus::LONG:
+        hadLongPress = true;
+        Serial.println("Release to power off");
+        break;
+
+      case TouchStatus::eStatus::OFF:
+        if (hadLongPress)
+        {
+          Serial.print("Off ... ");
+          delay(1000);
+          Serial.print("6V ... ");
+          digitalWriteFast(USB_T_4, arduino::LOW); // 6V supply off
+          delay(1000);
+          Serial.print("power LED ... ");
+          SET_BIT(USB_X_3,0); // clear power LED B.1 output
+          //writeU5(0x13,  0); // clear power LED B.1 output
+          delay(1000);
+          Serial.println("shutdown!");
+          //writeU5(0x12, 0x80); // shutdown!
+          SET_BIT(USB_X_1, 1); // shutdown!
+          for (int i=0;i<100;i++)
+          {
+            Serial.print('.');
+            delay(10);
+          }
+        }
+        break;
+    }
+  }
+}
 void SuperTask::loopFn(void)
 {
   {
@@ -139,9 +183,10 @@ void SuperTask::loopFn(void)
     {
       lastU5 = u5;
       Serial.printf("U5: %04hX; pwr: %s\n", u5 ^ mask, GET_BIT(USB_X_4)?"released":"pressed");
-
     }
   }
+  powerButton = !GET_BIT(USB_X_4);
+  pollPowerButton();
 
   // deal with a string of commands all in one go,
   // unless an unrecognised commands is given
