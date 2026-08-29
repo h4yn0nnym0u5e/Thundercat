@@ -117,9 +117,9 @@
 // Define this macro with the number of FlexIOSPI busses expected 
 // FlexIOSPI pin assignments are dealt with in the constructor(s)
 // Leave undefined to confine use to LPSPI busses
-#define TFT_FLEXIOSPI_COUNT 1
-#define TFT_FLEXIOSPI_CS_LIST  8
-#define TFT_FLEXIOSPI_DC_LIST 10
+#define TFT_FLEXIOSPI_COUNT    1
+#define TFT_FLEXIOSPI_CS_LIST  2
+#define TFT_FLEXIOSPI_DC_LIST  0
 #define TFT_SPI_MODE (SPI_MODE3 | SPI_MODE_TRANSMIT_ONLY) // transmit-only allows faster SPI clock
 
 #define TFT_CS   CS_from_constructor

@@ -698,8 +698,8 @@ void setup(void)
   while (!Serial)
     ;
   Serial.println("\n\nStarted...");
-  initPower();
   initDPEX();
+  initPower();
   initMainLCD();
   initGT911touch();
 
