@@ -7,7 +7,7 @@
 #define TOUCH_ADDR  GT911_I2C_ADDR_BA  // or GT911_I2C_ADDR_28
 
 // GT911 pins
-#define INT_PIN   15   // must be interrupt-capable
+#define INT_PIN   CTP_INT  // must be interrupt-capable
 #define RST_PIN    -1//9   // set to -1 if not connected
 
 // Display resolution (match your panel)
@@ -64,6 +64,35 @@ void touchDelay(uint32_t ms)
   vTaskDelay(pdMS_TO_TICKS(ms));
 }
 
+/*
+ * Adapted reset function to deal with the fact 
+ * that the reset line is on a port expander
+ */
+static void GT911reset(uint8_t _intPin = CTP_INT, uint8_t _addr = TOUCH_ADDR)
+{
+  delay(1);
+
+  pinMode(_intPin, arduino::OUTPUT);
+  //pinMode(_rstPin, OUTPUT);
+
+  digitalWrite(_intPin, arduino::LOW);
+  //digitalWrite(_rstPin, LOW);
+  SET_BIT_NOW(LCD_RESET, arduino::LOW);
+
+  delay(11);
+
+  digitalWrite(_intPin, _addr == GT911_I2C_ADDR_28);
+
+  delayMicroseconds(110);
+  //pinMode(_rstPin, INPUT);
+  SET_BIT_NOW(LCD_RESET, arduino::HIGH);
+
+  delay(6);
+  digitalWrite(_intPin, arduino::LOW);
+
+  delay(51);
+}
+
 
 void startGT911touch() {
   // Init I2C
@@ -76,6 +105,7 @@ void startGT911touch() {
   // Init GT911 (interrupts are handled INSIDE the library)
   for (int i=0;i<10;i++)
   {
+    GT911reset(); // special reset, chooses the I2C address
     if (Touchscreen.begin(INT_PIN, RST_PIN, I2C_FREQ)) 
     {
       Serial.println("GT911 initialized (interrupt mode).");
@@ -118,7 +148,7 @@ void processTouch(int n)
   int x = p.y/3, y = 240-p.x/4;
   p.x = x; p.y = y;
   p.reserved = 1; // say it's valid
-  //Serial.printf("Touch: X=%u, Y=%u, stuff: %d; ", p.x, p.y, touchWireContext.stuff);
+  Serial.printf("Touch: X=%u, Y=%u, stuff: %d; \n", p.x, p.y, touchWireContext.stuff);
 
   lastTouch = p;
   lastTouchTime = millis();
@@ -173,5 +203,6 @@ static void taskGT911touch(void* params)
 
 void initGT911touch(void)
 {
-  xTaskCreate(taskGT911touch, "GT911touch", 512, nullptr, 3, &handleGT911touch);
+  //xTaskCreate(taskGT911touch, "GT911touch", 512, nullptr, 3, &handleGT911touch);
+  xTaskCreate(taskGT911touch, "GT911touch", 512, nullptr, 2, &handleGT911touch);
 }

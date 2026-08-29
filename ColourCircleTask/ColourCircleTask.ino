@@ -25,6 +25,20 @@
 
 
 //================================================================
+//         888 d8b                   888                   
+//         888 Y8P                   888                   
+//         888                       888                   
+//     .d88888 888 .d8888b  88888b.  888  8888b.  888  888 
+//    d88" 888 888 88K      888 "88b 888     "88b 888  888 
+//    888  888 888 "Y8888b. 888  888 888 .d888888 888  888 
+//    Y88b 888 888      X88 888 d88P 888 888  888 Y88b 888 
+//     "Y88888 888  88888P' 88888P"  888 "Y888888  "Y88888 
+//                          888                        888 
+//                          888                   Y8b d88P 
+//                          888                    "Y88P"  
+//
+/*
+// Prototype settings
 FlexIOSPI SPIflex(11, 12, 13, -1); // Setup on (int mosiPin, int misoPin, int sckPin, int csPin=-1) :
 
 #define TFT_CS_PIN  8
@@ -33,7 +47,18 @@ TFT_eSprite sprite{&tft}; // sprite for off-screen rendering
 uint16_t* imageBuffer;    // extra buffer to serialise area of sprite
 #define TFT_BL      14
 #define TFT_CTP_INT 15
+/*/
 
+// Main PCB settings
+FlexIOSPI SPIflex(MAINLCD_SPI_PINS, -1); // Setup on (int mosiPin, int misoPin, int sckPin, int csPin=-1) :
+
+#define TFT_CS_PIN  MAINLCD_CS
+TFT_eSPI tft = TFT_eSPI(240,320,SPIflex,TFT_CS_PIN);
+TFT_eSprite sprite{&tft}; // sprite for off-screen rendering
+uint16_t* imageBuffer;    // extra buffer to serialise area of sprite
+#define TFT_BL      MAINLCD_BL
+#define TFT_CTP_INT CTP_INT
+//*/
 
 // callback executed within ISR when DMA SPI transfer completes
 static void TFTdmaDoneCB(FlexIOSPI* pFlex)
@@ -341,6 +366,15 @@ void showColours(TFT_eSPI& tft)
 }
 
 //================================================================
+//    888                      888      
+//    888                      888      
+//    888                      888      
+//    888888  8888b.  .d8888b  888  888 
+//    888        "88b 88K      888 .88P 
+//    888    .d888888 "Y8888b. 888888K  
+//    Y88b.  888  888      X88 888 "88b 
+//     "Y888 "Y888888  88888P' 888  888 
+// 
 /*
 extern void processTouch(int n);
 extern uint8_t updateGT911touch();
@@ -353,11 +387,11 @@ float textLevel = 0.66f, bgLevel=0.66f;
 
 void startTaskMainLCD() 
 {
-  Serial1.begin(115200);
+  //Serial1.begin(115200); // kills SPI1 !!!
 
   while (!Serial)
     ;
-  Serial.println("\n\nStarting");
+  Serial.println("Starting display task");
   initTFT(tft, sprite);
 
   hueCircle(tft,hueX,hueY, 100,80, TFT_BLACK);
@@ -420,10 +454,91 @@ void setIdlePin(bool b)
 #endif // defined(IDLE_PIN)
 }
 
+
 //================================================================
+//                                                     
+//    88888b.   .d88b.  888  888  888  .d88b.  888d888 
+//    888 "88b d88""88b 888  888  888 d8P  Y8b 888P"   
+//    888  888 888  888 888  888  888 88888888 888     
+//    888 d88P Y88..88P Y88b 888 d88P Y8b.     888     
+//    88888P"   "Y88P"   "Y8888888P"   "Y8888  888     
+//    888                                              
+//    888                                              
+//    888                                              
+//
+TouchStatus powerButton;
+void pollPowerButton(void)
+{
+  powerButton = !GET_BIT(SOFT_POWER);
+  //powerButton = U5.getBit(5);
+  if (powerButton.isChangedStatus())
+  {
+    static bool hadLongPress = false;
+    TouchStatus::eStatus e = powerButton.getExtendedStatus();
+    Serial.printf("Power button status is %d\n", e);
+
+    switch (e)
+    {
+      default:
+        break;
+
+      case TouchStatus::eStatus::LONG:
+        hadLongPress = true;
+        Serial.println("Release to power off");
+        break;
+
+      case TouchStatus::eStatus::OFF:
+        if (hadLongPress)
+        {
+          Serial.print("Off ... ");
+          vTaskDelay(1000);
+          Serial.print("6V ... ");
+          digitalWriteFast(EN_6V, arduino::LOW); // 6V supply off
+          vTaskDelay(1000);
+          Serial.print("power LED ... ");
+          SET_BIT(POWER_LED,0); // clear power LED B.1 output
+          vTaskDelay(1000);
+          Serial.println("shutdown!");
+          SET_BIT(TOGGLE_POWER, 1); // shutdown!
+          for (int i=0;i<100;i++)
+          {
+            Serial.print('.');
+            vTaskDelay(10);
+          }
+        }
+        break;
+    }
+  }
+}
+
+
+void initPower(void)
+{
+  pinMode(EN_6V, arduino::OUTPUT);
+  digitalWriteFast(EN_6V, arduino::HIGH);
+  delay(100);
+  Serial.println("6V enabled");
+  SET_BIT(POWER_LED, 1);
+}
+
+//================================================================
+//         888 d8b                   888                   
+//         888 Y8P                   888                   
+//         888                       888                   
+//     .d88888 888 .d8888b  88888b.  888  8888b.  888  888 
+//    d88" 888 888 88K      888 "88b 888     "88b 888  888 
+//    888  888 888 "Y8888b. 888  888 888 .d888888 888  888 
+//    Y88b 888 888      X88 888 d88P 888 888  888 Y88b 888 
+//     "Y88888 888  88888P' 88888P"  888 "Y888888  "Y88888 
+//                          888                        888 
+//                          888                   Y8b d88P 
+//                          888                    "Y88P"  
+//  
 void taskMainLCD(void* params) 
 {
   startTaskMainLCD();
+  vTaskDelay(9);
+  Serial.println("Main LCD task started");
 
   while (1)
   {
@@ -533,8 +648,25 @@ void taskMainLCD(void* params)
         break;   
         
       case 'h':
-        Serial.printf("Hue: %04X\n", imageBuffer[0]);        
+        Serial.printf("Hue: %04X\n", imageBuffer[0]);  
+        break;
+
+      case '3':
+        Serial.printf("U3: %04hX\n", U3.getGPIO());
+        break;
+
+      case '5':
+        Serial.printf("U5: %04hX\n", U5.getGPIO());
+        break;
     }
+
+    // this would normally be done by "ADC" task,
+    // as ADCs and port expanders are on SPI1
+    U3.poll();
+    U5.poll();
+
+    // "Super" task, maybe?
+    pollPowerButton();
   }
 }
 
@@ -545,15 +677,33 @@ void initMainLCD(void)
 }
 
 //=========================================
+//                      888                      
+//                      888                      
+//                      888                      
+//    .d8888b   .d88b.  888888 888  888 88888b.  
+//    88K      d8P  Y8b 888    888  888 888 "88b 
+//    "Y8888b. 88888888 888    888  888 888  888 
+//         X88 Y8b.     Y88b.  Y88b 888 888 d88P 
+//     88888P'  "Y8888   "Y888  "Y88888 88888P"  
+//                                      888      
+//                                      888      
+//                                      888      
+// 
 void setup(void)
 {
 #if defined(IDLE_PIN)
   pinMode(IDLE_PIN,arduino::OUTPUT);
 #endif // defined(IDLE_PIN)
 
+  while (!Serial)
+    ;
+  Serial.println("\n\nStarted...");
+  initPower();
+  initDPEX();
   initMainLCD();
   initGT911touch();
 
+  Serial.println("Starting scheduler");
   vTaskStartScheduler();
 }
 
