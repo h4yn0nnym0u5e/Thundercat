@@ -57,17 +57,29 @@ class TouchStatus
     operator bool(void) const { return 0 != status; } 
     eStatus getExtendedStatus(void)
     {
+        taskENTER_CRITICAL();
         updateExtendedStatus();
         lastReadStatus = extendedStatus;
+        taskEXIT_CRITICAL();
         return extendedStatus;
     }
 
-    bool isChangedStatus(void) { updateExtendedStatus(); return lastReadStatus != extendedStatus;}
+    bool isChangedStatus(void) 
+    { 
+        taskENTER_CRITICAL();
+        updateExtendedStatus(); 
+        bool result = lastReadStatus != extendedStatus;
+        taskEXIT_CRITICAL();
+        
+        return result;
+    }
 
     // called when touch status changes
     TouchStatus& operator =(uint8_t v) 
     { 
+        taskENTER_CRITICAL();
         updateExtendedStatus();
+
         if (0 != v) // touched
         {
             switch (extendedStatus)
@@ -116,6 +128,8 @@ class TouchStatus
         if (v != status)    // changed?
             touchTime = 0;  // yes: note timestamp
         status = v; 
+        taskEXIT_CRITICAL();
+        
         return *this; 
     }
 };

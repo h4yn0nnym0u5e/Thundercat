@@ -5,6 +5,7 @@
 #include <Wire.h>
 #include <TFT_eSPI.h>
 #undef SPISettings // undo macro hack
+#include <WS2812Serial.h>
 
 #define CONCAT(a,b,c) a##b##c
 

@@ -87,16 +87,20 @@
 
 // ============== Port expanders ==============
 // expander pin assignments in expanders.h
-#define DPEX_SPI  SPI1
-#define DPEX_CS      4
-#define DPEX_U3_INT 30
-#define DPEX_U5_INT 31
+
 
 // inherent in using SPI1 for expanders:
 // #define DPEX_SCK  27
 // #define DPEX_MISO  1
 // #define DPEX_MOSI 26
 
-
+// ============== Power board control ==============
+// mapped using 0R resistors
+// signal names from USB+power schematic:
+#define TOGGLE_POWER USB_X_1
+#define SK_EN        USB_X_2
+#define SOFT_POWER   USB_X_4
+#define POWER_LED    USB_X_3
+#define EN_6V        USB_T_4 // Teensy pin
 
 #endif // !defined(_CONFIG_H_)
