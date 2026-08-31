@@ -84,6 +84,17 @@ static void TFTdmaWait(void)
 
 void initTFT(TFT_eSPI& tft, TFT_eSprite& spr)
 {
+  // LCD and GT911 share a reset signal, and it requires 
+  // specific timings to set the GT911 I²C address. Hence
+  // we wait for the touch code to do the reset before we
+  // initialise the display.
+  while (!touchReady)
+  {
+    //Serial.print('!');
+    vTaskDelay(50);
+  }
+  //Serial.println();
+  
   // standard TFT display setup
   tft.init();
 
@@ -648,7 +659,7 @@ void taskMainLCD(void* params)
         break;   
         
       case 'h':
-        Serial.printf("Hue: %04X\n", imageBuffer[0]);  
+        Serial.printf("Hue: %04hX\n", hue/* imageBuffer[0] */);  
         break;
 
       case '3':

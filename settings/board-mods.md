@@ -15,5 +15,9 @@ Check cable - power / DIN need swapping
 ## Scribble strip v1.06 ##
 Check cable - top / bottom rows need swapping
 
-## Main LCD ##
+## Main LCD v1.02 ##
 Check cable - wiring reversed
+Change R10 / R11 to 2k2
+
+## Pot board v1.03 ##
+Add 15pF series caps to touch lines

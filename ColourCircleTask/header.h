@@ -49,6 +49,7 @@ extern TaskHandle_t g_yield_task;
 //=================================================
 extern TaskHandle_t handleGT911touch;
 extern void initGT911touch(void);
+extern bool touchReady;
 
 extern void setIdlePin(bool);
 extern TaskHandle_t handleMainLCD;

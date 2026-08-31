@@ -70,30 +70,25 @@ void touchDelay(uint32_t ms)
  */
 static void GT911reset(uint8_t _intPin = CTP_INT, uint8_t _addr = TOUCH_ADDR)
 {
+  SET_BIT_NOW(LCD_RESET, arduino::HIGH);
+  pinMode(_intPin, arduino::OUTPUT);
+  digitalWrite(_intPin, arduino::LOW);
   delay(1);
 
-  pinMode(_intPin, arduino::OUTPUT);
-  //pinMode(_rstPin, OUTPUT);
-
-  digitalWrite(_intPin, arduino::LOW);
-  //digitalWrite(_rstPin, LOW);
   SET_BIT_NOW(LCD_RESET, arduino::LOW);
-
-  delay(11);
+  delay(1);
 
   digitalWrite(_intPin, _addr == GT911_I2C_ADDR_28);
-
   delayMicroseconds(110);
-  //pinMode(_rstPin, INPUT);
+
   SET_BIT_NOW(LCD_RESET, arduino::HIGH);
 
   delay(6);
-  digitalWrite(_intPin, arduino::LOW);
-
+  pinMode(_intPin, arduino::INPUT_PULLUP);
   delay(51);
 }
 
-
+bool touchReady = false;
 void startGT911touch() {
   // Init I2C
 #if defined(I2C_DRIVER_WIRE_H)
@@ -103,9 +98,9 @@ void startGT911touch() {
 #endif // defined(I2C_DRIVER_WIRE_H)
 
   // Init GT911 (interrupts are handled INSIDE the library)
+  GT911reset(); // special reset, chooses the I2C address
   for (int i=0;i<10;i++)
   {
-    GT911reset(); // special reset, chooses the I2C address
     if (Touchscreen.begin(INT_PIN, RST_PIN, I2C_FREQ)) 
     {
       Serial.println("GT911 initialized (interrupt mode).");
@@ -116,7 +111,7 @@ void startGT911touch() {
       Touchscreen.setAsyncWait(touchAsyncWait);
       //Touchscreen.setContext(&touchWireContext);
       Touchscreen.setDelayFn(touchDelay);
-      
+      touchReady = true; // reset has occurred, GT911 is OK
       break;
     } else {
       Serial.printf("%d ... ", i /* Touchscreen.beginError */);
@@ -148,7 +143,7 @@ void processTouch(int n)
   int x = p.y/3, y = 240-p.x/4;
   p.x = x; p.y = y;
   p.reserved = 1; // say it's valid
-  Serial.printf("Touch: X=%u, Y=%u, stuff: %d; \n", p.x, p.y, touchWireContext.stuff);
+  //Serial.printf("Touch: X=%u, Y=%u, stuff: %d; \n", p.x, p.y, touchWireContext.stuff);
 
   lastTouch = p;
   lastTouchTime = millis();
