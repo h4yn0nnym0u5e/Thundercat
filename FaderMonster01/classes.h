@@ -391,11 +391,20 @@ class TouchTask : public FaderMonsterTask
     InterTaskRequest::Result doCalibrateTouch(void*);
     //------------------------------------------------------------------------
 
+    void initTouch(void);
     void updateTouch(void);
     void pollTouch(void);
     void updateKeyStatuses(AT42QT2120& touch);
 
+    void startGT911(TaskHandle_t owner);
+    uint8_t updateGT911(void);
+    void processGT911(int n);
+
+
   public:
+    static constexpr uint32_t touchFlag = 1;
+    static constexpr uint32_t GT911Flag = 2;
+
     TouchTask(const char* _name, 
               configSTACK_DEPTH_TYPE _stackDepth, 
               void* _params,
@@ -420,6 +429,11 @@ class TouchTask : public FaderMonsterTask
     //------------------------------------------------------------------------
     
     AT42QT2120& touchChip;
+
+    // CTP touch screen stuff
+    GTPoint lastTouch;
+    uint32_t lastTouchTime;
+
     bool supplyValid{false};
     bool checkChange{true}; // public: set by ISR
     static TouchStatus keyStatuses[NUM_POTS];

@@ -11,6 +11,20 @@ static void isrTouch(void);
 
 TouchStatus TouchTask::keyStatuses[NUM_POTS];
 
+//===========================================================
+//
+//     .d8888b. 88888888888 .d8888b.   d888    d888   
+//    d88P  Y88b    888    d88P  Y88b d8888   d8888   
+//    888    888    888    888    888   888     888   
+//    888           888    Y88b. d888   888     888   
+//    888  88888    888     "Y888P888   888     888   
+//    888    888    888           888   888     888   
+//    Y88b  d88P    888    Y88b  d88P   888     888   
+//     "Y8888P88    888     "Y8888P"  8888888 8888888 
+//   
+// see touchGT911.cpp
+
+//===========================================================
 void printTouches(void)
 {
     static int last[NUM_POTS]{0};
@@ -115,23 +129,28 @@ void AT42QT2120::setTouchRecalDelay(uint8_t theDelay)
 
 //===========================================================
 //
-//    888                      888      
-//    888                      888      
-//    888                      888      
-//    888888  8888b.  .d8888b  888  888 
-//    888        "88b 88K      888 .88P 
-//    888    .d888888 "Y8888b. 888888K  
-//    Y88b.  888  888      X88 888 "88b 
-//     "Y888 "Y888888  88888P' 888  888 
-//                                      
-// 
+//    888                              888      
+//    888                              888      
+//    888                              888      
+//    888888 .d88b.  888  888  .d8888b 88888b.  
+//    888   d88""88b 888  888 d88P"    888 "88b 
+//    888   888  888 888  888 888      888  888 
+//    Y88b. Y88..88P Y88b 888 Y88b.    888  888 
+//     "Y888 "Y88P"   "Y88888  "Y8888P 888  888 
+//
 static void isrTouch(void)
 {
   //xTaskResumeFromISR(handleTouch);
   BaseType_t xHigherPriorityTaskWoken = pdFALSE; 
 
   touchTask.checkChange = true;
+  /*
   vTaskNotifyGiveFromISR(touchTask.handle, &xHigherPriorityTaskWoken);
+  /*/
+  xTaskNotifyFromISR(touchTask.handle,    // notify touch task ...
+                     TouchTask::touchFlag, eSetBits, // ...setting the touch flag
+                     &xHigherPriorityTaskWoken);
+  //*/                     
   portYIELD_FROM_ISR( xHigherPriorityTaskWoken );
 }
 
@@ -210,9 +229,8 @@ void TouchTask::pollTouch(void)
 }
 
 
-void TouchTask::run(void)
+void TouchTask::initTouch(void)
 {
-  vTaskDelay(5);
   // access touch chip via I²C
   while (1)
   {
@@ -226,16 +244,63 @@ void TouchTask::run(void)
 
   touchChip.setTouchRecalDelay(0); // set TRD register so continuous touch doesn't time out
 
-  // change interrupt
+  // set up change interrupt
   pinMode(CHANGE_PIN,arduino::INPUT_PULLUP);
   attachInterrupt(CHANGE_PIN, isrTouch, arduino::FALLING);
+
+  // initial update() seems to be necessary
+  updateTouch();
+}
+
+//=========================================================================
+//
+//    888                      888      
+//    888                      888      
+//    888                      888      
+//    888888  8888b.  .d8888b  888  888 
+//    888        "88b 88K      888 .88P 
+//    888    .d888888 "Y8888b. 888888K  
+//    Y88b.  888  888      X88 888 "88b 
+//     "Y888 "Y888888  88888P' 888  888 
+// 
+void TouchTask::run(void)
+{
+  uint32_t whichISR = 0;
+  vTaskDelay(5);
+  //*
+  initTouch();        // GT911 breaks pots touch :-(
+  /*/
+  supplyValid = true; // fake it for now
+  //*/
+  startGT911(xTaskGetCurrentTaskHandle());
 
   while (1)
   {
     reqQueue.executeRequest(*this, 0); // execute any pending requests (calibration)
-    updateTouch(); // only does I²C if ISR fired
-    pollTouch(); // generate state outputs
-    ulTaskNotifyTake(pdTRUE, 10); // wait for notification from touch ISR
+
+    if (pdTRUE == xTaskNotifyWait(0UL, UINT32_MAX, &whichISR, 10)) // wait for notification from touch ISR
+    {
+      // Pot touch chip triggered?
+      if (0 != (whichISR & touchFlag))
+        updateTouch(); // only does I²C if ISR fired
+
+      // Main LCD touch screen triggered?
+      if (0 != (whichISR & GT911Flag))
+      {
+        if (0 == updateGT911()) // no touches right now
+        {
+          // ...deal with being untouched
+        }
+        else 
+        {
+          processGT911(0); // just grab first touch point for now
+          Serial.printf("[%d]: %d, %d\n", lastTouchTime, lastTouch.x, lastTouch.y);
+          //xTaskNotifyGive(handleMainLCD); // wake up Main LCD task to deal with touch
+        }
+      }
+    }
+
+    pollTouch(); // generate state outputs, e.g. time long presses
   }
 }
 

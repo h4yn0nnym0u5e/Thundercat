@@ -6,10 +6,17 @@
 // common reset pin
 // #define RST_PIN 6 // on a port expander now
 
-// touch controller
+// Pots touch controller
+/*
 #define TOUCH_WIRE Wire1
 #define TOUCH_ADDR 0x1C
 #define CHANGE_PIN POTS_TOUCH_INT
+/*/
+// Temporary test for faders touch
+#define TOUCH_WIRE FADERS_TOUCH_I2C
+#define TOUCH_ADDR 0x1C
+#define CHANGE_PIN FADERS_TOUCH_INT
+//*/
 
 // ADCs
 #define ADC_SPI SPI1

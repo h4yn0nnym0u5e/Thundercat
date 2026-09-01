@@ -2,12 +2,12 @@
 #define _HARDWARE_H_
 
 // ADCs - pots and faders
-#define ADCS_COMMON_CS 7
-#define ADCS_FADERS_CS 9
-#define ADCS_MISO 1
-#define ADCS_MOSI 26
-#define ADCS_POTS2_CS 8
-#define ADCS_SCK 27
+#define ADCS_COMMON_CS  7
+#define ADCS_FADERS_CS  9
+#define ADCS_MISO       1
+#define ADCS_MOSI      26
+#define ADCS_POTS2_CS   8
+#define ADCS_SCK       27
 
 #define ADCS_SPI SPI1 // shared with port expanders
 
@@ -19,10 +19,11 @@
 // Main LCD touch screen
 #define CTP_INT 32
 
-#define CTP_I2C Wire1
+#define CTP_I2C     Wire1   // standard library
+#define TFT_CTP_I2C Master1 // async library
 
 // Port expanders
-#define DPEX_CS 4
+#define DPEX_CS    4
 #define DPEX1_INT 30
 #define DPEX2_INT 31
 
