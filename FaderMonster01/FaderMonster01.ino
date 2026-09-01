@@ -115,7 +115,7 @@ void pollPowerButton(void)
   powerButton = !GET_BIT(SOFT_POWER);
   if (powerButton.isChangedStatus())
   {
-    static bool hadLongPress = false;
+    static bool hadLongPress = false, canPowerOff = false;
     TouchStatus::eStatus e = powerButton.getExtendedStatus();
     Serial.printf("Power button status is %d\n", e);
 
@@ -125,21 +125,25 @@ void pollPowerButton(void)
         break;
 
       case TouchStatus::eStatus::LONG:
-        hadLongPress = true;
-        Serial.println("Release to power off");
+        if (canPowerOff)
+        {
+          hadLongPress = true;
+          SET_BIT(POWER_LED,0); // clear power LED B.1 output
+          Serial.println("Release to power off");
+        }
         break;
 
-      case TouchStatus::eStatus::OFF:
+      case TouchStatus::eStatus::OFF: // released after power-up etc.
+        canPowerOff = true;
         if (hadLongPress)
         {
           Serial.print("Off ... ");
           vTaskDelay(1000);
+          
           Serial.print("6V ... ");
           digitalWriteFast(EN_6V, arduino::LOW); // 6V supply off
           vTaskDelay(1000);
-          Serial.print("power LED ... ");
-          SET_BIT(POWER_LED,0); // clear power LED B.1 output
-          vTaskDelay(1000);
+
           Serial.println("shutdown!");
           SET_BIT(TOGGLE_POWER, 1); // shutdown!
           for (int i=0;i<100;i++)
@@ -148,6 +152,9 @@ void pollPowerButton(void)
             vTaskDelay(10);
           }
         }
+        else
+          SET_BIT(POWER_LED,1); // set power LED B.1 output
+
         break;
     }
   }
@@ -166,7 +173,7 @@ void SuperTask::loopFn(void)
       pwrLED = !pwrLED;
       SET_BIT(POWER_LED, pwrLED);
 */      
-      SET_BIT(POWER_LED, 1);
+      //SET_BIT(POWER_LED, 1);
     }
   }
 
