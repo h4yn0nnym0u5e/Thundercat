@@ -184,22 +184,86 @@ class RequestQueue
 /*
  * Class to deal with AT42QT2120 touch chip
  */
+class AT42QT2120_Wire
+{
+    TwoWire& theWire;
+    int addr;
+  public:
+    AT42QT2120_Wire(TwoWire& _tw, int _addr) 
+    : theWire{_tw}, addr{_addr}
+    {}
+    void begin(uint32_t frequency = 0);
+    bool write(uint8_t* buf, int n);
+    bool read(uint8_t* buf, int n);
+};
+
+class AT42QT2120_Wire_Async
+{
+    I2CMaster& theWire;
+    int addr{0x55};
+
+    bool finish(uint32_t timeout_millis = 50);
+  public:
+    AT42QT2120_Wire_Async(I2CMaster& _tw, int _addr) 
+    : theWire{_tw}, addr{_addr}
+    {}
+    void begin(uint32_t frequency = 0);
+    bool write(uint8_t* buf, int n);
+    bool read(uint8_t* buf, int n);
+};
+
+template<class AT42QT2120_I2C>
 class AT42QT2120
 {
 public:    
-    TwoWire& theWire;
-    int touch_addr; // stops warning about ambiguous call
+    AT42QT2120_I2C& theWire;
     uint8_t status[6];
     uint16_t oldK, newK, chg, mask;
   public:
-    AT42QT2120(TwoWire& _wire, uint8_t _addr, uint16_t _mask) 
-        : theWire{_wire}, touch_addr{_addr}, mask{_mask} 
+    AT42QT2120(AT42QT2120_I2C& _wire, uint16_t _mask) 
+        : theWire{_wire}, mask{_mask} 
         {}
-    bool probe(void);
-    void prepReadKeys(void);        
-    void readKeys(void);
-    void calibrate(void);
-    void setTouchRecalDelay(uint8_t theDelay);
+
+    bool probe(int32_t freq)
+    {
+        uint8_t dummy{0x42};
+        theWire.begin(freq);
+        return theWire.write(&dummy,1);
+    }
+
+    void prepReadKeys(void)
+    {
+        uint8_t buf[6]{0};
+        theWire.write(buf,1);
+        theWire.read(buf,sizeof buf);
+    }
+
+    void readKeys(void)
+    {
+        uint8_t newKeys[2]{3};
+
+        theWire.write(newKeys,1);
+        theWire.read(newKeys, sizeof newKeys);
+
+        oldK = (status[4]  << 8) | status[3];
+        newK = (newKeys[1] << 8) | newKeys[0];
+        chg = (newK ^ oldK) & mask; // ignore unimplemented bits
+
+        status[3] = newKeys[0];
+        status[4] = newKeys[1];
+    }
+
+    void calibrate(void)
+    {
+        uint8_t calibrate[]{6,1};
+        theWire.write(calibrate,sizeof calibrate);
+    }
+
+    void setTouchRecalDelay(uint8_t theDelay)
+    {
+        uint8_t cmd[]{12,theDelay};
+        theWire.write(cmd,sizeof cmd);
+    }
 
     // get info on next changed key; returns false if no changes
     bool getChangedKey(int& keyNum, bool& state)
@@ -376,6 +440,7 @@ class SuperTask : public FaderMonsterTask
 //    Y88b. Y88..88P Y88b 888 Y88b.    888  888 
 //     "Y888 "Y88P"   "Y88888  "Y8888P 888  888 
 //
+typedef AT42QT2120<AT42QT2120_Wire_Async> touchChipDriver;
 class TouchTask : public FaderMonsterTask
 {
     //------------------------------------------------------------------------
@@ -394,7 +459,7 @@ class TouchTask : public FaderMonsterTask
     void initTouch(void);
     void updateTouch(void);
     void pollTouch(void);
-    void updateKeyStatuses(AT42QT2120& touch);
+    void updateKeyStatuses(touchChipDriver& touch);
 
     void startGT911(TaskHandle_t owner);
     uint8_t updateGT911(void);
@@ -411,7 +476,7 @@ class TouchTask : public FaderMonsterTask
               UBaseType_t _priority,
 
               int _queueLength,
-              AT42QT2120& _atq
+              touchChipDriver& _atq
             )
             : FaderMonsterTask{_name, _stackDepth, _params, _priority},
               reqQueue{_queueLength}, touchChip{_atq}
@@ -428,11 +493,12 @@ class TouchTask : public FaderMonsterTask
     }
     //------------------------------------------------------------------------
     
-    AT42QT2120& touchChip;
+    touchChipDriver& touchChip;
 
     // CTP touch screen stuff
     GTPoint lastTouch;
     uint32_t lastTouchTime;
+    bool touchReady{false}; // weird reset sequence is completed
 
     bool supplyValid{false};
     bool checkChange{true}; // public: set by ISR

@@ -188,6 +188,17 @@ void ScribbleTask::run(void)
 {
     Serial.printf("[%d]: scribble task: init pins ...\n", micros());
     initDisplayPins();
+
+    // LCD and GT911 share a reset signal, and it requires 
+    // specific timings to set the GT911 I²C address. Hence
+    // we wait for the touch code to do the reset before we
+    // initialise the display.
+    while (!touchTask.touchReady)
+    {
+      //Serial.print('!');
+      vTaskDelay(50);
+    }
+
     //Serial.print(" phased init ...");
     phasedInit();  // does phased init then initial screen fill
 

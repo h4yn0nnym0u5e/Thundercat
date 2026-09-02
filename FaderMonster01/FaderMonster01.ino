@@ -139,7 +139,7 @@ void pollPowerButton(void)
         {
           Serial.print("Off ... ");
           vTaskDelay(1000);
-          
+
           Serial.print("6V ... ");
           digitalWriteFast(EN_6V, arduino::LOW); // 6V supply off
           vTaskDelay(1000);
@@ -315,15 +315,17 @@ void setup()
     ;
 
   // enable 6V    
-  pinMode(USB_T_4, arduino::OUTPUT);
-  digitalWriteFast(USB_T_4, arduino::HIGH);
+  pinMode(EN_6V, arduino::OUTPUT);
+  digitalWriteFast(EN_6V, arduino::HIGH);
 
   delay(100); // wait for it to stabilise (?)
 
   // some startup things are on the port expanders:
   initDPEX();
   ADCsReset();
-  scribbleReset();
+
+  // don't do this: the GT911 needs a specific sequence!
+  // scribbleReset();
 
   // switch display backlights off
   pinMode(SCRIBBLE_BL, arduino::OUTPUT);

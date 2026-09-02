@@ -1,11 +1,16 @@
 /*
- * Quick test of the AT42QT2120 touch sensor
+ * Handle the pots AT42QT2120 touch sensor and main LCD
+ * GT911 touch sensor, both of which share an I²C bus
  */
 #include "header.h"
 #include <Wire.h>
 
-
-AT42QT2120 potsTouch{TOUCH_WIRE, TOUCH_ADDR, 0xFF0};
+/*
+AT42QT2120_Wire potsWire{POTS_TOUCH_I2C, POTS_TOUCH_ADDR};
+/*/
+AT42QT2120_Wire_Async potsWire{POTS_TOUCH_I2C_ASYNC, POTS_TOUCH_ADDR};
+//*/
+touchChipDriver potsTouch{potsWire, 0xFF0};
 
 static void isrTouch(void);
 
@@ -64,7 +69,69 @@ void printTouches(void)
 //    d88P     888     888        888  888888888   "Y888888"  888888888  8888888 888888888   "Y8888P"  
 //                                                       Y8b                                           
 //
+//-----------------------------------------------------------
+void AT42QT2120_Wire::begin(uint32_t frequency)
+{
+  theWire.begin();
+}
 
+bool AT42QT2120_Wire::write(uint8_t* buf, int n)
+{
+  theWire.beginTransmission(addr);
+  theWire.write(buf, n);
+  return 0 == theWire.endTransmission();
+}
+
+bool AT42QT2120_Wire::read(uint8_t* buf, int n)
+{
+  theWire.requestFrom(addr,n,1);
+  for (int i=0;i<n;i++)
+    buf[i] = theWire.read();
+  return 0 == theWire.endTransmission();
+}
+//-----------------------------------------------------------
+void AT42QT2120_Wire_Async::begin(uint32_t frequency)
+{
+  Serial.printf("AT42QT2120_Wire_Async::begin; address = 0x%02X\n", addr);
+  theWire.begin(frequency);
+
+  uint8_t dummy{0};
+  write(&dummy,0);
+  finish();
+  delayMicroseconds(100);
+}
+
+bool AT42QT2120_Wire_Async::write(uint8_t* buf, int n)
+{
+  theWire.write_async(addr, buf, n, true);
+  if (theWire.has_error())
+  {
+    Serial.printf("Write of %d bytes (", n);
+    for (int i=0;i<n;i++) Serial.printf(" %02X ", buf[i]);
+    Serial.printf(")- error %d\n", n, theWire.error());
+  }
+  finish();
+  return !theWire.has_error();
+}
+
+bool AT42QT2120_Wire_Async::read(uint8_t* buf, int n)
+{
+  theWire.read_async(addr,buf,n,true);
+  finish();
+  return !theWire.has_error();
+}
+
+// wait until I²C transaction completes or times out
+// use setAsynWait() to change behaviour, e.g. use with RTOS
+bool AT42QT2120_Wire_Async::finish(uint32_t timeout_millis)
+{
+  // wait for notification from async I2C library
+  ulTaskNotifyTakeIndexed(1, pdTRUE, timeout_millis);
+  return !theWire.finished();
+}
+//-----------------------------------------------------------
+
+#if 0
 // see if chip responds
 bool AT42QT2120::probe(void)
 {
@@ -125,7 +192,7 @@ void AT42QT2120::setTouchRecalDelay(uint8_t theDelay)
     theWire.write(cmd,2);
     theWire.endTransmission();
 }
-
+#endif // 0
 
 //===========================================================
 //
@@ -155,7 +222,7 @@ static void isrTouch(void)
 }
 
 
-void TouchTask::updateKeyStatuses(AT42QT2120& touch)
+void TouchTask::updateKeyStatuses(touchChipDriver& touch)
 {
   int keyNum;
   bool state;
@@ -234,7 +301,7 @@ void TouchTask::initTouch(void)
   // access touch chip via I²C
   while (1)
   {
-    if (touchChip.probe())
+    if (touchChip.probe(400'000))
       break;
     Serial.println("Waiting for 6V supply...");
     vTaskDelay(500);

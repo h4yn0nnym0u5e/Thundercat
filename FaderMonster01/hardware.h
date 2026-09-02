@@ -70,7 +70,9 @@
 #define POTS_TOUCH_SCL 16
 #define POTS_TOUCH_SDA 17
 
-#define POTS_TOUCH_I2C Wire1
+#define POTS_TOUCH_I2C       Wire1
+#define POTS_TOUCH_I2C_ASYNC Master1
+#define POTS_TOUCH_ADDR      0x1C
 
 // Ring LEDs
 #define RINGS_DIN 20

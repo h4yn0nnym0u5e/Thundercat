@@ -25,6 +25,7 @@ struct touchWireContext_s
 } touchWireContext{1};
 
 
+//----------------------------------------------------------------------
 // un-block the task when the touch interrupt fires
 static void touchISR(void)
 {
@@ -41,6 +42,7 @@ static void touchISR(void)
   portYIELD_FROM_ISR( xHigherPriorityTaskWoken );
 }
 
+//----------------------------------------------------------------------
 // Wait for async I2C transaction to complete.
 // When it does, touchWireCallback() will be called
 static void touchAsyncWait(void* pctxt)
@@ -48,7 +50,7 @@ static void touchAsyncWait(void* pctxt)
   //touchWireContext_s& context = *((touchWireContext_s*) pctxt);
 
   // wait for notification from async I2C library
-  ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
+  ulTaskNotifyTakeIndexed(1, pdTRUE, portMAX_DELAY);
 }
 
 // Called from an interrupt in the async I2C 
@@ -61,9 +63,10 @@ void touchWireCallback(void* pctxt)
 
   BaseType_t xHigherPriorityTaskWoken = pdFALSE; 
 
-  vTaskNotifyGiveFromISR(context.handle, &xHigherPriorityTaskWoken);
+  vTaskNotifyGiveIndexedFromISR(context.handle, 1, &xHigherPriorityTaskWoken);
   portYIELD_FROM_ISR( xHigherPriorityTaskWoken );
 }
+//----------------------------------------------------------------------
 
 // Replacement for delay() when called from inside GT911 library
 void touchDelay(uint32_t ms)
@@ -95,7 +98,6 @@ static void GT911reset(uint8_t _intPin = CTP_INT, uint8_t _addr = CTP_TOUCH_ADDR
   delay(51);
 }
 
-bool touchReady = false;
 void TouchTask::startGT911(TaskHandle_t owner) 
 {
   touchWireContext.handle = owner;

@@ -7,8 +7,9 @@
 // #define RST_PIN 6 // on a port expander now
 
 // Pots touch controller
-/*
-#define TOUCH_WIRE Wire1
+//*
+#define TOUCH_WIRE       Wire1
+#define TOUCH_WIRE_ASYNC Master1
 #define TOUCH_ADDR 0x1C
 #define CHANGE_PIN POTS_TOUCH_INT
 /*/
