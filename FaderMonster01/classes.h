@@ -596,6 +596,73 @@ class ScribbleTask : public FaderMonsterTask
     InterTaskRequest& updateDirty(InterTaskRequest& req, TFT_eSprite& scribble, TickType_t timeout = 0);
 };
 
+//    888b     d888          d8b          888      .d8888b.  8888888b.  
+//    8888b   d8888          Y8P          888     d88P  Y88b 888  "Y88b 
+//    88888b.d88888                       888     888    888 888    888 
+//    888Y88888P888  8888b.  888 88888b.  888     888        888    888 
+//    888 Y888P 888     "88b 888 888 "88b 888     888        888    888 
+//    888  Y8P  888 .d888888 888 888  888 888     888    888 888    888 
+//    888   "   888 888  888 888 888  888 888     Y88b  d88P 888  .d88P 
+//    888       888 "Y888888 888 888  888 88888888 "Y8888P"  8888888P"  
+//  
+class MainLCDtask : public FaderMonsterTask
+{ 
+    //------------------------------------------------------------------------
+    // stuff to deal with async requests from another task:
+    typedef InterTaskRequest::Result (MainLCDtask::* RequestExecutor)(void*);
+    struct requestPayload
+    {
+        RequestExecutor requestExecutor;
+        void* context;
+    };
+    RequestQueue<MainLCDtask, requestPayload> reqQueue;
+
+    InterTaskRequest::Result doUpdateDirty(void* pScribble);
+    //------------------------------------------------------------------------
+
+    TFT_TYPE& tft;
+    TFT_eSprite& sprite;
+    //TFT_TYPE* ptft;
+    InterTaskRequest updateDirtyReq;
+    bool initComplete;
+    uint16_t* DMAbuffer;
+
+    void setDMAcompletionISR(void (*isr)(TFT_eSPI& which))
+    {
+        tft.dmaAttachCompletionISR(isr);
+    }
+
+    void initDisplayPins(void);
+    bool doAphase(int& phase);
+    void phasedInit(void);
+    void TFTdmaWait(void);
+
+  public:
+    MainLCDtask(const char* _name, 
+              configSTACK_DEPTH_TYPE _stackDepth, 
+              void* _params,
+              UBaseType_t _priority,
+            
+              TFT_TYPE& _tft,
+              TFT_eSprite& _spr,
+              int _queueLength)
+    : FaderMonsterTask{_name, _stackDepth, _params, _priority},
+      reqQueue{_queueLength},
+      tft{_tft}, sprite{_spr},
+      DMAbuffer{nullptr}
+    {}
+   
+    TFT_TYPE& getTFT(void) { return tft; }
+    
+    void run(void) override;
+    void setDMAbuffer(uint16_t* buf) { DMAbuffer = buf; }
+    bool tftInitComplete(void) { return initComplete; }
+
+    //------------------------------------------------------------------------
+    // stuff to allow another task to make async requests:
+    InterTaskRequest& updateDirty(InterTaskRequest& req, TFT_eSprite& scribble, TickType_t timeout = 0);
+};
+
 //             888            d8b          
 //             888            Y8P          
 //             888                         

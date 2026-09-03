@@ -70,17 +70,18 @@ void cycleLED(elapsedMillis& em, int& colour, int ring, int led)
 }
 
 //================================================================
-TaskHandle_t* handles[]{nullptr, nullptr, nullptr, nullptr,   // 0-3
-                        &superTask.handle, &touchTask.handle, // 4-5
-                        &scribbleTask.handle, &potsTask.handle, &ringLEDsTask.handle, // 6-8
-                        &midiTask.handle}; // 9
+TaskHandle_t* handles[]{nullptr, nullptr,    // 0-1
+                        &scribbleTask.handle, &mainLCDtask.handle, // 2-3
+                        nullptr, nullptr, // 4-5
+                        &superTask.handle,  &ringLEDsTask.handle, // 6-7
+                        &potsTask.handle, &touchTask.handle, &midiTask.handle}; // 8-10
 void printTaskStates(void)
 {
   TaskHandle_t handleIdle = xTaskGetIdleTaskHandle();
   handles[0] = &handleIdle;
   handles[1] = &freertos::g_yield_task;
-  handles[2] = &StripTask::getStripTask(0).handle;
-  handles[3] = &StripTask::getStripTask(3).handle;
+  handles[4] = &StripTask::getStripTask(0).handle;
+  handles[5] = &StripTask::getStripTask(3).handle;
   configRUN_TIME_COUNTER_TYPE idlePercent = ulTaskGetIdleRunTimePercent(),
                               idleCount = ulTaskGetIdleRunTimeCounter();
   float pct = idleCount * 100.0f / idlePercent; // 100% of counts to date
@@ -286,7 +287,7 @@ void SuperTask::run(void)
 
   /*** REMOVE THIS LATER ! ****/
   // dummy allocation to ensure we don't over-allocate RAM2
-  allocateDMAbuffer(320,240);
+  // allocateDMAbuffer(320,240);
 
   while (1)
   {
@@ -339,6 +340,7 @@ void setup()
   // fadersTask.create(); // just touch - potsTask deals with analogue
   ringLEDsTask.create();
   scribbleTask.create();
+  mainLCDtask.create();
   // mainLCDtask.create();
   potsTask.create(); // need to be before...
 

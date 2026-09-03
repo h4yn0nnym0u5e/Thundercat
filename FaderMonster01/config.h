@@ -77,6 +77,9 @@
 // #define TFT_MISO 12
 // #define TFT_MOSI 11
 
+// ============== Main LCD ==============
+#define MAIN_TFT_ROTATION 1
+
 #define TFT_ORANGE2      0xFD00      /* 255, 160,   0 */
 
 #define FONT_3DP FreeSansBold24pt7b

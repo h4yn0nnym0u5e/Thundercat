@@ -31,10 +31,10 @@ TFT_TYPE* ScribbleTask::scribbles[]
 {&ScribbleTask::tft1, &ScribbleTask::tft2, &ScribbleTask::tft3, &ScribbleTask::tft4, 
  &ScribbleTask::tft5, &ScribbleTask::tft6, &ScribbleTask::tft7, &ScribbleTask::tft8};
 
- bool ScribbleTask::initComplete{false};
+bool ScribbleTask::initComplete{false};
 //----------------------------------------------------------------------------
 // run from ISR when TFT DMA has finished
-void DMAcompletionISR(TFT_eSPI& which) 
+static void DMAcompletionISR(TFT_eSPI& which) 
 {
   BaseType_t xHigherPriorityTaskWoken = pdFALSE; 
 
@@ -127,15 +127,6 @@ void ScribbleTask::initDisplayPins(void)
 
   // turn backlight off
   digitalWriteFast(TFT_BLK, arduino::LOW);
-
-  // reset display
-  /*
-  digitalWriteFast(TFT_RST, arduino::HIGH);
-  vTaskDelay(1);
-  digitalWriteFast(TFT_RST, arduino::LOW);
-  vTaskDelay(1);
-  digitalWriteFast(TFT_RST, arduino::HIGH);
-  */
 }
 
 
@@ -176,7 +167,7 @@ void ScribbleTask::phasedInit(void)
     }
     vTaskDelay(1);
   }
-  Serial.printf("Phased init - took %dms\n", (int) em);
+  Serial.printf("[%d] Scribbles phased init - took %dms\n", micros(), (int) em);
   FN_TFTS(fillUnique);
 }
 
@@ -202,9 +193,9 @@ void ScribbleTask::run(void)
     //Serial.print(" phased init ...");
     phasedInit();  // does phased init then initial screen fill
 
-    // set backlights to half-power (640ms)
-    Serial.print(" backlight ...");
-    for (int i=0;i<128;i+=1)
+    // set backlights to full power (640ms)
+    Serial.printf("[%d] scribbles backlight ...\n", micros());
+    for (int i=1;i<256;i+=2)
     {
         analogWrite(TFT_BLK,i);
         vTaskDelay(5);

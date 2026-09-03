@@ -23,6 +23,7 @@
 
 extern TouchTask touchTask;
 extern ScribbleTask scribbleTask;
+extern MainLCDtask mainLCDtask;
 extern PotsTask potsTask;
 extern RingLEDsTask ringLEDsTask;
 extern SuperTask superTask;

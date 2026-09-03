@@ -2,10 +2,11 @@
 
 InterTaskRequest::Result MIDItask::doSendMIDI(MIDImessage& msg, uint32_t reqTime)
 {
+    /*
     uint32_t took = micros() - reqTime;
     Serial.printf("[%lu]: MIDI: type = %d, cmd = %d, value = %d; took %luus\n",
                   micros(), msg.type,  msg.cmd,  msg.value,      took);
-
+    */
     return InterTaskRequest::Result::done;
 }
 
