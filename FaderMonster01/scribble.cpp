@@ -86,8 +86,10 @@ InterTaskRequest::Result ScribbleTask::doUpdateDirty(void* pScribble)
             src += sw;
         }
         scribble.startWrite();
+digitalWriteFast(DBG3, arduino::HIGH);
         scribble.pushImageDMA(x,y,w,h,DMAbuffer);
         ulTaskNotifyTake(pdTRUE, portMAX_DELAY); // suspend until DMA completes
+digitalWriteFast(DBG3, arduino::LOW);
         scribble.endWrite();
     }
 

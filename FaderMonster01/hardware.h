@@ -3,10 +3,10 @@
 
 // ADCs - pots and faders
 #define ADCS_COMMON_CS  7
-#define ADCS_FADERS_CS  9
+// #define ADCS_FADERS_CS  9
 #define ADCS_MISO       1
 #define ADCS_MOSI      26
-#define ADCS_POTS2_CS   8
+// #define ADCS_POTS2_CS   8
 #define ADCS_SCK       27
 
 #define ADCS_SPI SPI1 // shared with port expanders
@@ -100,9 +100,14 @@
 #define SK_I2C Wire // unused
 
 // USB+Power I/O (optional, currently use port expanders)
-#define USB_T_1 3
+// #define USB_T_1 3
 #define USB_T_2  5 // main LCD backlight
 #define USB_T_3 24
 #define USB_T_4 25 // 6V enable: active high
+
+// spare for debug (for now - caution!)
+#define DBG1  3
+#define DBG2  8
+#define DBG3  9
 
 #endif // !defined(_HARDWARE_H_)

@@ -13,19 +13,43 @@ static void TFTdmaDoneCB(FlexIOSPI* pFlex)
 {
   BaseType_t xHigherPriorityTaskWoken = pdFALSE; 
 
-  vTaskNotifyGiveFromISR(mainLCDtask.handle, &xHigherPriorityTaskWoken);
+  xTaskNotifyFromISR(mainLCDtask.handle, 
+                     1, eSetBits,
+                     &xHigherPriorityTaskWoken);
   portYIELD_FROM_ISR( xHigherPriorityTaskWoken );  
 }
 
 // Task-level code: block until DMA is complete
-void MainLCDtask::TFTdmaWait(void)
+int timeoutCount;
+bool MainLCDtask::TFTdmaWait(int pixels)
 {
+  bool timedOut = false;
+  uint32_t notifiedValue;
+  const float pixelsToMicros = 0.3f;
+  int ticks = 2 + (int)(pixels * pixelsToMicros / 1000.0f);
+  //elapsedMicros eu = 0; 
   // wait for notification from async TFT_eSPI library
-  ulTaskNotifyTake(pdTRUE, portMAX_DELAY);  
+  digitalWriteFast(DBG1, arduino::HIGH);
+  xTaskNotifyStateClear(nullptr);
+  Serial.printf(" wait for %d ticks ", ticks);
+  timedOut = pdPASS != xTaskNotifyWait(0, UINT32_MAX, 
+                                       &notifiedValue,
+                                       ticks /* portMAX_DELAY */);
+  digitalWriteFast(DBG1, arduino::LOW);
+  Serial.print("notified ");
+  //timedOut = (int) eu > (ticks*1000 - 700);
+  if (timedOut)
+  {
+    Serial.print("********** timeout *********** ");
+    SPIflex.killTransfer();
+    timeoutCount++;
+  }
 
   // now we can...
-  tft.dmaWait();  // ...tidy up...
-  tft.endWrite(); // ...and release the SPI bus
+  tft.dmaWait(!timedOut); // ...tidy up...
+  tft.endWrite();         // ...and release the SPI bus
+
+  return timedOut;
 }
 
 //----------------------------------------------------------------------------
@@ -71,12 +95,24 @@ InterTaskRequest::Result MainLCDtask::doUpdateDirty(void* pDisplay)
             dst += w;
             src += sw;
         }
-  Serial.printf("%dx%d @ %d,%d ", w,h,x,y);
-        display.startWrite();
-        display.pushImageDMA(x,y,w,h,DMAbuffer);
+
+        bool pushNeeded = true;
+        while (pushNeeded) 
+        {
+  elapsedMicros eu = 0;        
+  Serial.printf("%d : %dx%d @ %d,%d (%d)", timeoutCount, w,h,x,y, w*h);
+          display.startWrite();
+          display.pushImageDMA(x,y,w,h,DMAbuffer);
   Serial.print("... ");
-        TFTdmaWait(); // suspend until DMA completes, then tidy up
-  Serial.println("done");
+          pushNeeded = TFTdmaWait(w*h); // suspend until DMA completes, then tidy up
+  uint32_t t = eu;        
+  Serial.printf("done (%dus)\n", t);
+          if (pushNeeded)
+          {
+            // pauseOutput = true;
+            tft.fillScreen(TFT_RED);
+          }
+        } 
     }
 
     return result;
@@ -236,10 +272,14 @@ void MainLCDtask::run(void)
   while (1)
   {
       reqQueue.executeRequest(*this, 10);
+      vTaskDelay(10);
 
       // test code
-      randomRect(sprite);
-      doUpdateDirty(&sprite);
+      if (!pauseOutput)
+      {
+        randomRect(sprite);
+        doUpdateDirty(&sprite);
+      }
 
       // check whether this task is running
       cycleLED(em, colour, 0);

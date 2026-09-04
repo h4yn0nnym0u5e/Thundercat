@@ -252,6 +252,11 @@ void SuperTask::loopFn(void)
         vTaskDelay(5);
         break;
 
+      case 'g':
+        Serial.println();
+        mainLCDtask.pauseOutput = false;
+        break;        
+
       case 'p':
         enableADCprint = !enableADCprint;
         break;
@@ -315,6 +320,11 @@ void setup()
   while (!Serial)
     ;
 
+  // debug pins for scope:
+  pinMode(DBG1, arduino::OUTPUT);
+  pinMode(DBG2, arduino::OUTPUT);
+  pinMode(DBG3, arduino::OUTPUT);
+  
   // enable 6V    
   pinMode(EN_6V, arduino::OUTPUT);
   digitalWriteFast(EN_6V, arduino::HIGH);

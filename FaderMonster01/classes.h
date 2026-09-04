@@ -635,7 +635,7 @@ class MainLCDtask : public FaderMonsterTask
     void initDisplayPins(void);
     bool doAphase(int& phase);
     void phasedInit(void);
-    void TFTdmaWait(void);
+    bool TFTdmaWait(int pixels);
 
   public:
     MainLCDtask(const char* _name, 
@@ -658,6 +658,7 @@ class MainLCDtask : public FaderMonsterTask
     void setDMAbuffer(uint16_t* buf) { DMAbuffer = buf; }
     bool tftInitComplete(void) { return initComplete; }
 
+    bool pauseOutput{false}; // temporary hack...
     //------------------------------------------------------------------------
     // stuff to allow another task to make async requests:
     InterTaskRequest& updateDirty(InterTaskRequest& req, TFT_eSprite& scribble, TickType_t timeout = 0);
