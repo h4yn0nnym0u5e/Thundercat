@@ -659,6 +659,7 @@ class MainLCDtask : public FaderMonsterTask
     bool tftInitComplete(void) { return initComplete; }
 
     bool pauseOutput{false}; // temporary hack...
+    bool zapScreen{false}; // as is this
     //------------------------------------------------------------------------
     // stuff to allow another task to make async requests:
     InterTaskRequest& updateDirty(InterTaskRequest& req, TFT_eSprite& scribble, TickType_t timeout = 0);

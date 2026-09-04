@@ -2,7 +2,7 @@
 
 
 
-static FlexIOSPI SPIflex(MAINLCD_SPI_PINS, -1); // Setup on (int mosiPin, int misoPin, int sckPin, int csPin=-1) :
+FlexIOSPI SPIflex(MAINLCD_SPI_PINS, -1); // Setup on (int mosiPin, int misoPin, int sckPin, int csPin=-1) :
 
 static TFT_eSPI tft = TFT_eSPI(240,320,SPIflex,MAINLCD_CS);
 static TFT_eSprite sprite{&tft}; // sprite for off-screen rendering
@@ -20,29 +20,41 @@ static void TFTdmaDoneCB(FlexIOSPI* pFlex)
 }
 
 // Task-level code: block until DMA is complete
-int timeoutCount;
+int timeoutCount, stallCount;
 bool MainLCDtask::TFTdmaWait(int pixels)
 {
   bool timedOut = false;
   uint32_t notifiedValue;
   const float pixelsToMicros = 0.3f;
   int ticks = 2 + (int)(pixels * pixelsToMicros / 1000.0f);
-  //elapsedMicros eu = 0; 
   // wait for notification from async TFT_eSPI library
   digitalWriteFast(DBG1, arduino::HIGH);
   xTaskNotifyStateClear(nullptr);
-  Serial.printf(" wait for %d ticks ", ticks);
+//Serial.printf(" wait for %d ticks ", ticks);
   timedOut = pdPASS != xTaskNotifyWait(0, UINT32_MAX, 
                                        &notifiedValue,
                                        ticks /* portMAX_DELAY */);
   digitalWriteFast(DBG1, arduino::LOW);
-  Serial.print("notified ");
-  //timedOut = (int) eu > (ticks*1000 - 700);
+//Serial.print("notified ");
   if (timedOut)
   {
     Serial.print("********** timeout *********** ");
     SPIflex.killTransfer();
     timeoutCount++;
+  }
+
+  bool stalled = tft.dmaBusy();
+  for (int i=0;i<5 && stalled;i++)
+  {
+    vTaskDelay(1);
+    stalled = tft.dmaBusy();
+  }
+
+  if (stalled && !timedOut)
+  {
+    Serial.print("********** stalled *********** ");
+    timedOut |= stalled;
+    stallCount++;
   }
 
   // now we can...
@@ -54,6 +66,7 @@ bool MainLCDtask::TFTdmaWait(int pixels)
 
 //----------------------------------------------------------------------------
 // actual method used to do the update
+int updateCount;
 InterTaskRequest::Result MainLCDtask::doUpdateDirty(void* pDisplay)
 {
     TFT_eSprite& display = *((TFT_eSprite*) pDisplay);
@@ -100,17 +113,21 @@ InterTaskRequest::Result MainLCDtask::doUpdateDirty(void* pDisplay)
         while (pushNeeded) 
         {
   elapsedMicros eu = 0;        
-  Serial.printf("%d : %dx%d @ %d,%d (%d)", timeoutCount, w,h,x,y, w*h);
+//  Serial.printf("%d : %dx%d @ %d,%d (%d)", timeoutCount, w,h,x,y, w*h);
           display.startWrite();
+          updateCount++;
           display.pushImageDMA(x,y,w,h,DMAbuffer);
-  Serial.print("... ");
+//  Serial.print("... ");
           pushNeeded = TFTdmaWait(w*h); // suspend until DMA completes, then tidy up
   uint32_t t = eu;        
-  Serial.printf("done (%dus)\n", t);
+  // Serial.printf("done (%dus)\n", t);
           if (pushNeeded)
           {
             // pauseOutput = true;
-            tft.fillScreen(TFT_RED);
+  Serial.printf("%d : %d : %dx%d @ %d,%d (%d)\n", timeoutCount, updateCount, w,h,x,y, w*h);
+            tft.fillRect(0,0,tft.width(), tft.height() - 20, TFT_RED);
+            tft.fillRect(1+(timeoutCount-1)*10,221,8,18, TFT_BLUE);
+            tft.fillRect(320 - stallCount*10 + 1,221,8,18, TFT_GREEN);
           }
         } 
     }
@@ -128,7 +145,7 @@ void randomRect(TFT_eSPI& tft)
   {
     x = random(tft.width());
     y = random(tft.height());
-  } while (x+w > tft.width() || y+h > tft.height());
+  } while (x+w > tft.width() || y+h > tft.height() - 20);
 
   //Serial.printf("%dx%d @ %d,%d; %04hX\n", w,h,x,y,colour);
   //tft.fillRect(x,y,w,h,colour);
@@ -279,6 +296,14 @@ void MainLCDtask::run(void)
       {
         randomRect(sprite);
         doUpdateDirty(&sprite);
+      }
+
+      if (zapScreen)
+      {
+        zapScreen = false;
+        tft.fillScreen(TFT_LIGHTGREY);
+        stallCount = 0;
+        timeoutCount = 0;
       }
 
       // check whether this task is running

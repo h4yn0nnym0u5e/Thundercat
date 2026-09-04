@@ -160,6 +160,9 @@ void pollPowerButton(void)
     }
   }
 }
+
+extern FlexIOSPI SPIflex;
+extern int stallCount;
 void SuperTask::loopFn(void)
 {
   {
@@ -249,13 +252,23 @@ void SuperTask::loopFn(void)
         break;
 
       case 'd':
-        vTaskDelay(5);
+        {
+          DMAChannel& dma = SPIflex.getDMArx();
+          Serial.printf("CSR: %08X\n", dma.TCD->CSR);
+          Serial.printf("CR:  %08X\n", DMA_CR);
+          Serial.printf("ES:  %08X\n", DMA_ES);
+        }
         break;
 
       case 'g':
         Serial.println();
         mainLCDtask.pauseOutput = false;
-        break;        
+        stallCount++;
+        break;
+
+      case 'z':
+        mainLCDtask.zapScreen = true;
+        break;
 
       case 'p':
         enableADCprint = !enableADCprint;
