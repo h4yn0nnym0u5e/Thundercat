@@ -1,17 +1,37 @@
 #include "header.h"
 
-
-
+//========================================================================
+//
+//             888             888    d8b          
+//             888             888    Y8P          
+//             888             888                 
+//    .d8888b  888888  8888b.  888888 888  .d8888b 
+//    88K      888        "88b 888    888 d88P"    
+//    "Y8888b. 888    .d888888 888    888 888      
+//         X88 Y88b.  888  888 Y88b.  888 Y88b.    
+//     88888P'  "Y888 "Y888888  "Y888 888  "Y8888P 
+//
 FlexIOSPI SPIflex(MAINLCD_SPI_PINS, -1); // Setup on (int mosiPin, int misoPin, int sckPin, int csPin=-1) :
 
 static TFT_eSPI tft = TFT_eSPI(240,320,SPIflex,MAINLCD_CS);
 static TFT_eSprite sprite{&tft}; // sprite for off-screen rendering
  
 //----------------------------------------------------------------------------
+//
+//                      888 888 888                        888      
+//                      888 888 888                        888      
+//                      888 888 888                        888      
+//     .d8888b  8888b.  888 888 88888b.   8888b.   .d8888b 888  888 
+//    d88P"        "88b 888 888 888 "88b     "88b d88P"    888 .88P 
+//    888      .d888888 888 888 888  888 .d888888 888      888888K  
+//    Y88b.    888  888 888 888 888 d88P 888  888 Y88b.    888 "88b 
+//     "Y8888P "Y888888 888 888 88888P"  "Y888888  "Y8888P 888  888 
+//
 // callback executed within ISR when DMA SPI transfer completes
 static void TFTdmaDoneCB(FlexIOSPI* pFlex)
 {
   BaseType_t xHigherPriorityTaskWoken = pdFALSE; 
+//  bool inISR = (SCB_ICSR & SCB_ICSR_VECTACTIVE_Msk) != 0;
 
   xTaskNotifyFromISR(mainLCDtask.handle, 
                      1, eSetBits,
@@ -19,6 +39,20 @@ static void TFTdmaDoneCB(FlexIOSPI* pFlex)
   portYIELD_FROM_ISR( xHigherPriorityTaskWoken );  
 }
 
+//========================================================================
+//
+//                     d8b                   888            
+//                     Y8P                   888            
+//                                           888            
+//    88888b.  888d888 888 888  888  8888b.  888888 .d88b.  
+//    888 "88b 888P"   888 888  888     "88b 888   d8P  Y8b 
+//    888  888 888     888 Y88  88P .d888888 888   88888888 
+//    888 d88P 888     888  Y8bd8P  888  888 Y88b. Y8b.     
+//    88888P"  888     888   Y88P   "Y888888  "Y888 "Y8888  
+//    888                                                   
+//    888                                                   
+//    888                                                   
+//
 // Task-level code: block until DMA is complete
 int timeoutCount, stallCount;
 bool MainLCDtask::TFTdmaWait(int pixels)
@@ -64,6 +98,7 @@ bool MainLCDtask::TFTdmaWait(int pixels)
   return timedOut;
 }
 
+
 //----------------------------------------------------------------------------
 // actual method used to do the update
 int updateCount;
@@ -90,9 +125,13 @@ InterTaskRequest::Result MainLCDtask::doUpdateDirty(void* pDisplay)
     if (nullptr != src && nullptr != DMAbuffer && isDirty)
     {
         int pixels = w*h;
-        if (pixels < 16) // stupidly small!
+#if 1
+// Doesn't seem to be needed with FlexIOSPI:
+// wrong: 1x1 foxes it!
+        if (pixels < 2) // stupidly small!
         {
-            int fudge = 2;
+          Serial.printf("fudged %dx%d\n", w,h);
+            int fudge = 1;
             w += fudge;
             if (x+w > display.width())
                 x -= fudge;
@@ -100,6 +139,7 @@ InterTaskRequest::Result MainLCDtask::doUpdateDirty(void* pDisplay)
             if (y+h > display.height())
                 y -= fudge;
         }
+#endif // 0
         uint16_t* dst = DMAbuffer;
         src += y*sw + x;
         for (int i=0;i<h;i++)
@@ -112,20 +152,20 @@ InterTaskRequest::Result MainLCDtask::doUpdateDirty(void* pDisplay)
         bool pushNeeded = true;
         while (pushNeeded) 
         {
-  elapsedMicros eu = 0;        
+//  elapsedMicros eu = 0;        
 //  Serial.printf("%d : %dx%d @ %d,%d (%d)", timeoutCount, w,h,x,y, w*h);
           display.startWrite();
           updateCount++;
           display.pushImageDMA(x,y,w,h,DMAbuffer);
 //  Serial.print("... ");
           pushNeeded = TFTdmaWait(w*h); // suspend until DMA completes, then tidy up
-  uint32_t t = eu;        
+  // uint32_t t = eu;        
   // Serial.printf("done (%dus)\n", t);
           if (pushNeeded)
           {
             // pauseOutput = true;
   Serial.printf("%d : %d : %dx%d @ %d,%d (%d)\n", timeoutCount, updateCount, w,h,x,y, w*h);
-            tft.fillRect(0,0,tft.width(), tft.height() - 20, TFT_RED);
+            tft.fillRect(0,0,tft.width(), tft.height() - 25, TFT_RED);
             tft.fillRect(1+(timeoutCount-1)*10,221,8,18, TFT_BLUE);
             tft.fillRect(320 - stallCount*10 + 1,221,8,18, TFT_GREEN);
           }
@@ -135,6 +175,17 @@ InterTaskRequest::Result MainLCDtask::doUpdateDirty(void* pDisplay)
     return result;
 }
 
+//========================================================================
+//
+//    888                     888    
+//    888                     888    
+//    888                     888    
+//    888888 .d88b.  .d8888b  888888 
+//    888   d8P  Y8b 88K      888    
+//    888   88888888 "Y8888b. 888    
+//    Y88b. Y8b.          X88 Y88b.  
+//     "Y888 "Y8888   88888P'  "Y888 
+// 
 void randomRect(TFT_eSPI& tft)
 {
   int x,y, w, h;
@@ -145,7 +196,7 @@ void randomRect(TFT_eSPI& tft)
   {
     x = random(tft.width());
     y = random(tft.height());
-  } while (x+w > tft.width() || y+h > tft.height() - 20);
+  } while (x+w > tft.width() || y+h > tft.height() - 25);
 
   //Serial.printf("%dx%d @ %d,%d; %04hX\n", w,h,x,y,colour);
   //tft.fillRect(x,y,w,h,colour);
@@ -161,6 +212,20 @@ void randomRect(TFT_eSPI& tft)
   tft.resetViewport();
 }
 
+//========================================================================
+//
+//                      888      888 d8b          
+//                      888      888 Y8P          
+//                      888      888              
+//    88888b.  888  888 88888b.  888 888  .d8888b 
+//    888 "88b 888  888 888 "88b 888 888 d88P"    
+//    888  888 888  888 888  888 888 888 888      
+//    888 d88P Y88b 888 888 d88P 888 888 Y88b.    
+//    88888P"   "Y88888 88888P"  888 888  "Y8888P 
+//    888                                         
+//    888                                         
+//    888                                         
+//
 // function called by client task to queue the request
 // returns reference to the request, so we can interrogate it
 // for success immediately
@@ -171,10 +236,25 @@ InterTaskRequest& MainLCDtask::updateDirty(InterTaskRequest& req,  // request to
     requestPayload payload{&MainLCDtask::doUpdateDirty, &display};
     RequestQueue<MainLCDtask, requestPayload>::queueEntry entry{&req,payload};
 
-    reqQueue.request(entry, timeout);      // queue the request, if inactive
+    if (display.isDirty())
+      reqQueue.request(entry, timeout);      // queue the request, if inactive
+    else 
+      req.status = InterTaskRequest::Result::done; // nothing to do, so it's done!      
 
     return req;
 }
+
+//========================================================================
+//
+//    d8b          d8b 888    
+//    Y8P          Y8P 888    
+//                     888    
+//    888 88888b.  888 888888 
+//    888 888 "88b 888 888    
+//    888 888  888 888 888    
+//    888 888  888 888 Y88b.  
+//    888 888  888 888  "Y888 
+//
 //----------------------------------------------------------------------------
 void MainLCDtask::initDisplayPins(void)
 {
@@ -221,11 +301,23 @@ void MainLCDtask::phasedInit(void)
   uint32_t clk = SPIflex.flexIOHandler()->computeClockRate();
   Serial.printf("Updated Flex IO speed: %u; SPI clock will be an integer division of %u\n", clk, clk/2);
   SPIflex.setTransferCallback(TFTdmaDoneCB);
+  Serial.printf("SPI clock is %.1fMHz\n", (float) SPIflex.getSCKrate() / 1000000.0f);
   // ---------------------------------------------------------------------
 
   tft.fillScreen(TFT_DARKGREY);
 }
 
+//========================================================================
+//
+//    888                      888      
+//    888                      888      
+//    888                      888      
+//    888888  8888b.  .d8888b  888  888 
+//    888        "88b 88K      888 .88P 
+//    888    .d888888 "Y8888b. 888888K  
+//    Y88b.  888  888      X88 888 "88b 
+//     "Y888 "Y888888  88888P' 888  888 
+//
 /*
  * This is the one task that's allowed to 
  * access the main LCD's hardware
@@ -289,7 +381,7 @@ void MainLCDtask::run(void)
   while (1)
   {
       reqQueue.executeRequest(*this, 10);
-      vTaskDelay(10);
+      vTaskDelay(1);
 
       // test code
       if (!pauseOutput)

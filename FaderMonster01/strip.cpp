@@ -42,6 +42,9 @@ InterTaskRequest::Result StripTask::doPotChange(void* pNothing)
 {
     setDotCurrent();
     scribbleState = ScribbleState::start;
+    Trigger trigger{.type    = Trigger::eTriggerType::potValue, 
+                    .trigger = { .potValue = pot.getCurrent() }};
+    ui.update(trigger);
 
     return InterTaskRequest::Result::done;
 }    
@@ -50,6 +53,9 @@ InterTaskRequest::Result StripTask::doPotChange(void* pNothing)
 InterTaskRequest::Result StripTask::doTouchChange(void* pNothing)
 {
     scribbleState = ScribbleState::touch;
+    Trigger trigger{.type    = Trigger::eTriggerType::pTouchStatus, 
+                    .trigger = { .pTouchStatus = &potTouch }};
+    ui.update(trigger);
 
     return InterTaskRequest::Result::done;
 }    
@@ -240,11 +246,15 @@ void StripTask::run(void)
   scribble.setTextColor(cfg.scribble.colours.txt, cfg.scribble.colours.bg, true);
   spaceOffset = scribble.textWidth("-0") - scribble.textWidth(" 0");
 
+  new(_ui.space) ScribblePotArc; 
+  ui.begin(scribble, cfg.scribble.colours);
+  
   while (1)
   {
     bool wait = true;
     // we're responsible solely for the UI - real-time MIDI etc.
     // is dealt with separately by a high-priority task
+    /*
     switch (scribbleState)
     {
         case ScribbleState::done:
@@ -296,6 +306,46 @@ void StripTask::run(void)
             break;
 
     }
+    /*/
+    switch (ui.state)
+    {
+        case UIclass::State::done: // ready for a new trigger
+            // poll for queued requests
+            if (InterTaskRequest::Result::inactive == reqQueue.executeRequest(*this, 10))
+                wait = false; // already waited 10 ticks
+            break;
+
+        case UIclass::State::next: // can do next phase, if any
+            ui.update({Trigger::eTriggerType::nextPhase});
+            wait = false; // have probably changed state - loop quickly
+            break;
+
+        case UIclass::State::push:
+            if (ui.writeToDisplay().isInactive()) // will change state for us, or not
+                wait = false; // active - wait for display task to finish
+            break;
+
+        case UIclass::State::busy:
+            if (ui.writeFinished())
+                wait = false;
+            break;
+    }
+
+    if (99 == num)
+    {
+        static int oldState = -1, oldPhase = -1;
+
+        if (oldPhase != ui.phase || oldState != (int) ui.state)
+        {
+            oldPhase = ui.phase;
+            oldState = (int) ui.state;
+
+            Serial.printf("[%d] phase: %d; state: %d\n", millis(), oldPhase, oldState);
+            if (0 == oldState)
+                Serial.println();
+        }
+    }
+    //*/
 
     // see if brightness needs changing
     if (bright != globalBright)

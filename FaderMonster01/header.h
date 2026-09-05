@@ -19,6 +19,8 @@
 #include "RingLEDs.h"
 #include "contPot.h"
 #include "Touches.h"
+#include "basics.h"
+#include "ui.h"
 #include "classes.h"
 
 extern TouchTask touchTask;

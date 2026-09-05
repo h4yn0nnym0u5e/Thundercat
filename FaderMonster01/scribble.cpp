@@ -107,7 +107,13 @@ InterTaskRequest& ScribbleTask::updateDirty(InterTaskRequest& req,  // request t
     requestPayload payload{&ScribbleTask::doUpdateDirty, &scribble};
     RequestQueue<ScribbleTask, requestPayload>::queueEntry entry{&req,payload};
 
-    reqQueue.request(entry, timeout);      // queue the request, if inactive
+    if (scribble.isDirty())
+    {
+      //Serial.println("dirty!");
+      reqQueue.request(entry, timeout);      // queue the request, if inactive
+    }
+    else
+      req.status = InterTaskRequest::Result::done; // nothing to do, so it's done!
 
     return req;
 }

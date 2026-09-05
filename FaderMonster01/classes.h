@@ -19,6 +19,7 @@
  * provide exclusive access to some piece of hardware, 
  * e.g. a SPI or I²C bus
  */
+/*
 class InterTaskRequest
 {
   public:
@@ -74,12 +75,12 @@ class InterTaskRequest
 //                         888                                                 
 //                         888                                                 
 // 
-/**
+/ **
  * Wrapper for passing requests between tasks using FreeRTOS queues.
  * A task class contains a RequestQueue, and other tasks send requests
  * using methods of the class - the exact payload of the request is
  * opaque to the caller.
- */
+ * /
 template <class T, class P>
 class RequestQueue
 {
@@ -169,6 +170,7 @@ class RequestQueue
     //! \return count of messages waiting in the request queue
     UBaseType_t messagesWaiting(void) { return uxQueueMessagesWaiting(queue); }
 };
+*/
 
 //           d8888 88888888888  d8888   .d8888b.   .d88888b. 88888888888 .d8888b.   d888    .d8888b.   .d8888b.  
 //          d88888     888     d8P888  d88P  Y88b d88P" "Y88b    888    d88P  Y88b d8888   d88P  Y88b d88P  Y88b 
@@ -682,10 +684,11 @@ class MainLCDtask : public FaderMonsterTask
  * Configuration for a strip
  * This is outside the strip, as we want a convenient method to
  * load it from the filesystem
- */
+ * /
 struct colours_t {
     uint16_t fg,bg,txt;
 };
+*/
 
 class StripConfig
 {
@@ -753,6 +756,8 @@ class StripTask : public FaderMonsterTask
     bool setFloat(TFT_eSprite& sprite, float value, colours_t& colours);
     bool setTouch(TFT_eSprite& sprite, TouchStatus& touch, colours_t& colours);
 
+    ScribbleUIholder _ui;
+    UIclass& ui;
   public:
     StripTask(const char* _name, 
               configSTACK_DEPTH_TYPE _stackDepth, 
@@ -771,9 +776,10 @@ class StripTask : public FaderMonsterTask
       scribble{_scribble}, 
       lastPot{POT_NOT_SET}, lastTouch{false}, spaceOffset{0},
       scribbleState{done},
+      ui{*((UIclass*) _ui.space)},
       num{_num},
       useRingPattern{false}
-    {}
+    { }
     static void CreateTasks(void);
     static StripTask& getStripTask(int n) { return *tasks[n]; }
     
