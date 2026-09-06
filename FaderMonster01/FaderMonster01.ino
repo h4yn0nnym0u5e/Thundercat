@@ -38,7 +38,8 @@ FaderMonsterSettings faderMonsterSettings
     { .ringLEDs = {xPURPLE, {0}}, .scribble = {{ .fg = TFT_BLUE }}},
     { .ringLEDs = {xPINK,   {0}}, .scribble = {{ .fg = TFT_MAGENTA }}},
     { .ringLEDs = {xWHITE,  {0}}, .scribble = {{ .fg = TFT_VIOLET }}}
-  }
+  },
+  .mainColours = {TFT_LIGHTGREY, TFT_DARKGREY, TFT_WHITE}
 };
 //================================================================
 // one source of truth on where / how to allocate a 
@@ -161,46 +162,65 @@ void pollPowerButton(void)
   }
 }
 
+/**
+ * Process the supervisor task's UI (main LCD).
+ * \return true if extra dealy might be wanted, e.g. if screen update was requested
+ */
+bool SuperTask::processUI(void)
+{
+  bool wait = true;
+  // we're responsible solely for the UI - real-time MIDI etc.
+  // is dealt with separately by a high-priority task
+  [[maybe_unused]] uint32_t pollInterval = ui.poll(); // allow UI to do internally-timed stuff
+  switch (ui.state)
+  {
+      case UIclass::State::done: // ready for a new trigger
+        // poll for queued requests
+        if (InterTaskRequest::Result::inactive == reqQueue.executeRequest(*this, 10))
+            wait = false; // already waited 10 ticks
+        break;
+
+      case UIclass::State::next: // can do next phase, if any
+        ui.update({Trigger::eTriggerType::nextPhase});
+        wait = false; // have probably changed state - loop quickly
+        break;
+
+      case UIclass::State::push:
+        if (ui.writeToDisplay().isInactive()) // will change state for us, or not
+            wait = false; // active - wait for display task to finish
+        break;
+
+      case UIclass::State::busy:
+        if (ui.writeFinished())
+            wait = false;
+        break;
+  }
+  return wait;
+}
+
 extern FlexIOSPI SPIflex;
 extern int stallCount;
 void SuperTask::loopFn(void)
 {
-  {
+  { // debug print of ADCs
     static elapsedMillis em;
     if (em >= 250)
     {
       em = 0;
       if (enableADCprint)
         printADCs();
-/*
-      static bool pwrLED;
-      pwrLED = !pwrLED;
-      SET_BIT(POWER_LED, pwrLED);
-*/      
-      //SET_BIT(POWER_LED, 1);
     }
   }
 
-  if (dbgWritten)
+  if (dbgWritten) // other task requested Serial output
   {
     dbgWritten = false;
     Serial.print(dbgBuffer);
   }
 
-#if 0  
-  {
-    static uint16_t lastU5;
-    const uint16_t mask = 0b1011'1111'0010'1100;
-    uint16_t u5 = U5.getGPIO() & mask;
-    if (lastU5 != u5)
-    {
-      lastU5 = u5;
-      Serial.printf("U5: %04hX; pwr: %s\n", u5 ^ mask, GET_BIT(SOFT_POWER)?"released":"pressed");
-    }
-  }
-#endif // 0
-
   pollPowerButton();
+  if (processUI())
+    vTaskDelay(2);
 
   // deal with a string of commands all in one go,
   // unless an unrecognised commands is given
@@ -296,22 +316,32 @@ void SuperTask::loopFn(void)
 }
 
 
-SuperTask superTask{"Super", 512, nullptr, 2};
+SuperTask superTask{"Super", 512, nullptr, 2, 
+                    8 /* plenty of requests (?) */};
 
 uint8_t bits;
 void SuperTask::run(void)
 {
   Serial.printf("\n\n[%d]: started supervisor task\n", micros());
 
-  /*** REMOVE THIS LATER ! ****/
-  // dummy allocation to ensure we don't over-allocate RAM2
-  // allocateDMAbuffer(320,240);
+  while (!mainLCDtask.tftInitComplete())
+    vTaskDelay(10);
+
+    // set the initial UI presentation on the display
+  Serial.println("Init supervisor UI");
+  new(_ui.space) MainTestRects; // placement new
+  ui.begin(mainLCDtask.getSprite(), faderMonsterSettings.mainColours);
 
   while (1)
   {
-    loopFn();
-    bits++;
-    vTaskDelay(20);
+    static elapsedMillis em = 0;
+    loopFn(); // includes some delay, unless UI is being drawn
+
+    if (em >= 20)
+    {
+      em = 0;
+      bits++;
+    }
   }
 }
 

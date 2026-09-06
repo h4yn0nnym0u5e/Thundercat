@@ -373,15 +373,15 @@ void MainLCDtask::run(void)
   Serial.printf("\n[%d]: ready\n", micros());
   initComplete = true;
 
-  int colour = 0;
-  elapsedMillis em = 0;
+  //int colour = 0;
+  //elapsedMillis em = 0;
   while (1)
   {
       reqQueue.executeRequest(*this, 10);
       vTaskDelay(1);
 
       // test code
-      if (!pauseOutput)
+      if (false && !pauseOutput)
       {
         randomRect(sprite);
         doUpdateDirty(&sprite);
@@ -396,7 +396,7 @@ void MainLCDtask::run(void)
       }
 
       // check whether this task is running
-      cycleLED(em, colour, 0);
+      //cycleLED(em, colour, 0);
   }
 }
 

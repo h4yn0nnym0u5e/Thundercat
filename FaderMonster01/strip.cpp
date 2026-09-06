@@ -69,6 +69,8 @@ InterTaskRequest::Result StripTask::doPotChange(void* pNothing)
 
 InterTaskRequest::Result StripTask::doTouchChange(void* pNothing)
 {
+    ring.setPixel(10, potTouch?xWHITE:xBLACK,bright);
+    
     Trigger trigger{.type    = Trigger::eTriggerType::pTouchStatus, 
                     .trigger = { .pTouchStatus = &potTouch }};
     ui.update(trigger);
