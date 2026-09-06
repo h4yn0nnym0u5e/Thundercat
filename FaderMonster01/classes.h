@@ -735,11 +735,6 @@ class StripTask : public FaderMonsterTask
     static constexpr float POT_NOT_SET{-999.0f};
     static constexpr float sa{2*18.0f}, ea{360.0f - 2*18.0f}; // TFT_eSPI has zero at 6 o'clock
     static constexpr int BUF_SIZE{30};
-    float lastPot;
-    TouchStatus::eStatus lastTouch; // previous extended status
-    int   spaceOffset;
-    char  lastString[BUF_SIZE]{0};
-    enum ScribbleState {done, start, arc, text, touch} scribbleState;
 
     InterTaskRequest updateReq; // used to monitor progress of display update
 
@@ -747,15 +742,7 @@ class StripTask : public FaderMonsterTask
     void setDot(float value, uint32_t colour);
     void setDotCurrent(void) { setDot(pot.getCurrent(), useRingPattern?RingLEDs<NUM_POTS>::USE_PATTERN:cfg.ringLEDs.colour); }
 
-    // sprite (TFT)
-    void drawArc(TFT_TYPE& tft, float s, float e, uint16_t fg, uint16_t bg);
-    void drawTouch(TFT_TYPE& tft, colours_t& colours, int thickness = -1);
-    void drawTouch(TFT_TYPE& tft, TouchStatus::eStatus estatus, colours_t& colours);
-    bool setArc(TFT_eSprite& tft, float newPot, colours_t& colours);
-    bool setText(TFT_eSprite& sprite, char* buf, colours_t& colours);
-    bool setFloat(TFT_eSprite& sprite, float value, colours_t& colours);
-    bool setTouch(TFT_eSprite& sprite, TouchStatus& touch, colours_t& colours);
-
+    // display UI
     ScribbleUIholder _ui;
     UIclass& ui;
   public:
@@ -774,10 +761,8 @@ class StripTask : public FaderMonsterTask
       reqQueue{_reqQlen}, cfg{_cfg},
       ring{LEDring{_rings,_num}}, pot{_pot}, potTouch{_potTouch},
       scribble{_scribble}, 
-      lastPot{POT_NOT_SET}, lastTouch{false}, spaceOffset{0},
-      scribbleState{done},
       ui{*((UIclass*) _ui.space)},
-      num{_num},
+      num{_num}, bright{0},
       useRingPattern{false}
     { }
     static void CreateTasks(void);

@@ -130,14 +130,14 @@ InterTaskRequest::Result MainLCDtask::doUpdateDirty(void* pDisplay)
 // wrong: 1x1 foxes it!
         if (pixels < 2) // stupidly small!
         {
-          Serial.printf("fudged %dx%d\n", w,h);
-            int fudge = 1;
-            w += fudge;
-            if (x+w > display.width())
-                x -= fudge;
-            h += fudge;           
-            if (y+h > display.height())
-                y -= fudge;
+          // Serial.printf("fudged %dx%d\n", w,h);
+          int fudge = 1;
+          w += fudge;
+          if (x+w > display.width())
+              x -= fudge;
+          h += fudge;           
+          if (y+h > display.height())
+              y -= fudge;
         }
 #endif // 0
         uint16_t* dst = DMAbuffer;
@@ -152,15 +152,11 @@ InterTaskRequest::Result MainLCDtask::doUpdateDirty(void* pDisplay)
         bool pushNeeded = true;
         while (pushNeeded) 
         {
-//  elapsedMicros eu = 0;        
-//  Serial.printf("%d : %dx%d @ %d,%d (%d)", timeoutCount, w,h,x,y, w*h);
           display.startWrite();
           updateCount++;
           display.pushImageDMA(x,y,w,h,DMAbuffer);
-//  Serial.print("... ");
           pushNeeded = TFTdmaWait(w*h); // suspend until DMA completes, then tidy up
-  // uint32_t t = eu;        
-  // Serial.printf("done (%dus)\n", t);
+#if 1          
           if (pushNeeded)
           {
             // pauseOutput = true;
@@ -169,6 +165,7 @@ InterTaskRequest::Result MainLCDtask::doUpdateDirty(void* pDisplay)
             tft.fillRect(1+(timeoutCount-1)*10,221,8,18, TFT_BLUE);
             tft.fillRect(320 - stallCount*10 + 1,221,8,18, TFT_GREEN);
           }
+#endif // including debug code          
         } 
     }
 
