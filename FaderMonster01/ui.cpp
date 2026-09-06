@@ -1,4 +1,3 @@
-#if 1
 #include "header.h"
 
 //==========================================================================
@@ -661,7 +660,7 @@ UIclass::State MainColourPicker::update(Trigger trigger)
             dx = lastTouch.x - hueX; dy = lastTouch.y - hueY;
             touchRadius = sqrtf(dx*dx+dy*dy);
             touchAngle = atan2(hueY - lastTouch.y, lastTouch.x - hueX);
-            if (touchRadius < 105.0f && !isOldAngle(touchAngle))
+            if (touchRadius < 105.0f && touchRadius > 70.0f && !isOldAngle(touchAngle))
             {
                 gradientOnly = false; // change hue and both gradients
                 phase = doUnMarkHue;
@@ -757,5 +756,3 @@ UIclass::State MainColourPicker::update(Trigger trigger)
 
     return result;
 }
-
-#endif // 0

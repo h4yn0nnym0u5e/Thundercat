@@ -268,6 +268,8 @@ class SuperTask : public FaderMonsterTask
     // display UI
     MainUIholder _ui;
     UIclass& ui;
+    bool flipui;
+    int whichUI;
     bool processUI(void);
 
   public:
@@ -279,10 +281,11 @@ class SuperTask : public FaderMonsterTask
               int _queueLength = 1)
     : FaderMonsterTask{_name, _stackDepth, _params, _priority},
       reqQueue{_queueLength},
-      ui{*((UIclass*) _ui.space)}
+      ui{*((UIclass*) _ui.space)}, flipui{false}, whichUI{0}
     {}
     
     void run(void) override;
+    void flipUI(void) { flipui = true; }
 
     //------------------------------------------------------------------------
     // stuff to allow another task to make async requests:

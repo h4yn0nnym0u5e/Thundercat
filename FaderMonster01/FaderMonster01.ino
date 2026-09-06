@@ -162,6 +162,10 @@ void pollPowerButton(void)
         }
         break;
 
+      case TouchStatus::eStatus::JUST_OFF:
+        superTask.flipUI();
+        break;
+
       case TouchStatus::eStatus::OFF: // released after power-up etc.
         canPowerOff = true;
         if (hadLongPress)
@@ -196,6 +200,25 @@ void pollPowerButton(void)
 bool SuperTask::processUI(void)
 {
   bool wait = true;
+
+  // test of changing UI classes on the fly
+  if (flipui) // set by power button brief press
+  {
+    flipui = false;       // this is kinda important!
+    whichUI = 1-whichUI;  // flip to the other UI
+    switch (whichUI)
+    {
+      case 0:
+        new(_ui.space) MainColourPicker; // placement new
+        break;
+
+      case 1:
+        new(_ui.space) MainTestRects; 
+        break;
+    }
+    ui.begin(mainLCDtask.getSprite(), faderMonsterSettings.mainColours);
+  }
+
   // we're responsible solely for the UI - real-time MIDI etc.
   // is dealt with separately by a high-priority task
   [[maybe_unused]] uint32_t pollInterval = ui.poll(); // allow UI to do internally-timed stuff
