@@ -111,6 +111,33 @@ bool dbgWritten;
 
 bool enableADCprint;
 
+//================================================================
+//! queue a request for the supervisor task to process a main LCD touch
+InterTaskRequest& SuperTask::updateMainTouch(InterTaskRequest& req, GTPoint& touchPoint, TickType_t timeout)
+{
+  requestPayload payload{&SuperTask::doUpdateMainTouch, &touchPoint};
+  RequestQueue<SuperTask, requestPayload>::queueEntry entry{&req,payload};
+
+  reqQueue.request(entry, timeout);
+
+  return req;
+}
+
+//! start UI executing a main LCD touch message
+InterTaskRequest::Result SuperTask::doUpdateMainTouch(void* pGTPoint)
+{
+  GTPoint& lastTouch = *((GTPoint*) pGTPoint);
+  Trigger trigger{.type    = Trigger::eTriggerType::touchPoint, 
+                  .trigger = { .touchPoint = lastTouch }};
+
+  ui.update(trigger);
+  //Serial.printf("[%d]: %d, %d (%d)\n", touchTask.lastTouchTime, lastTouch.x, lastTouch.y, lastTouch.reserved);
+ 
+  return InterTaskRequest::Result::done;
+}
+
+//================================================================
+
 TouchStatus powerButton;
 void pollPowerButton(void)
 {
@@ -329,7 +356,7 @@ void SuperTask::run(void)
 
     // set the initial UI presentation on the display
   Serial.println("Init supervisor UI");
-  new(_ui.space) MainTestRects; // placement new
+  new(_ui.space) MainColourPicker; // placement new
   ui.begin(mainLCDtask.getSprite(), faderMonsterSettings.mainColours);
 
   while (1)

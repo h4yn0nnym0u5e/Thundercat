@@ -357,11 +357,14 @@ void TouchTask::run(void)
         if (0 == updateGT911()) // no touches right now
         {
           // ...deal with being untouched
+          lastTouch.reserved = UINT8_MAX;
+          superTask.updateMainTouch(GT911req, lastTouch, 0);
         }
         else 
         {
           processGT911(0); // just grab first touch point for now
-          Serial.printf("[%d]: %d, %d\n", lastTouchTime, lastTouch.x, lastTouch.y);
+          //Serial.printf("[%d]: %d, %d\n", lastTouchTime, lastTouch.x, lastTouch.y);
+          superTask.updateMainTouch(GT911req, lastTouch, 0);
           //xTaskNotifyGive(handleMainLCD); // wake up Main LCD task to deal with touch
         }
       }

@@ -161,7 +161,7 @@ InterTaskRequest::Result MainLCDtask::doUpdateDirty(void* pDisplay)
           {
             // pauseOutput = true;
   Serial.printf("%d : %d : %dx%d @ %d,%d (%d)\n", timeoutCount, updateCount, w,h,x,y, w*h);
-            tft.fillRect(0,0,tft.width(), tft.height() - 25, TFT_RED);
+            //tft.fillRect(0,0,tft.width(), tft.height() - 25, TFT_RED);
             tft.fillRect(1+(timeoutCount-1)*10,221,8,18, TFT_BLUE);
             tft.fillRect(320 - stallCount*10 + 1,221,8,18, TFT_GREEN);
           }
@@ -170,43 +170,6 @@ InterTaskRequest::Result MainLCDtask::doUpdateDirty(void* pDisplay)
     }
 
     return result;
-}
-
-//========================================================================
-//
-//    888                     888    
-//    888                     888    
-//    888                     888    
-//    888888 .d88b.  .d8888b  888888 
-//    888   d8P  Y8b 88K      888    
-//    888   88888888 "Y8888b. 888    
-//    Y88b. Y8b.          X88 Y88b.  
-//     "Y888 "Y8888   88888P'  "Y888 
-// 
-void randomRect(TFT_eSPI& tft)
-{
-  int x,y, w, h;
-  w = random(140); h = random(80);
-  uint16_t colour = random(65536);
-
-  do
-  {
-    x = random(tft.width());
-    y = random(tft.height());
-  } while (x+w > tft.width() || y+h > tft.height() - 25);
-
-  //Serial.printf("%dx%d @ %d,%d; %04hX\n", w,h,x,y,colour);
-  //tft.fillRect(x,y,w,h,colour);
-  tft.setViewport(x,y,w,h);
-  tft.fillScreen(colour);
-
-  char buf[50];
-  sprintf(buf,"%dx%d @ %d,%d", w,h,x,y);
-  
-  tft.setTextColor(~colour);
-  tft.setTextWrap(true);
-  tft.drawString(buf,1,1);
-  tft.resetViewport();
 }
 
 //========================================================================
@@ -366,7 +329,7 @@ void MainLCDtask::run(void)
   taskEXIT_CRITICAL();
                 
   // basic settings
-  sprite.setSpriteSwapBytes(false);
+  sprite.setSpriteSwapBytes(true);
   // ---------------------------------------------------------------------
 
 
@@ -379,13 +342,6 @@ void MainLCDtask::run(void)
   {
       reqQueue.executeRequest(*this, 10);
       vTaskDelay(1);
-
-      // test code
-      if (false && !pauseOutput)
-      {
-        randomRect(sprite);
-        doUpdateDirty(&sprite);
-      }
 
       if (zapScreen)
       {

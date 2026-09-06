@@ -259,6 +259,7 @@ class SuperTask : public FaderMonsterTask
     RequestQueue<SuperTask, requestPayload> reqQueue;
 
     //InterTaskRequest::Result doCalibrateTouch(void*);
+    InterTaskRequest::Result doUpdateMainTouch(void* pGTPoint);
     //------------------------------------------------------------------------
 
     void loopFn(void);
@@ -282,6 +283,11 @@ class SuperTask : public FaderMonsterTask
     {}
     
     void run(void) override;
+
+    //------------------------------------------------------------------------
+    // stuff to allow another task to make async requests:
+    InterTaskRequest& updateMainTouch(InterTaskRequest& req, GTPoint& touchPoint, TickType_t timeout = 0);
+
 };
 
 //    888                              888      
@@ -307,6 +313,7 @@ class TouchTask : public FaderMonsterTask
     RequestQueue<TouchTask, requestPayload> reqQueue;
 
     InterTaskRequest::Result doCalibrateTouch(void*);
+    InterTaskRequest GT911req, potTouchReq;
     //------------------------------------------------------------------------
 
     void initTouch(void);

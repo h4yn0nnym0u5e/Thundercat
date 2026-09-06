@@ -3,6 +3,16 @@
 
 // Essentials needed for various classes
 
+//=================================================
+template<typename T> 
+T constrain(T v, T l, T u)
+{
+    T result = v;
+    if (v<l) result = l;
+    if (v>u) result = u;
+    return result;
+}
+
 //                                                        888    
 //                                                        888    
 //                                                        888    

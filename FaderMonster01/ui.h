@@ -158,10 +158,6 @@ union ScribbleUIholder
 class MainTestRects : public UIclass 
 {
     enum {idle, drawingRect};
-    char  lastText[MAX_TEXT_LEN]{0};
-    float lastPot{POT_NOT_SET};
-    TouchStatus::eStatus lastTouch{};
-
     void randomRect(void);
 
   public:
@@ -170,13 +166,72 @@ class MainTestRects : public UIclass
     virtual InterTaskRequest& writeToDisplay(void) { return writeToMainLCD(); }
     virtual uint32_t poll(void);
 };
+//------------------------------------------------------------------
+class MainColourPicker : public UIclass 
+{
+    enum {idle, doUnMarkHue, doMarkHue,  
+                doGradients,
+                doUnMarkText, doMarkText,
+                doUnMarkBg, doMarkBg,  doDrawColours, doDrawExample,
+            doDrawPoint};
+    //GTPoint lastTouch;
 
+    // working variables
+    const int mr{13}; // hue marker radius
+    const int hueX{120}, hueY{120}; // centre of hue circle
+    float textLevel{0.66f}, bgLevel{0.66f};
+    int dx, dy, mx, my;
+    float touchRadius, touchAngle, oldAngle, newLevel;
+    bool gradientOnly; // no hue change, just draw a gradient and example
+
+    // the actual result!
+    uint16_t hue, textColour, bgColour;
+
+    uint16_t angleToHue(int a);
+    void hueCircle(int x, int y, int r, int ir, uint16_t bgcolour);
+    void gradients(int x, int x2, int y, int w, int h, uint16_t c);
+    int rad2TFT(float rad);
+    void unMarkHue(
+             int cx, int cy,  // selection ring centre...
+             int cr,          // ...and radius:outer...
+             int cri,         // ...and inner
+             int mr,          // marker radius
+             float a,         // conventional angle, ±pi
+             int& mx,   // return screen position of marker
+             int& my);
+
+    uint16_t markHue(
+             int cx, int cy,  // selection ring centre...
+             int cr,          // ...and radius:outer...
+             int cri,         // ...and inner
+             int mr,          // marker radius
+             float a,         // conventional angle, ±pi
+             int& mx,   // return screen position of marker
+             int& my);
+    bool isOldAngle(float a); 
+    void drawFatRect(int x, int y, int w, int h, int t, int colour);
+    uint16_t getBlend(float l, uint16_t top, uint16_t hue);
+    uint16_t markGradient(
+                      int x, int y, int w, int h, // gradient rectangle
+                      uint16_t hue, uint16_t top, // colours
+                      int d,                 // depth of marker
+                      float l, float& oldL); 
+    bool isSameLevel(float level, float oldLevel, uint16_t hue, uint16_t top);                      
+    void drawSettingsExample(void);
+    void showColours(void);
+
+  public:
+    virtual State begin(TFT_eSprite& sprite, colours_t c);
+    virtual State update(Trigger trigger);
+    virtual InterTaskRequest& writeToDisplay(void) { return writeToMainLCD(); }
+};
 //==================================================================
 class MainDummy : public UIclass {};
 union MainUI
 {
     MainDummy  dummy;
     MainTestRects testRects;
+    MainColourPicker colourPicker;
 };
 
 union MainUIholder
