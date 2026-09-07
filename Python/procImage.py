@@ -10,7 +10,11 @@ fnl = [
     "note.png",
     "rainbow.png",
     "runner.png",
-    "specs.png"
+    "specs.png",
+    "tl_button.png",
+    "tr_button.png",
+    "bl_button.png",
+    "br_button.png",
 ]
 ofn = "images.cpp"
 
