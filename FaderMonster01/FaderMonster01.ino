@@ -378,6 +378,8 @@ void SuperTask::loopFn(void)
           sprintf(fileName, "scene-%c.csv", n);
           mainLCDtask.saveSettings(saveSettingsRequest, fileName);
         }
+        else
+          dumpSettings(Serial);
       }
         break;
 

@@ -125,7 +125,11 @@ void testToCSV(Stream& s,
   char* base = (char*) &cfgbo;
 
   if (0 == bufOff)
+  {
+taskENTER_CRITICAL();
     s.printf("\nCSV for %s settings\n", cfgbo.getName(-1));
+taskEXIT_CRITICAL();
+  }
 
   for (int i=0;i<mc;i++)
   {
@@ -147,13 +151,19 @@ void testToCSV(Stream& s,
       }
       else 
       {
-        newOff = newOff + sprintf(buf + newOff, ", "); // add CSV separator
-        ofs.getter(buf+newOff,base + ofs.offset + n*ofs.size);
+        newOff = newOff + sprintf(buf + newOff, ", ");         // add CSV separator
+        ofs.getter(buf+newOff,base + ofs.offset + n*ofs.size); // and append the value
+taskENTER_CRITICAL();
         s.println(buf+1); // omit spurious leading '.'
+taskEXIT_CRITICAL();
         CSVlineCount++;
       }
       if (1 != ofs.count)
+      {
+taskENTER_CRITICAL();
         s.println();
+taskEXIT_CRITICAL();
+      }
     }
   }
 }

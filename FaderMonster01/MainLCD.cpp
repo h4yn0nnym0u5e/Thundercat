@@ -221,11 +221,15 @@ InterTaskRequest::Result MainLCDtask::doSaveSettings(void* _fileName)
 
   Serial.printf("Save to '%s'\n", fileName);
 
+taskENTER_CRITICAL();
   File f = FRAMfs.open(fileName,FILE_WRITE_BEGIN); // overwrite
+taskEXIT_CRITICAL();
   if (f)
   {
     dumpSettings(f);
+taskENTER_CRITICAL();
     f.close();
+taskEXIT_CRITICAL();
     result = InterTaskRequest::Result::done;
   }
 
@@ -396,9 +400,9 @@ void MainLCDtask::run(void)
   sprite.getTFTarea(w,h);
   Serial.printf("Main LCD is %dx%d\n",w,h);
   sprite.createInPSRAM(true);
-  taskENTER_CRITICAL();
+taskENTER_CRITICAL();
   sprite.createSprite(w,h);
-  taskEXIT_CRITICAL();
+taskEXIT_CRITICAL();
                 
   // basic settings
   sprite.setSpriteSwapBytes(true);
@@ -413,7 +417,9 @@ void MainLCDtask::run(void)
     for (int i=0;i<10 && dumped < 1;i++)
     {
       //File f = FRAMfs.open("log.txt", FILE_READ);
+taskENTER_CRITICAL();
       File f = FRAMfs.open("scene-1.csv", FILE_READ);
+taskEXIT_CRITICAL();
       if (f)
       {
         int fch, idx = 0;
@@ -422,9 +428,9 @@ void MainLCDtask::run(void)
         do
         {
           // seems to need a critical section
-          taskENTER_CRITICAL();
+taskENTER_CRITICAL();
           fch = f.readBytes(buf,sizeof buf - 1);
-          taskEXIT_CRITICAL();
+taskEXIT_CRITICAL();
           if (fch > 0)
           {
             buf[fch] = 0;
@@ -437,7 +443,9 @@ void MainLCDtask::run(void)
         
         
         Serial.print(buf);
+taskENTER_CRITICAL();
         f.close();
+taskEXIT_CRITICAL();
         Serial.println("=======================");
         dumped++;
       }
@@ -474,7 +482,7 @@ void MainLCDtask::run(void)
   }
 }
 
-MainLCDtask mainLCDtask{"mainLCD", 512, nullptr, 
+MainLCDtask mainLCDtask{"mainLCD", 640, nullptr, 
                         1,            // display updates are a fairly low priority
                         tft, sprite,  // actual tft and sprite objects
                         NUM_POTS      // allow for one request per strip
