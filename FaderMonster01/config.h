@@ -114,4 +114,8 @@
 #define POWER_LED    USB_X_3
 #define EN_6V        USB_T_4 // Teensy pin
 
+// ============== MIDI ==============
+#define MAX_NAME_LENGTH 20
+
+
 #endif // !defined(_CONFIG_H_)

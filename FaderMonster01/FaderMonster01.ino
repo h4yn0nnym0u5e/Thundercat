@@ -27,6 +27,22 @@ ContinuousPot allPots[NUM_POTS]
 
 //================================================================
 // some default settings
+static TFTcolours mainColours{TFT_LIGHTGREY, TFT_DARKGREY, TFT_WHITE};
+static StripColours stripColours[8] =
+{
+    { {xRED,    {0}}, {0}, {{ TFT_RED }}},
+    { {xORANGE, {0}}, {0}, {{ TFT_ORANGE2 }}},
+    { {xYELLOW, {0}}, {0}, {{ TFT_YELLOW }}},
+    { {xGREEN,  {0}}, {0}, {{ TFT_GREEN }}},
+    { {xBLUE,   {0}}, {0}, {{ TFT_CYAN }}},
+    { {xPURPLE, {0}}, {0}, {{ TFT_BLUE }}},
+    { {xPINK,   {0}}, {0}, {{ TFT_MAGENTA }}},
+    { {xWHITE,  {0}}, {0}, {{ TFT_VIOLET }}}
+  };
+static StripControls stripControls[8];  
+
+FaderMonsterSettings faderMonsterSettings{{stripColours,stripControls}, mainColours};
+/*
 FaderMonsterSettings faderMonsterSettings
 {
   .stripsConfig = 
@@ -42,6 +58,7 @@ FaderMonsterSettings faderMonsterSettings
   },
   .mainColours = {TFT_LIGHTGREY, TFT_DARKGREY, TFT_WHITE}
 };
+*/
 //================================================================
 // one source of truth on where / how to allocate a 
 // buffer used for DMA transfer of sprite image data
@@ -65,7 +82,7 @@ void cycleLED(elapsedMillis& em, int& colour, int ring, int led)
   if (em >= 250)
   {
       em = 0;
-      rings.setPixel(ring,led, faderMonsterSettings.stripsConfig[colour].ringLEDs.colour, 10);
+      rings.setPixel(ring,led, faderMonsterSettings.stripsConfig.colours[colour].ringLEDs.colour, 10);
       if (++colour >= NUM_POTS)
           colour = 0;
   }
@@ -350,6 +367,10 @@ void SuperTask::loopFn(void)
 
       case 'p':
         enableADCprint = !enableADCprint;
+        break;
+
+      case 's':
+        dumpSettings();
         break;
 
       case 't':

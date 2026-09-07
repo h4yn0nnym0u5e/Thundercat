@@ -156,7 +156,7 @@ bool ScribbleTask::doAphase(int i, int& phase)
 
 void ScribbleTask::fillUnique(TFT_TYPE& tft, int i)
 {
-  tft.fillScreen(faderMonsterSettings.stripsConfig[i].scribble.colours.fg);
+  tft.fillScreen(faderMonsterSettings.stripsConfig.colours[i].scribble.fg);
 }
 
 void ScribbleTask::phasedInit(void)

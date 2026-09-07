@@ -92,11 +92,11 @@ InterTaskRequest::Result StripTask::doTouchChange(void* pNothing)
 void StripTask::run(void)
 {
   ring.clear();
-  ring.setPattern(cfg.ringLEDs.pattern); // null pointer is OK here
+  ring.setPattern(cfg.ringLEDs.pattern.getPointer()); // null pointer is OK here
 
   // for now, make background and text colours out of foreground:
-  cfg.scribble.colours.bg  = scribble.alphaBlend( 70, cfg.scribble.colours.fg, TFT_BLACK);
-  cfg.scribble.colours.txt = scribble.alphaBlend( 80, cfg.scribble.colours.fg, TFT_WHITE);
+  cfg.scribble.bg  = scribble.alphaBlend( 70, cfg.scribble.fg, TFT_BLACK);
+  cfg.scribble.txt = scribble.alphaBlend( 80, cfg.scribble.fg, TFT_WHITE);
                                             /* / 255 */
   
   // wait for display init to be finished
@@ -114,11 +114,11 @@ void StripTask::run(void)
   // basic settings
   scribble.setSpriteSwapBytes(false);
   scribble.setFreeFont(&FONT_DP);
-  scribble.setTextColor(cfg.scribble.colours.txt, cfg.scribble.colours.bg, true);
+  scribble.setTextColor(cfg.scribble.txt, cfg.scribble.bg, true);
   
   // set the initial UI presentation on the display
   new(_ui.space) ScribblePotArc; // placement new
-  ui.begin(scribble, cfg.scribble.colours);
+  ui.begin(scribble, cfg.scribble);
   
   while (1)
   {
@@ -186,7 +186,7 @@ void StripTask::CreateTasks(void)
                     rings,               // task-specific stuff
                     potsTask.getPot(i), TouchTask::keyStatuses[i],      
                     scribble,
-                    faderMonsterSettings.stripsConfig[i]}; 
+                    faderMonsterSettings.stripsConfig.colours[i]}; 
 
         // now create the FreeRTOS task to run it
         sprintf(buffer, "Strip%d", i+1);  // give it...

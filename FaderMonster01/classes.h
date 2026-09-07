@@ -513,7 +513,7 @@ class MainLCDtask : public FaderMonsterTask
     // LittleFS-related stuff
     bool initFS(void);
     //------------------------------------------------------------------------
-    
+
     
   public:
     MainLCDtask(const char* _name, 
@@ -600,7 +600,7 @@ class StripTask : public FaderMonsterTask
     //------------------------------------------------------------------------
     static StripTask* tasks[NUM_POTS];
 
-    StripConfig& cfg;
+    StripColours& cfg;
 
     LEDring<NUM_POTS> ring;   // our LED ring
     ContinuousPot& pot;       // ...continuous pot...
@@ -632,7 +632,7 @@ class StripTask : public FaderMonsterTask
               RingLEDs<NUM_POTS>& _rings,
               ContinuousPot& _pot, TouchStatus& _potTouch,
               TFT_eSprite& _scribble,
-              StripConfig& _cfg
+              StripColours& _cfg
             )
     : FaderMonsterTask{_name, _stackDepth, _params, _priority},
       reqQueue{_reqQlen}, cfg{_cfg},
@@ -771,10 +771,14 @@ class PotsTask : public FaderMonsterTask
 //                                                 Y8b d88P          
 //                                                  "Y88P"           
 //
+// ******* now in settings.h **********
+// *** auto-built by configMaker.py ***
+/*
 class FaderMonsterSettings
 {
   public:
     StripConfig stripsConfig[NUM_POTS];
     colours_t mainColours;
 };
+*/
 #endif // !defined(_CLASSES_H_)
