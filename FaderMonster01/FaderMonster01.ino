@@ -1,5 +1,6 @@
 
 #include "header.h"
+#include <usb_names.h>
 
 //================================================================
 //                                                             
@@ -141,11 +142,13 @@ InterTaskRequest::Result SuperTask::doUpdateMainTouch(void* pGTPoint)
 TouchStatus powerButton;
 void pollPowerButton(void)
 {
+  static bool hadLongPress = false, canPowerOff = false;
   powerButton = !GET_BIT(SOFT_POWER);
-  if (powerButton.isChangedStatus())
+  bool isChanged = powerButton.isChangedStatus();
+  TouchStatus::eStatus e = powerButton.getExtendedStatus();
+
+  if (isChanged)
   {
-    static bool hadLongPress = false, canPowerOff = false;
-    TouchStatus::eStatus e = powerButton.getExtendedStatus();
     Serial.printf("Power button status is %d\n", e);
 
     switch (e)
@@ -167,7 +170,6 @@ void pollPowerButton(void)
         break;
 
       case TouchStatus::eStatus::OFF: // released after power-up etc.
-        canPowerOff = true;
         if (hadLongPress)
         {
           Serial.print("Off ... ");
@@ -185,11 +187,17 @@ void pollPowerButton(void)
             vTaskDelay(10);
           }
         }
-        else
-          SET_BIT(POWER_LED,1); // set power LED B.1 output
 
         break;
     }
+  }
+
+  // not entirely certain if button comes up 
+  // in "off" state, so we have to poll this 
+  if (!canPowerOff && TouchStatus::eStatus::OFF == e)
+  {
+    canPowerOff = true;
+    SET_BIT(POWER_LED,1); // set power LED B.1 output
   }
 }
 
@@ -408,11 +416,19 @@ void SuperTask::run(void)
 //                                      888      
 //                                      888      
 //
+static void getSerialNumber(char* sernum);
 void setup() 
 {
   while (!Serial)
     ;
 
+  Serial.print("\n\n*************************************************************");
+  Serial.printf("\n" __FILE_NAME__ "; Teensyduino %.2f; " __DATE__ " " __TIME__ "\n", (float) TEENSYDUINO / 100.0f);
+  {
+    char buf[11];
+    getSerialNumber(buf);
+    Serial.printf("Teensy serial number is: %s\n", buf);
+  }
   // debug pins for scope:
   pinMode(DBG1, arduino::OUTPUT);
   pinMode(DBG2, arduino::OUTPUT);
@@ -453,6 +469,14 @@ void setup()
   superTask.create();
 
   vTaskStartScheduler(); // start all tasks - the mayhem begins!
+}
+
+static void getSerialNumber(char* sernum)
+{
+  //char sernum[10];
+  for (size_t i = 0; i < 10; i++)
+    sernum[i] = usb_string_serial_number.wString[i];
+  sernum[10] = 0;    
 }
 //================================================================
 void loop() {} // keep Arduino happy

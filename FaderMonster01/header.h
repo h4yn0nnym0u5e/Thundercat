@@ -7,6 +7,7 @@
 #undef SPISettings // undo macro hack
 #include <WS2812Serial.h>
 #include <initGT911.h>
+#include <LittleFS.h>
 
 #define CONCAT(a,b,c) a##b##c
 

@@ -112,6 +112,15 @@ public:
     }
 };
 
+//    888               888    888                     888      8888888888 8888888b.  
+//    888               888    888                     888      888        888  "Y88b 
+//    888               888    888                     888      888        888    888 
+//    88888b.  888  888 888888 888888 .d88b.  88888b.  888      8888888    888    888 
+//    888 "88b 888  888 888    888   d88""88b 888 "88b 888      888        888    888 
+//    888  888 888  888 888    888   888  888 888  888 888      888        888    888 
+//    888 d88P Y88b 888 Y88b.  Y88b. Y88..88P 888  888 888      888        888  .d88P 
+//    88888P"   "Y88888  "Y888  "Y888 "Y88P"  888  888 88888888 8888888888 8888888P"  
+//
 class ButtonLED
 {
     WS2812Serial& ledString;
@@ -482,7 +491,7 @@ class MainLCDtask : public FaderMonsterTask
 
     InterTaskRequest::Result doUpdateDirty(void* pScribble);
     //------------------------------------------------------------------------
-
+    // TFT-related stuff
     TFT_TYPE& tft;
     TFT_eSprite& sprite;
     //TFT_TYPE* ptft;
@@ -500,6 +509,12 @@ class MainLCDtask : public FaderMonsterTask
     void phasedInit(void);
     bool TFTdmaWait(int pixels);
 
+    //------------------------------------------------------------------------
+    // LittleFS-related stuff
+    bool initFS(void);
+    //------------------------------------------------------------------------
+    
+    
   public:
     MainLCDtask(const char* _name, 
               configSTACK_DEPTH_TYPE _stackDepth, 

@@ -15,6 +15,46 @@ FlexIOSPI SPIflex(MAINLCD_SPI_PINS, -1); // Setup on (int mosiPin, int misoPin, 
 
 static TFT_eSPI tft = TFT_eSPI(240,320,SPIflex,MAINLCD_CS);
 static TFT_eSprite sprite{&tft}; // sprite for off-screen rendering
+
+LittleFS_SPIFram FRAMfs;
+
+//----------------------------------------------------------------------------
+//
+//    888 d8b 888    888    888          8888888888 .d8888b.  
+//    888 Y8P 888    888    888          888       d88P  Y88b 
+//    888     888    888    888          888       Y88b.      
+//    888 888 888888 888888 888  .d88b.  8888888    "Y888b.   
+//    888 888 888    888    888 d8P  Y8b 888           "Y88b. 
+//    888 888 888    888    888 88888888 888             "888 
+//    888 888 Y88b.  Y88b.  888 Y8b.     888       Y88b  d88P 
+//    888 888  "Y888  "Y888 888  "Y8888  888        "Y8888P"  
+//
+bool MainLCDtask::initFS(void)
+{
+  bool ok;
+
+  pinMode(MRAM_CS, arduino::OUTPUT);
+  digitalWriteFast(MRAM_CS, arduino::HIGH);
+  vTaskDelay(5);
+
+  if ((ok = FRAMfs.begin(MRAM_CS, SPIflex, true))) // use FlexIOSPI, configured above
+  {
+    const size_t uidsz = 19;
+    uint8_t buffer[uidsz];
+
+    FRAMfs.getUniqueID(buffer,uidsz);
+
+    Serial.printf("MRAM mfr ID: %02X %02X; unique ID: ", buffer[3], buffer[4]);
+    for (size_t i=5;i<uidsz;i++)
+      Serial.printf("%02X ", buffer[i]);
+    Serial.println();      
+    Serial.printf("\n%u Storage list initialized.\n", millis());
+  }//  MTP.addFilesystem(FRAMfs, FRAMfs.name());
+  else
+    Serial.printf("\nStorage not added for pin %d", MRAM_CS);
+    
+  return ok;    
+}
  
 //----------------------------------------------------------------------------
 //
@@ -59,7 +99,8 @@ bool MainLCDtask::TFTdmaWait(int pixels)
 {
   bool timedOut = false;
   uint32_t notifiedValue;
-  const float pixelsToMicros = 0.3f;
+  uint32_t SPIclk = SPIflex.getSCKrate(); // normally 60'000'000 ... but
+  const float pixelsToMicros = 0.3f * 60'000'000 / SPIclk;
   int ticks = 2 + (int)(pixels * pixelsToMicros / 1000.0f);
   // wait for notification from async TFT_eSPI library
   digitalWriteFast(DBG1, arduino::HIGH);
@@ -330,6 +371,51 @@ void MainLCDtask::run(void)
                 
   // basic settings
   sprite.setSpriteSwapBytes(true);
+  // ---------------------------------------------------------------------
+  // Start the filesystem
+  if (initFS())
+  {
+    // quick test - dump a pre-existing file
+    int dumped = 0;
+    vTaskDelay(2);
+
+    for (int i=0;i<10 && dumped < 1;i++)
+    {
+      File f = FRAMfs.open("log.txt");
+      if (f)
+      {
+        int fch, idx = 0;
+        char buf[50];
+        Serial.println("=======================");
+        do
+        {
+          // seems to need a critical section
+          taskENTER_CRITICAL();
+          fch = f.readBytes(buf,sizeof buf - 1);
+          taskEXIT_CRITICAL();
+          if (fch > 0)
+          {
+            buf[fch] = 0;
+            Serial.print(buf);
+          }
+          else 
+            fch = -1;
+        } while (fch >= 0);
+        buf[idx] = 0;
+        
+        
+        Serial.print(buf);
+        f.close();
+        Serial.println("=======================");
+        dumped++;
+      }
+      else
+      {
+        Serial.printf("try %d failed; wait %d... ", i+1, i*10);
+        vTaskDelay(i*10);
+      }
+    }      
+  }
   // ---------------------------------------------------------------------
 
 
