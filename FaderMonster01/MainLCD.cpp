@@ -213,6 +213,25 @@ InterTaskRequest::Result MainLCDtask::doUpdateDirty(void* pDisplay)
     return result;
 }
 
+// save settings to CSV file
+InterTaskRequest::Result MainLCDtask::doSaveSettings(void* _fileName)
+{
+  const char* fileName = (char*) _fileName;
+  InterTaskRequest::Result result = InterTaskRequest::Result::failed;
+
+  Serial.printf("Save to '%s'\n", fileName);
+
+  File f = FRAMfs.open(fileName,FILE_WRITE_BEGIN); // overwrite
+  if (f)
+  {
+    dumpSettings(f);
+    f.close();
+    result = InterTaskRequest::Result::done;
+  }
+
+  return result;
+}
+
 //========================================================================
 //
 //                      888      888 d8b          
@@ -227,7 +246,7 @@ InterTaskRequest::Result MainLCDtask::doUpdateDirty(void* pDisplay)
 //    888                                         
 //    888                                         
 //
-// function called by client task to queue the request
+// functions called by client task to queue a request
 // returns reference to the request, so we can interrogate it
 // for success immediately
 InterTaskRequest& MainLCDtask::updateDirty(InterTaskRequest& req,  // request to be filled in
@@ -241,6 +260,18 @@ InterTaskRequest& MainLCDtask::updateDirty(InterTaskRequest& req,  // request to
       reqQueue.request(entry, timeout);      // queue the request, if inactive
     else 
       req.status = InterTaskRequest::Result::done; // nothing to do, so it's done!      
+
+    return req;
+}
+
+InterTaskRequest& MainLCDtask::saveSettings(InterTaskRequest& req,  // request to be filled in
+                                            char* fileName,         // name for file
+                                            TickType_t timeout)
+{
+    requestPayload payload{&MainLCDtask::doSaveSettings, fileName};
+    RequestQueue<MainLCDtask, requestPayload>::queueEntry entry{&req,payload};
+
+    reqQueue.request(entry, timeout);      // queue the request, if inactive
 
     return req;
 }
@@ -381,7 +412,8 @@ void MainLCDtask::run(void)
 
     for (int i=0;i<10 && dumped < 1;i++)
     {
-      File f = FRAMfs.open("log.txt");
+      //File f = FRAMfs.open("log.txt", FILE_READ);
+      File f = FRAMfs.open("scene-1.csv", FILE_READ);
       if (f)
       {
         int fch, idx = 0;

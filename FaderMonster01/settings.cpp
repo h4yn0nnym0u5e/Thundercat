@@ -116,7 +116,8 @@ FLASHMEM bool getuint16_t(char* dst, void* src) { sprintf(dst, "0x%04X", *(uint1
 //
 int CSVlineCount;
 FLASHMEM
-void testToCSV(CfgBaseOffset& cfgbo, //!< structure to save
+void testToCSV(Stream& s,
+               CfgBaseOffset& cfgbo, //!< structure to save
                char* buf,            //!< text buffer: must be big enough!
                const int bufOff=0)   //!< where to append
 {
@@ -124,7 +125,7 @@ void testToCSV(CfgBaseOffset& cfgbo, //!< structure to save
   char* base = (char*) &cfgbo;
 
   if (0 == bufOff)
-    Serial.printf("\nCSV for %s settings\n", cfgbo.getName(-1));
+    s.printf("\nCSV for %s settings\n", cfgbo.getName(-1));
 
   for (int i=0;i<mc;i++)
   {
@@ -142,26 +143,26 @@ void testToCSV(CfgBaseOffset& cfgbo, //!< structure to save
 
       if (nullptr == ofs.getter) // not a leaf
       {
-        testToCSV(*(CfgBaseOffset*)(base + ofs.offset + n*ofs.size), buf, newOff);
+        testToCSV(s, *(CfgBaseOffset*)(base + ofs.offset + n*ofs.size), buf, newOff);
       }
       else 
       {
         newOff = newOff + sprintf(buf + newOff, ", "); // add CSV separator
         ofs.getter(buf+newOff,base + ofs.offset + n*ofs.size);
-        Serial.println(buf+1); // omit spurious leading '.'
+        s.println(buf+1); // omit spurious leading '.'
         CSVlineCount++;
       }
       if (1 != ofs.count)
-        Serial.println();
+        s.println();
     }
   }
 }
 
 
-FLASHMEM void dumpSettings(void)
+FLASHMEM void dumpSettings(Stream& s)
 {
     char buf[300];
     CSVlineCount = 0;
-    testToCSV(faderMonsterSettings, buf);
-    Serial.printf("// %d settings lines\n\n", CSVlineCount);
+    testToCSV(s, faderMonsterSettings, buf);
+    s.printf("// %d settings lines\n\n", CSVlineCount);
 }

@@ -6,7 +6,7 @@
 
 #define TO_OFFSET_LEAF_ARRAY(...)
 
-// types: {'MIDIcontrolSetting', 'StripControls', 'cfgButtonLED', 'StripColours', 'cfgRingLEDs', 'FaderMonsterSettings', 'TFTcolours', 'StripSettings'}
+// types: ['cfgButtonLED', 'cfgRingLEDs', 'FaderMonsterSettings', 'MIDIcontrolSetting', 'StripColours', 'StripControls', 'StripSettings', 'TFTcolours']
 #if 0
 { {
      {{ /* colour, */ /* pattern, */}, { /* colour, */}, { /* fg, */ /* bg, */ /* txt, */}, }, 
@@ -70,7 +70,7 @@ uint16_t mainColours.fg
 uint16_t mainColours.bg
 uint16_t mainColours.txt
 
-{'int', 'char', 'uint16_t', 'MIDIcontrolType', 'pattern_t'}
+['char', 'int', 'MIDIcontrolType', 'pattern_t', 'uint16_t']
 
 27 leaves:
 "stripsConfig.colours.1.ringLEDs.colour", // 0
@@ -103,17 +103,17 @@ uint16_t mainColours.txt
 
 */
 //========================================
-extern bool setint(void* dst, const char* src);
 extern bool setchar(void* dst, const char* src);
-extern bool setuint16_t(void* dst, const char* src);
+extern bool setint(void* dst, const char* src);
 extern bool setMIDIcontrolType(void* dst, const char* src);
 extern bool setpattern_t(void* dst, const char* src);
+extern bool setuint16_t(void* dst, const char* src);
 
-extern bool getint(char* dst, void* src);
 extern bool getchar(char* dst, void* src);
-extern bool getuint16_t(char* dst, void* src);
+extern bool getint(char* dst, void* src);
 extern bool getMIDIcontrolType(char* dst, void* src);
 extern bool getpattern_t(char* dst, void* src);
+extern bool getuint16_t(char* dst, void* src);
 //========================================
 
 //! colours for use on a TFT display

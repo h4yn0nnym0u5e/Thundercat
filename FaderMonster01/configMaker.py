@@ -271,11 +271,11 @@ def printInitBraces(d, elem, indt = ""):
 
 
 def makeExternSetters(types):
-    for type in types:
+    for type in sorted(types, key = str.lower):
         myPrint(f"extern bool set{type}(void* dst, const char* src);")
 
 def makeExternGetters(types):
-    for type in types:
+    for type in sorted(types, key = str.lower):
         myPrint(f"extern bool get{type}(char* dst, void* src);")
 
 ##########################################################
@@ -294,14 +294,14 @@ f.write(f"""
 
 clss = dictToClasses(d1) # creates types
 
-myPrint("// types: " + str(types))
+myPrint("// types: " + str(sorted(types, key = str.lower)))
 myPrint("#if 0")
 printInitBraces(d1, "FaderMonsterSettings")
 myPrint("\n#endif\n")
 myPrint("/*")
 printAllPaths(d1,"FaderMonsterSettings","") # creates leaves and setTypes
 myPrint("")
-myPrint(setTypes)
+myPrint(sorted(setTypes, key = str.lower))
 myPrint("")
 myPrint(f"{len(leaves)} leaves:")
 n = 0
@@ -327,5 +327,10 @@ f.close()
 f = open("settings.csv", "w")
 for i in range(1,9):
     for leaf in leaves:
-        myPrint(leaf.replace('.1.', f".{i}.") + ",")
+        if '.1.' in leaf:
+            myPrint(leaf.replace('.1.', f".{i}.") + ",")
+    myPrint("")
+for leaf in leaves:
+    if '.1.' not in leaf:
+        myPrint(leaf + ",")
 f.close()

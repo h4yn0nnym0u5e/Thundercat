@@ -275,6 +275,7 @@ bool SuperTask::processUI(void)
 
 extern FlexIOSPI SPIflex;
 extern int stallCount;
+static char fileName[30];
 void SuperTask::loopFn(void)
 {
   { // debug print of ADCs
@@ -370,7 +371,14 @@ void SuperTask::loopFn(void)
         break;
 
       case 's':
-        dumpSettings();
+      {
+        char n = Serial.read();
+        if (n >= '0' && n <= '9')
+        {
+          sprintf(fileName, "scene-%c.csv", n);
+          mainLCDtask.saveSettings(saveSettingsRequest, fileName);
+        }
+      }
         break;
 
       case 't':
@@ -390,6 +398,18 @@ void SuperTask::loopFn(void)
             touchCalibrationRequest.overallTime(),
             touchCalibrationRequest.executionTime());
     touchCalibrationRequest.setInactive();            
+  }
+
+  if (saveSettingsRequest.isFinished())
+  {
+    Serial.printf("Save settings to '%s' %s after %uus; execution time was %uus\n",
+            fileName,
+            InterTaskRequest::Result::failed == saveSettingsRequest.status
+                ?"failed"
+                :"done",
+            saveSettingsRequest.overallTime(),
+            saveSettingsRequest.executionTime());
+    saveSettingsRequest.setInactive();            
   }
 
 }

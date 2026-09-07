@@ -272,7 +272,7 @@ class SuperTask : public FaderMonsterTask
     //------------------------------------------------------------------------
 
     void loopFn(void);
-    InterTaskRequest touchCalibrationRequest;
+    InterTaskRequest touchCalibrationRequest, saveSettingsRequest;
 
     // display UI
     MainUIholder _ui;
@@ -490,6 +490,7 @@ class MainLCDtask : public FaderMonsterTask
     RequestQueue<MainLCDtask, requestPayload> reqQueue;
 
     InterTaskRequest::Result doUpdateDirty(void* pScribble);
+    InterTaskRequest::Result doSaveSettings(void* fileName);
     //------------------------------------------------------------------------
     // TFT-related stuff
     TFT_TYPE& tft;
@@ -542,6 +543,7 @@ class MainLCDtask : public FaderMonsterTask
     //------------------------------------------------------------------------
     // stuff to allow another task to make async requests:
     InterTaskRequest& updateDirty(InterTaskRequest& req, TFT_eSprite& scribble, TickType_t timeout = 0);
+    InterTaskRequest& saveSettings(InterTaskRequest& req, char* fileName, TickType_t timeout = 0);
 };
 
 //             888            d8b          

@@ -56,7 +56,7 @@ namespace freertos
     extern TaskHandle_t g_yield_task;
 }
 extern int rainbow[LEDS_PER_RING], cold2hot[LEDS_PER_RING];
-extern void dumpSettings(void);
+extern void dumpSettings(Stream&);
 
 
 
