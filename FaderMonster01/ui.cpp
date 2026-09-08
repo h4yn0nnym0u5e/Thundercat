@@ -634,6 +634,16 @@ UIclass::State MainColourPicker::begin(TFT_eSprite& sprite, colours_t c)
     drawSettingsExample();  // text + foreground + background
     showColours();          // hex values for the current colours
 
+    /*
+    // button image
+    uint16_t colour = TFT_DARKGREY;
+    uint16_t cmap[16];
+    const image_4bit_info& btn = tl_button_info;
+    for (int i=0;i<16;i++)
+        cmap[i] = pSprite->alphaBlend(i*16,colour,TFT_BLACK);
+    
+    pSprite->pushImage(0,0, btn.width,btn.height, btn.data,false,cmap);
+    */
     return (state = State::push); // need to update display
 }
 

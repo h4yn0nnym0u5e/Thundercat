@@ -226,7 +226,7 @@ taskENTER_CRITICAL();
 taskEXIT_CRITICAL();
   if (f)
   {
-    dumpSettings(f);
+    Settings::save(f);
 taskENTER_CRITICAL();
     f.close();
 taskEXIT_CRITICAL();
@@ -235,6 +235,30 @@ taskEXIT_CRITICAL();
 
   return result;
 }
+
+// load settings from CSV file
+InterTaskRequest::Result MainLCDtask::doLoadSettings(void* _fileName)
+{
+  const char* fileName = (char*) _fileName;
+  InterTaskRequest::Result result = InterTaskRequest::Result::failed;
+
+  Serial.printf("Load from '%s'\n", fileName);
+
+taskENTER_CRITICAL();
+  File f = FRAMfs.open(fileName,FILE_READ);
+taskEXIT_CRITICAL();
+  if (f)
+  {
+    Settings::load(f, faderMonsterSettings);
+taskENTER_CRITICAL();
+    f.close();
+taskEXIT_CRITICAL();
+    result = InterTaskRequest::Result::done;
+  }
+
+  return result;
+}
+
 
 //========================================================================
 //
@@ -268,16 +292,32 @@ InterTaskRequest& MainLCDtask::updateDirty(InterTaskRequest& req,  // request to
     return req;
 }
 
+
+InterTaskRequest& MainLCDtask::sendPayload(InterTaskRequest& req, requestPayload& payload, TickType_t timeout)
+{
+    RequestQueue<MainLCDtask, requestPayload>::queueEntry entry{&req,payload};
+    reqQueue.request(entry, timeout);      // queue the request, if inactive
+    return req;
+}
+
+
 InterTaskRequest& MainLCDtask::saveSettings(InterTaskRequest& req,  // request to be filled in
                                             char* fileName,         // name for file
                                             TickType_t timeout)
 {
     requestPayload payload{&MainLCDtask::doSaveSettings, fileName};
-    RequestQueue<MainLCDtask, requestPayload>::queueEntry entry{&req,payload};
+    opIsSave = true;
+    return sendPayload(req, payload, timeout);
+}
 
-    reqQueue.request(entry, timeout);      // queue the request, if inactive
 
-    return req;
+InterTaskRequest& MainLCDtask::loadSettings(InterTaskRequest& req,  // request to be filled in
+                                            char* fileName,         // name for file
+                                            TickType_t timeout)
+{
+    requestPayload payload{&MainLCDtask::doLoadSettings, fileName};
+    opIsSave = false;
+    return sendPayload(req, payload, timeout);
 }
 
 //========================================================================
@@ -411,7 +451,7 @@ taskEXIT_CRITICAL();
   if (initFS())
   {
     // quick test - dump a pre-existing file
-    int dumped = 0;
+    int dumped = 999; // don't dump!
     vTaskDelay(2);
 
     for (int i=0;i<10 && dumped < 1;i++)
@@ -482,7 +522,7 @@ taskEXIT_CRITICAL();
   }
 }
 
-MainLCDtask mainLCDtask{"mainLCD", 640, nullptr, 
+MainLCDtask mainLCDtask{"mainLCD", 768, nullptr, 
                         1,            // display updates are a fairly low priority
                         tft, sprite,  // actual tft and sprite objects
                         NUM_POTS      // allow for one request per strip

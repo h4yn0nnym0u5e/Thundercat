@@ -379,7 +379,18 @@ void SuperTask::loopFn(void)
           mainLCDtask.saveSettings(saveSettingsRequest, fileName);
         }
         else
-          dumpSettings(Serial);
+          Settings::save(Serial);
+      }
+        break;
+
+      case 'l':
+      {
+        char n = Serial.read();
+        if (n >= '0' && n <= '9')
+        {
+          sprintf(fileName, "scene-%c.csv", n);
+          mainLCDtask.loadSettings(saveSettingsRequest, fileName);
+        }
       }
         break;
 
@@ -404,7 +415,8 @@ void SuperTask::loopFn(void)
 
   if (saveSettingsRequest.isFinished())
   {
-    Serial.printf("Save settings to '%s' %s after %uus; execution time was %uus\n",
+    Serial.printf("%s settings to '%s' %s after %uus; execution time was %uus\n",
+            mainLCDtask.opIsSave?"Save":"Load",
             fileName,
             InterTaskRequest::Result::failed == saveSettingsRequest.status
                 ?"failed"

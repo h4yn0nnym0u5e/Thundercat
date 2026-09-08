@@ -489,8 +489,11 @@ class MainLCDtask : public FaderMonsterTask
     };
     RequestQueue<MainLCDtask, requestPayload> reqQueue;
 
+    InterTaskRequest& sendPayload(InterTaskRequest& req, requestPayload& payload, TickType_t timeout);
+
     InterTaskRequest::Result doUpdateDirty(void* pScribble);
     InterTaskRequest::Result doSaveSettings(void* fileName);
+    InterTaskRequest::Result doLoadSettings(void* fileName);
     //------------------------------------------------------------------------
     // TFT-related stuff
     TFT_TYPE& tft;
@@ -540,10 +543,12 @@ class MainLCDtask : public FaderMonsterTask
 
     bool pauseOutput{false}; // temporary hack...
     bool zapScreen{false}; // as is this
-    //------------------------------------------------------------------------
+    bool opIsSave;
+   //------------------------------------------------------------------------
     // stuff to allow another task to make async requests:
     InterTaskRequest& updateDirty(InterTaskRequest& req, TFT_eSprite& scribble, TickType_t timeout = 0);
     InterTaskRequest& saveSettings(InterTaskRequest& req, char* fileName, TickType_t timeout = 0);
+    InterTaskRequest& loadSettings(InterTaskRequest& req, char* fileName, TickType_t timeout = 0);
 };
 
 //             888            d8b          
@@ -775,12 +780,21 @@ class PotsTask : public FaderMonsterTask
 //
 // ******* now in settings.h **********
 // *** auto-built by configMaker.py ***
-/*
-class FaderMonsterSettings
+
+/**
+ * Methods to save and load settings from CSV files
+ */
+class Settings
 {
+    static offsetResult testToOffset(char* str);
+    static void testToCSV(Stream& s,
+               CfgBaseOffset& cfgbo, //!< structure to save
+               char* buf,            //!< text buffer: must be big enough!
+               const int bufOff=0);  //!< where to append
+    static void loadFromCSV(File& s,
+               CfgBaseOffset& cfgbo); //!< structure to load)
   public:
-    StripConfig stripsConfig[NUM_POTS];
-    colours_t mainColours;
+    static void save(Stream& s);
+    static void load(File& s, FaderMonsterSettings& f);
 };
-*/
 #endif // !defined(_CLASSES_H_)

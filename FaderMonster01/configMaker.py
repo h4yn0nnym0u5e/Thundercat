@@ -278,6 +278,12 @@ def makeExternGetters(types):
     for type in sorted(types, key = str.lower):
         myPrint(f"extern bool get{type}(char* dst, void* src);")
 
+def makeUnion(types):
+    myPrint(f"union settingsTypes\n{{")
+    for type in sorted(types, key = str.lower):
+        myPrint(f"    {type} {type}_value;")
+    myPrint("};")        
+
 ##########################################################
 includeGuard = "_SETTINGS_CLASSES_"
 #dictToStructs(d1)
@@ -312,6 +318,8 @@ myPrint("")
 myPrint("*/")
 
 myPrint("//========================================")
+makeUnion(setTypes)
+myPrint("")
 makeExternSetters(setTypes)
 myPrint("")
 makeExternGetters(setTypes)

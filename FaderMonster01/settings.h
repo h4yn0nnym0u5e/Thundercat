@@ -103,6 +103,15 @@ uint16_t mainColours.txt
 
 */
 //========================================
+union settingsTypes
+{
+    char char_value;
+    int int_value;
+    MIDIcontrolType MIDIcontrolType_value;
+    pattern_t pattern_t_value;
+    uint16_t uint16_t_value;
+};
+
 extern bool setchar(void* dst, const char* src);
 extern bool setint(void* dst, const char* src);
 extern bool setMIDIcontrolType(void* dst, const char* src);

@@ -4,6 +4,7 @@
 // Essentials needed for various classes
 
 //=================================================
+//#if !defined(constrain)
 template<typename T> 
 T constrain(T v, T l, T u)
 {
@@ -12,6 +13,7 @@ T constrain(T v, T l, T u)
     if (v>u) result = u;
     return result;
 }
+//#endif // !defined(constrain)
 
 //                                                        888    
 //                                                        888    
@@ -213,7 +215,7 @@ class pattern_t
   public:
     pattern_t(int c) : values{c} {}
     pattern_t(int c, int c2) : values{c,c2} {}
-    pattern_t() {}
+    pattern_t() = default; // {}
     int& operator[](int n) { return values[n]; }
     int* getPointer(void) { return &values[0]; }
 };
@@ -290,5 +292,19 @@ enum class MIDIcontrolType : int
 #include "settings.h"
 
 typedef TFTcolours colours_t;
+
+//================================================================
+typedef unsigned char image_4bit_data;
+typedef struct 
+{
+    int width, height;
+    const image_4bit_data* data;
+} image_4bit_info;
+
+extern const image_4bit_info 
+    tl_button,
+    tr_button,
+    bl_button,
+    br_button;
 
 #endif // !defined(_BASICS_H_)

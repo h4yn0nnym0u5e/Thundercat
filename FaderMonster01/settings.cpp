@@ -61,7 +61,19 @@ FLASHMEM bool setint(void* dst, const char* src)
   return ok;
 }
 
-FLASHMEM bool setchar(void* dst, const char* src) { strcpy((char*) dst, src);  return true; }
+/**
+ * Set character array from source buffer.
+ * Removes leading and trailing quotation marks if present.
+ */
+FLASHMEM bool setchar(void* _dst, const char* src) 
+{ 
+    char* dst = (char*) _dst;
+    if ('"' == *src) src++; // strip leading "
+    int len = strlen(src);
+    strcpy(dst, src);
+    if ('"' == dst[len-1]) dst[len-1] = 0; // strip trailing "
+    return true; 
+}
 
 FLASHMEM bool setuint16_t(void* dst, const char* src)
 { 
@@ -114,12 +126,31 @@ FLASHMEM bool getuint16_t(char* dst, void* src) { sprintf(dst, "0x%04X", *(uint1
 //    Y88b. Y8b.          X88 Y88b.       X88 
 //     "Y888 "Y8888   88888P'  "Y888  88888P' 
 //
+
+FLASHMEM
+offsetResult Settings::testToOffset(char* str)
+{
+    FaderMonsterSettings* dummyFMS{&faderMonsterSettings}; // get a thing of a type
+    // char* base = (char*) dummyFMS;
+    int dummy;
+    offsetResult offsetS = dummyFMS->toOffset(str, dummy);
+    /*
+    int offset = offsetS.offset;
+    Serial.printf("Test '%s'; offset is %d; address is %08X", str, offset, base+offset);
+    if (nullptr != offsetS.getter)
+        Serial.printf("; setter at 0x%08x; getter at 0x%08x\n", (uint32_t) offsetS.setter, (uint32_t) offsetS.getter);
+    else
+        Serial.println();
+    */
+    return offsetS;
+}
+
 int CSVlineCount;
 FLASHMEM
-void testToCSV(Stream& s,
+void Settings::testToCSV(Stream& s,
                CfgBaseOffset& cfgbo, //!< structure to save
                char* buf,            //!< text buffer: must be big enough!
-               const int bufOff=0)   //!< where to append
+               const int bufOff)     //!< where to append
 {
   int mc = cfgbo.getMemberCount();
   char* base = (char*) &cfgbo;
@@ -168,11 +199,68 @@ taskEXIT_CRITICAL();
   }
 }
 
+FLASHMEM
+void Settings::loadFromCSV(File& s,
+                           CfgBaseOffset& cfgbo)
+{
+    [[maybe_unused]] char* base = (char*) &cfgbo;
+    offsetResult offsetS;
+    char buf[300];
+    int offset = 0, avail = 0;
 
-FLASHMEM void dumpSettings(Stream& s)
+    do 
+    {
+taskENTER_CRITICAL();
+        avail += s.read(buf+offset, sizeof buf - offset); // ensure buffer is full
+taskEXIT_CRITICAL();
+        char* comma = (char*) memchr(buf, ',', sizeof buf);
+        char* eol   = (char*) memchr(buf, '\n', sizeof buf);
+        if (nullptr == eol) // badly-formed file - give up
+            break;
+
+        if (nullptr != comma && comma < eol) // no comma - empty or comment
+        {
+            settingsTypes bitBucket;
+            char valueAsString[300]{"<bad>"};
+            bool valueOK = false;
+
+            *comma = 0;                     // terminate the element path
+            *eol = 0;                       // and the value
+            offsetS = testToOffset(buf);    // find the info about it
+            if (nullptr != offsetS.setter)
+            {
+                do
+                {
+                    comma++;
+                } while (*comma == ' ' && comma < eol);
+                valueOK = offsetS.setter(&bitBucket, comma); // get the value
+                if (valueOK) // actually load to structure!
+                    offsetS.setter(base + offsetS.offset, comma);
+                offsetS.getter(valueAsString, &bitBucket);
+            }
+            Serial.printf("Element '%s' with value field '%s'; offset %d; parsed value %s\n",
+                            buf, comma, offsetS.offset, valueAsString);
+
+        }
+        offset = eol - buf + 1; // absorb this many characters
+        memmove(buf, buf+offset, sizeof buf - offset); // shuffle bytes up
+        offset = sizeof buf - offset; // where to load more data
+        avail -= eol - buf + 1;       // how much we currently have
+        if (avail < 5) break; // magic - 'n,1\n' could be a setting!
+    } while (1);
+}
+
+FLASHMEM 
+void Settings::save(Stream& s)
 {
     char buf[300];
     CSVlineCount = 0;
     testToCSV(s, faderMonsterSettings, buf);
     s.printf("// %d settings lines\n\n", CSVlineCount);
+}
+
+FLASHMEM 
+void Settings::load(File& s, FaderMonsterSettings& f)
+{
+    loadFromCSV(s,f);
 }
