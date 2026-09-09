@@ -229,16 +229,22 @@ bool SuperTask::processUI(void)
   // test of changing UI classes on the fly
   if (flipui) // set by power button brief press
   {
-    flipui = false;       // this is kinda important!
-    whichUI = 1-whichUI;  // flip to the other UI
+    flipui = false; // this is kinda important!
+    whichUI++;      // flip to the next UI
     switch (whichUI)
     {
+      default:
       case 0:
+        whichUI = 0;
         new(_ui.space) MainColourPicker; // placement new
         break;
 
       case 1:
         new(_ui.space) MainTestRects; 
+        break;
+
+      case 2:
+        new(_ui.space) MainQwerty; 
         break;
     }
     ui.begin(mainLCDtask.getSprite(), faderMonsterSettings.mainColours);

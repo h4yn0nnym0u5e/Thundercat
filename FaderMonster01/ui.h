@@ -90,7 +90,15 @@ class UIclass
                       busy  //! busy pushing to display
                      } state;
     virtual State begin(TFT_eSprite& sprite, colours_t c) 
-        { pSprite = &sprite; colours = c;   return (state = State::done); }
+        { 
+            pSprite = &sprite; 
+            colours = c;   
+
+            pSprite->setTextDatum(TL_DATUM);
+            pSprite->resetViewport();
+
+            return (state = State::done); 
+        }
     virtual State update(Trigger trigger) { return (state = State::done); }
     virtual InterTaskRequest& writeToDisplay(void) { return autoFail; }
     virtual uint32_t poll(void) { uint32_t result = interval; interval = 0; return result; }
@@ -242,6 +250,22 @@ class MainColourPicker : public UIclass
     virtual State update(Trigger trigger);
     virtual InterTaskRequest& writeToDisplay(void) { return writeToMainLCD(); }
 };
+//------------------------------------------------------------------
+class MainQwerty : public UIclass 
+{
+    enum {idle, drawingRect};
+    int kbd{0};
+    static constexpr int kWidth{28}, kHeight{28}, kPadding{1};
+
+    void drawRow(const char* keys, int row, int off);
+    void drawKeyboard(int& n);
+
+  public:
+    virtual State begin(TFT_eSprite& sprite, colours_t c);
+    virtual State update(Trigger trigger);
+    virtual InterTaskRequest& writeToDisplay(void) { return writeToMainLCD(); }
+    //virtual uint32_t poll(void);
+};
 //==================================================================
 class MainDummy : public UIclass {};
 union MainUI
@@ -249,6 +273,7 @@ union MainUI
     MainDummy  dummy;
     MainTestRects testRects;
     MainColourPicker colourPicker;
+    MainQwerty qwerty;
 };
 
 union MainUIholder

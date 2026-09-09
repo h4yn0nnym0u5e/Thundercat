@@ -31,13 +31,25 @@ LittleFS_SPIFram FRAMfs;
 //
 bool MainLCDtask::initFS(void)
 {
-  bool ok;
+  bool ok = false;
+  float retry = 5.0f;
+  int tries = 0;
 
   pinMode(MRAM_CS, arduino::OUTPUT);
   digitalWriteFast(MRAM_CS, arduino::HIGH);
   vTaskDelay(5);
 
-  if ((ok = FRAMfs.begin(MRAM_CS, SPIflex, true))) // use FlexIOSPI, configured above
+  for (int i=0;i<8;i++)
+  {
+    // can't wrap this in a critical section!
+    ok = FRAMfs.begin(MRAM_CS, SPIflex, false);
+    tries++;
+    if (ok) break;
+    vTaskDelay((int) retry);
+    retry *= 2.0f;
+  }
+
+  if (ok) // use FlexIOSPI, configured above
   {
     const size_t uidsz = 19;
     uint8_t buffer[uidsz];
@@ -48,7 +60,7 @@ bool MainLCDtask::initFS(void)
     for (size_t i=5;i<uidsz;i++)
       Serial.printf("%02X ", buffer[i]);
     Serial.println();      
-    Serial.printf("\n%u Storage list initialized.\n", millis());
+    Serial.printf("\nStorage list initialized at %ums, %d %s.\n", millis(), tries, tries==1?"try":"tries");
   }//  MTP.addFilesystem(FRAMfs, FRAMfs.name());
   else
     Serial.printf("\nStorage not added for pin %d", MRAM_CS);

@@ -321,6 +321,7 @@ UIclass::State MainTestRects::begin(TFT_eSprite& sprite, colours_t c)
 {
     UIclass::begin(sprite, c);
     pSprite->fillScreen(colours.bg);
+    pSprite->setTextFont(1);
 
     return State::push; // need to update display
 }
@@ -814,4 +815,100 @@ UIclass::State MainColourPicker::update(Trigger trigger)
     state = result; // hang on to result for later
 
     return result;
+}
+
+//==================================================================
+//
+//                                            888             
+//                                            888             
+//                                            888             
+//     .d88888 888  888  888  .d88b.  888d888 888888 888  888 
+//    d88" 888 888  888  888 d8P  Y8b 888P"   888    888  888 
+//    888  888 888  888  888 88888888 888     888    888  888 
+//    Y88b 888 Y88b 888 d88P Y8b.     888     Y88b.  Y88b 888 
+//     "Y88888  "Y8888888P"   "Y8888  888      "Y888  "Y88888 
+//         888                                            888 
+//         888                                       Y8b d88P 
+//         888                                        "Y88P"  
+// 
+static constexpr char kbds[][3][15]
+{
+    {"qwertyuiop","asdfghjkl;","zxcvbnm,./"},
+    {"QWERTYUIOP","ASDFGHJKL:","ZXCVBNM<>?"},
+    {"!\x22#$%^&*()","1234567890","_+-=[]{}'@"},
+};
+
+void MainQwerty::drawRow(const char* keys, int row, int off)
+{
+    size_t cols = strlen(keys);
+    char buf[2]{0};
+    int x = off+10, y = pSprite->height() - (kHeight + kPadding)*(4-row);
+    for (size_t i=0;i<cols;i++)
+    {
+        pSprite->setViewport(x,y,kWidth,kHeight);
+        pSprite->fillRoundRect(0,0,kWidth-1,kHeight-1,3,colours.bg);
+        pSprite->drawRoundRect(0,0,kWidth-1,kHeight-1,3,colours.fg);
+        *buf = keys[i];
+        pSprite->drawString(buf,kWidth/2,3);
+        pSprite->resetViewport();
+        x += kWidth+kPadding;
+    }
+}
+
+void MainQwerty::drawKeyboard(int& n)
+{
+    if (n >= COUNT_OF(kbds)) n = 0;
+
+    int kbdTop = pSprite->height() - (kHeight + kPadding)*4;
+
+    pSprite->fillRect(0,kbdTop,pSprite->width(),pSprite->height()-kbdTop,colours.bg);
+    drawRow(&kbds[n][0][0],0,0);
+    drawRow(&kbds[n][1][0],1,(kWidth + kPadding) / 4);
+    drawRow(&kbds[n][2][0],2,(kWidth + kPadding) / 2);
+}
+
+UIclass::State MainQwerty::begin(TFT_eSprite& sprite, colours_t c)
+{
+    State result = State::push;
+    UIclass::begin(sprite, c); // do standard setup
+
+    pSprite->setFreeFont(&FreeSansBold9pt7b);
+    pSprite->setTextColor(colours.fg, colours.bg, false); // no background fill
+    pSprite->setTextDatum(TC_DATUM);
+    pSprite->fillScreen(colours.bg);
+    drawKeyboard(kbd);
+
+    return (state = result); // save and return state
+}
+
+UIclass::State MainQwerty::update(Trigger trigger)
+{
+    State result = State::done;
+
+    switch (trigger.type)
+    {
+        default: // we don't react to that trigger type
+            result = State::done;
+            break;
+        //----------------------------------------------------------------------
+        case Trigger::eTriggerType::touchPoint:
+        {
+            GTPoint& newPt = trigger.trigger.touchPoint;
+            if (255 == newPt.reserved)
+            {
+                // GT911 seems to repeat itself a lot - just do first touch
+                GTPoint& oldPt = currentTrigger.trigger.touchPoint;
+                if (oldPt.x != newPt.x || oldPt.y != newPt.y || oldPt.reserved != newPt.reserved)
+                {
+                    currentTrigger = trigger; // keep the trigger and value(s)
+                    kbd++;
+                    drawKeyboard(kbd);
+
+                    result = State::push;
+                }
+            }
+        }
+            break;
+    }
+    return (state = result); // save and return state
 }

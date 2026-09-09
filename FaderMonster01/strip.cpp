@@ -124,6 +124,14 @@ void StripTask::run(void)
   scribble.setSpriteSwapBytes(false);
   scribble.setFreeFont(&FONT_DP);
   scribble.setTextColor(cfg.scribble.txt, cfg.scribble.bg, true);
+
+  // wait for main LCD task to load settings
+  for (int i=0;i<30;i++)
+  {
+    if (mainLCDtask.tftInitComplete())
+      break;
+    vTaskDelay(10);
+  }
   
   // set the initial UI presentation on the display
   new(_ui.space) ScribblePotArc; // placement new
