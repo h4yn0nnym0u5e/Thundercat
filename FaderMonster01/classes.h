@@ -683,12 +683,12 @@ class StripTask : public FaderMonsterTask
         reqQueue.request(entry, 0);
     }
 
-    void tftColourChanged(void)
+    InterTaskRequest::Result tftColourChanged(void)
     {
         requestPayload payload{&StripTask::doTFTcolourChange, nullptr};
         RequestQueue<StripTask, requestPayload>::queueEntry entry{&touchReq, payload};
 
-        reqQueue.request(entry, 0);
+        return reqQueue.request(entry, 0);
     }
 
     int num; // which strip this is (0-7)

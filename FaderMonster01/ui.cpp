@@ -689,6 +689,22 @@ UIclass::State MainColourPicker::update(Trigger trigger)
                 break; // nothing else needed
             }
 
+            // change a ring LED's colour?
+            if (lastTouch.x < 50 && lastTouch.y > (240 - 50) && lastTouch.reserved == 255) // hacky hack!
+            {
+                uint32_t LEDcolour = pSprite->color16to24(bgColour); // allow brightness control
+                for (int i=0;i<NUM_POTS;i++)
+                {
+                    TouchStatus& stripTouch = StripTask::getStripTouch(i);
+                    if (TouchStatus::eStatus::LONG == stripTouch.getExtendedStatus())
+                    {
+                        faderMonsterSettings.stripsConfig.colours[i].ringLEDs.colour = LEDcolour;
+                        StripTask::getStripTask(i).tftColourChanged();
+                    }
+                }
+                break; // nothing else needed
+            }
+
             // Are we in the colour circle - if so select hue
             dx = lastTouch.x - hueX; dy = lastTouch.y - hueY;
             touchRadius = sqrtf(dx*dx+dy*dy);

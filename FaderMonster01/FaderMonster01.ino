@@ -388,10 +388,26 @@ void SuperTask::loopFn(void)
         char n = Serial.read();
         if (n >= '0' && n <= '9')
         {
+          // request load and wait for it to complete
           sprintf(fileName, "scene-%c.csv", n);
           mainLCDtask.loadSettings(saveSettingsRequest, fileName);
-          for (int i=0;i<8;i++)
-            StripTask::getStripTask(i).tftColourChanged();
+          while (saveSettingsRequest.isBusy())
+            vTaskDelay(5);
+
+          // update strip colours  
+          uint8_t doneFlags = 0;
+          while (doneFlags != 0xFF)
+          {
+            int i = random(8);
+            uint8_t flag = 1<<i;
+            if (0 == (doneFlags & flag))
+            {
+              if (InterTaskRequest::Result::failed != StripTask::getStripTask(i).tftColourChanged())
+                doneFlags |= flag;
+              Serial.printf("%d ... ", i);
+            }
+          }
+          Serial.println();
         }
       }
         break;

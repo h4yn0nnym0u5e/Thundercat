@@ -81,6 +81,7 @@ InterTaskRequest::Result StripTask::doTouchChange(void* pNothing)
 InterTaskRequest::Result StripTask::doTFTcolourChange(void* pNothing)
 {
   ui.begin(scribble, cfg.scribble); // update display
+  setDotCurrent(); // and ring
 
   return InterTaskRequest::Result::done;
 }    
@@ -205,7 +206,7 @@ void StripTask::CreateTasks(void)
         potsTask.setOwner(tasks[i], i);
 
         // use pattern on some rings
-        if (i>5)
+        if (i>99) // none of them for now!
             tasks[i]->useRingPattern = true;
     }
 }
