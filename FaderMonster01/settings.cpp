@@ -238,7 +238,7 @@ taskEXIT_CRITICAL();
                     offsetS.setter(base + offsetS.offset, comma);
                 offsetS.getter(valueAsString, &bitBucket);
             }
-            if (offsetS.offset < 464)
+            if (offsetS.offset > 464'000) // how much to print
                 Serial.printf("Element '%s' with value field '%s'; offset %d; parsed value %s\n",
                             buf, comma, offsetS.offset, valueAsString);
 

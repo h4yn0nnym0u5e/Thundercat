@@ -501,6 +501,7 @@ class MainLCDtask : public FaderMonsterTask
     //TFT_TYPE* ptft;
     InterTaskRequest updateDirtyReq;
     bool initComplete;
+    bool loadWasManual;
     uint16_t* DMAbuffer;
 
     void setDMAcompletionISR(void (*isr)(TFT_eSPI& which))
@@ -516,6 +517,8 @@ class MainLCDtask : public FaderMonsterTask
     //------------------------------------------------------------------------
     // LittleFS-related stuff
     bool initFS(void);
+    bool recordLastSetting(const char* fileName);
+    bool restoreLastSetting(void);
     //------------------------------------------------------------------------
 
     

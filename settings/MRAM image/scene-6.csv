@@ -1,0 +1,215 @@
+
+CSV for FaderMonsterSettings settings
+stripsConfig.colours.0.ringLEDs.colour, 0x5A0800
+stripsConfig.colours.0.ringLEDs.pattern, 0x000000, 0x000000, 0x000000, 0x000000, 0x000000, 0x000000, 0x000000, 0x000000, 0x000000, 0x000000, 0x000000, 0x000000, 0x000000, 0x000000, 0x000000, 0x000000, 0x000000, 0x000000, 0x000000, 0x000000
+stripsConfig.colours.0.buttonLED.colour, 0x0
+stripsConfig.colours.0.scribble.fg, 0xF900
+stripsConfig.colours.0.scribble.bg, 0x5840
+stripsConfig.colours.0.scribble.txt, 0xFEBA
+
+stripsConfig.colours.1.ringLEDs.colour, 0x5A0C00
+stripsConfig.colours.1.ringLEDs.pattern, 0x000000, 0x000000, 0x000000, 0x000000, 0x000000, 0x000000, 0x000000, 0x000000, 0x000000, 0x000000, 0x000000, 0x000000, 0x000000, 0x000000, 0x000000, 0x000000, 0x000000, 0x000000, 0x000000, 0x000000
+stripsConfig.colours.1.buttonLED.colour, 0x0
+stripsConfig.colours.1.scribble.fg, 0xF940
+stripsConfig.colours.1.scribble.bg, 0x5860
+stripsConfig.colours.1.scribble.txt, 0xFEDA
+
+stripsConfig.colours.2.ringLEDs.colour, 0x6B2400
+stripsConfig.colours.2.ringLEDs.pattern, 0x000000, 0x000000, 0x000000, 0x000000, 0x000000, 0x000000, 0x000000, 0x000000, 0x000000, 0x000000, 0x000000, 0x000000, 0x000000, 0x000000, 0x000000, 0x000000, 0x000000, 0x000000, 0x000000, 0x000000
+stripsConfig.colours.2.buttonLED.colour, 0x0
+stripsConfig.colours.2.scribble.fg, 0xFAA0
+stripsConfig.colours.2.scribble.bg, 0x6920
+stripsConfig.colours.2.scribble.txt, 0xFF1A
+
+stripsConfig.colours.3.ringLEDs.colour, 0x6B3C00
+stripsConfig.colours.3.ringLEDs.pattern, 0x000000, 0x000000, 0x000000, 0x000000, 0x000000, 0x000000, 0x000000, 0x000000, 0x000000, 0x000000, 0x000000, 0x000000, 0x000000, 0x000000, 0x000000, 0x000000, 0x000000, 0x000000, 0x000000, 0x000000
+stripsConfig.colours.3.buttonLED.colour, 0x0
+stripsConfig.colours.3.scribble.fg, 0xFC60
+stripsConfig.colours.3.scribble.bg, 0x69E0
+stripsConfig.colours.3.scribble.txt, 0xFF5A
+
+stripsConfig.colours.4.ringLEDs.colour, 0x6B5500
+stripsConfig.colours.4.ringLEDs.pattern, 0x000000, 0x000000, 0x000000, 0x000000, 0x000000, 0x000000, 0x000000, 0x000000, 0x000000, 0x000000, 0x000000, 0x000000, 0x000000, 0x000000, 0x000000, 0x000000, 0x000000, 0x000000, 0x000000, 0x000000
+stripsConfig.colours.4.buttonLED.colour, 0x0
+stripsConfig.colours.4.scribble.fg, 0xFE40
+stripsConfig.colours.4.scribble.bg, 0x6AA0
+stripsConfig.colours.4.scribble.txt, 0xFFBA
+
+stripsConfig.colours.5.ringLEDs.colour, 0x6B6900
+stripsConfig.colours.5.ringLEDs.pattern, 0x000000, 0x000000, 0x000000, 0x000000, 0x000000, 0x000000, 0x000000, 0x000000, 0x000000, 0x000000, 0x000000, 0x000000, 0x000000, 0x000000, 0x000000, 0x000000, 0x000000, 0x000000, 0x000000, 0x000000
+stripsConfig.colours.5.buttonLED.colour, 0x0
+stripsConfig.colours.5.scribble.fg, 0xF7E0
+stripsConfig.colours.5.scribble.bg, 0x6B40
+stripsConfig.colours.5.scribble.txt, 0xFFFA
+
+stripsConfig.colours.6.ringLEDs.colour, 0x4A6900
+stripsConfig.colours.6.ringLEDs.pattern, 0xA00000, 0xC00000, 0xFF0000, 0xF02020, 0xF04040, 0xC06060, 0xA08080, 0x808080, 0x606080, 0x404090, 0x4040C0, 0x2020F0, 0x2020FF, 0x0000FF, 0x2000F0, 0x2000C0, 0x4000B0, 0x001000, 0x001000, 0x001000
+stripsConfig.colours.6.buttonLED.colour, 0x0
+stripsConfig.colours.6.scribble.fg, 0xB7E0
+stripsConfig.colours.6.scribble.bg, 0x4B40
+stripsConfig.colours.6.scribble.txt, 0xEFFA
+
+stripsConfig.colours.7.ringLEDs.colour, 0x296900
+stripsConfig.colours.7.ringLEDs.pattern, 0xFF0000, 0xF00800, 0xE02000, 0xD03000, 0xC04000, 0xB05000, 0xA06000, 0x908000, 0x80A000, 0x60C000, 0x20D000, 0x00FF00, 0x00F020, 0x008040, 0x004080, 0x0000FF, 0x2000F0, 0x4000E0, 0x6000A0, 0x8000A0
+stripsConfig.colours.7.buttonLED.colour, 0x0
+stripsConfig.colours.7.scribble.fg, 0x6FE0
+stripsConfig.colours.7.scribble.bg, 0x2B40
+stripsConfig.colours.7.scribble.txt, 0xE7FA
+
+stripsConfig.controls.0.fader.controlType, 0x1
+stripsConfig.controls.0.fader.controlNum, 0x2
+stripsConfig.controls.0.fader.name, "<unnamed>""""""
+stripsConfig.controls.0.fader.minVal, 0x0
+stripsConfig.controls.0.fader.maxVal, 0x7F
+stripsConfig.controls.0.fader.channel, 0x0
+stripsConfig.controls.0.pot.controlType, 0x1
+stripsConfig.controls.0.pot.controlNum, 0x2
+stripsConfig.controls.0.pot.name, "<unnamed>""""""
+stripsConfig.controls.0.pot.minVal, 0x0
+stripsConfig.controls.0.pot.maxVal, 0x7F
+stripsConfig.controls.0.pot.channel, 0x0
+stripsConfig.controls.0.button.controlType, 0x1
+stripsConfig.controls.0.button.controlNum, 0x2
+stripsConfig.controls.0.button.name, "<unnamed>""""""
+stripsConfig.controls.0.button.minVal, 0x0
+stripsConfig.controls.0.button.maxVal, 0x7F
+stripsConfig.controls.0.button.channel, 0x0
+
+stripsConfig.controls.1.fader.controlType, 0x1
+stripsConfig.controls.1.fader.controlNum, 0x2
+stripsConfig.controls.1.fader.name, "<unnamed>""""""
+stripsConfig.controls.1.fader.minVal, 0x0
+stripsConfig.controls.1.fader.maxVal, 0x7F
+stripsConfig.controls.1.fader.channel, 0x0
+stripsConfig.controls.1.pot.controlType, 0x1
+stripsConfig.controls.1.pot.controlNum, 0x2
+stripsConfig.controls.1.pot.name, "<unnamed>""""""
+stripsConfig.controls.1.pot.minVal, 0x0
+stripsConfig.controls.1.pot.maxVal, 0x7F
+stripsConfig.controls.1.pot.channel, 0x0
+stripsConfig.controls.1.button.controlType, 0x1
+stripsConfig.controls.1.button.controlNum, 0x2
+stripsConfig.controls.1.button.name, "<unnamed>""""""
+stripsConfig.controls.1.button.minVal, 0x0
+stripsConfig.controls.1.button.maxVal, 0x7F
+stripsConfig.controls.1.button.channel, 0x0
+
+stripsConfig.controls.2.fader.controlType, 0x1
+stripsConfig.controls.2.fader.controlNum, 0x2
+stripsConfig.controls.2.fader.name, "<unnamed>""""""
+stripsConfig.controls.2.fader.minVal, 0x0
+stripsConfig.controls.2.fader.maxVal, 0x7F
+stripsConfig.controls.2.fader.channel, 0x0
+stripsConfig.controls.2.pot.controlType, 0x1
+stripsConfig.controls.2.pot.controlNum, 0x2
+stripsConfig.controls.2.pot.name, "<unnamed>""""""
+stripsConfig.controls.2.pot.minVal, 0x0
+stripsConfig.controls.2.pot.maxVal, 0x7F
+stripsConfig.controls.2.pot.channel, 0x0
+stripsConfig.controls.2.button.controlType, 0x1
+stripsConfig.controls.2.button.controlNum, 0x2
+stripsConfig.controls.2.button.name, "<unnamed>""""""
+stripsConfig.controls.2.button.minVal, 0x0
+stripsConfig.controls.2.button.maxVal, 0x7F
+stripsConfig.controls.2.button.channel, 0x0
+
+stripsConfig.controls.3.fader.controlType, 0x1
+stripsConfig.controls.3.fader.controlNum, 0x2
+stripsConfig.controls.3.fader.name, "<unnamed>""""""
+stripsConfig.controls.3.fader.minVal, 0x0
+stripsConfig.controls.3.fader.maxVal, 0x7F
+stripsConfig.controls.3.fader.channel, 0x0
+stripsConfig.controls.3.pot.controlType, 0x1
+stripsConfig.controls.3.pot.controlNum, 0x2
+stripsConfig.controls.3.pot.name, "<unnamed>""""""
+stripsConfig.controls.3.pot.minVal, 0x0
+stripsConfig.controls.3.pot.maxVal, 0x7F
+stripsConfig.controls.3.pot.channel, 0x0
+stripsConfig.controls.3.button.controlType, 0x1
+stripsConfig.controls.3.button.controlNum, 0x2
+stripsConfig.controls.3.button.name, "<unnamed>""""""
+stripsConfig.controls.3.button.minVal, 0x0
+stripsConfig.controls.3.button.maxVal, 0x7F
+stripsConfig.controls.3.button.channel, 0x0
+
+stripsConfig.controls.4.fader.controlType, 0x1
+stripsConfig.controls.4.fader.controlNum, 0x2
+stripsConfig.controls.4.fader.name, "<unnamed>""""""
+stripsConfig.controls.4.fader.minVal, 0x0
+stripsConfig.controls.4.fader.maxVal, 0x7F
+stripsConfig.controls.4.fader.channel, 0x0
+stripsConfig.controls.4.pot.controlType, 0x1
+stripsConfig.controls.4.pot.controlNum, 0x2
+stripsConfig.controls.4.pot.name, "<unnamed>""""""
+stripsConfig.controls.4.pot.minVal, 0x0
+stripsConfig.controls.4.pot.maxVal, 0x7F
+stripsConfig.controls.4.pot.channel, 0x0
+stripsConfig.controls.4.button.controlType, 0x1
+stripsConfig.controls.4.button.controlNum, 0x2
+stripsConfig.controls.4.button.name, "<unnamed>""""""
+stripsConfig.controls.4.button.minVal, 0x0
+stripsConfig.controls.4.button.maxVal, 0x7F
+stripsConfig.controls.4.button.channel, 0x0
+
+stripsConfig.controls.5.fader.controlType, 0x1
+stripsConfig.controls.5.fader.controlNum, 0x2
+stripsConfig.controls.5.fader.name, "<unnamed>""""""
+stripsConfig.controls.5.fader.minVal, 0x0
+stripsConfig.controls.5.fader.maxVal, 0x7F
+stripsConfig.controls.5.fader.channel, 0x0
+stripsConfig.controls.5.pot.controlType, 0x1
+stripsConfig.controls.5.pot.controlNum, 0x2
+stripsConfig.controls.5.pot.name, "<unnamed>""""""
+stripsConfig.controls.5.pot.minVal, 0x0
+stripsConfig.controls.5.pot.maxVal, 0x7F
+stripsConfig.controls.5.pot.channel, 0x0
+stripsConfig.controls.5.button.controlType, 0x1
+stripsConfig.controls.5.button.controlNum, 0x2
+stripsConfig.controls.5.button.name, "<unnamed>""""""
+stripsConfig.controls.5.button.minVal, 0x0
+stripsConfig.controls.5.button.maxVal, 0x7F
+stripsConfig.controls.5.button.channel, 0x0
+
+stripsConfig.controls.6.fader.controlType, 0x1
+stripsConfig.controls.6.fader.controlNum, 0x2
+stripsConfig.controls.6.fader.name, "<unnamed>""""""
+stripsConfig.controls.6.fader.minVal, 0x0
+stripsConfig.controls.6.fader.maxVal, 0x7F
+stripsConfig.controls.6.fader.channel, 0x0
+stripsConfig.controls.6.pot.controlType, 0x1
+stripsConfig.controls.6.pot.controlNum, 0x2
+stripsConfig.controls.6.pot.name, "<unnamed>""""""
+stripsConfig.controls.6.pot.minVal, 0x0
+stripsConfig.controls.6.pot.maxVal, 0x7F
+stripsConfig.controls.6.pot.channel, 0x0
+stripsConfig.controls.6.button.controlType, 0x1
+stripsConfig.controls.6.button.controlNum, 0x2
+stripsConfig.controls.6.button.name, "<unnamed>""""""
+stripsConfig.controls.6.button.minVal, 0x0
+stripsConfig.controls.6.button.maxVal, 0x7F
+stripsConfig.controls.6.button.channel, 0x0
+
+stripsConfig.controls.7.fader.controlType, 0x1
+stripsConfig.controls.7.fader.controlNum, 0x2
+stripsConfig.controls.7.fader.name, "<unnamed>""""""
+stripsConfig.controls.7.fader.minVal, 0x0
+stripsConfig.controls.7.fader.maxVal, 0x7F
+stripsConfig.controls.7.fader.channel, 0x0
+stripsConfig.controls.7.pot.controlType, 0x1
+stripsConfig.controls.7.pot.controlNum, 0x2
+stripsConfig.controls.7.pot.name, "<unnamed>""""""
+stripsConfig.controls.7.pot.minVal, 0x0
+stripsConfig.controls.7.pot.maxVal, 0x7F
+stripsConfig.controls.7.pot.channel, 0x0
+stripsConfig.controls.7.button.controlType, 0x1
+stripsConfig.controls.7.button.controlNum, 0x2
+stripsConfig.controls.7.button.name, "<unnamed>""""""
+stripsConfig.controls.7.button.minVal, 0x0
+stripsConfig.controls.7.button.maxVal, 0x7F
+stripsConfig.controls.7.button.channel, 0x0
+
+mainColours.fg, 0xD69A
+mainColours.bg, 0x7BEF
+mainColours.txt, 0xFFFF
+// 195 settings lines
+

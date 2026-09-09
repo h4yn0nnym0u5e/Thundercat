@@ -213,6 +213,55 @@ InterTaskRequest::Result MainLCDtask::doUpdateDirty(void* pDisplay)
     return result;
 }
 
+// record and restore last-used settings
+static const char* settingsRecord = "lastSettings.txt";
+bool MainLCDtask::recordLastSetting(const char* fileName)
+{
+  bool result = false;
+taskENTER_CRITICAL();
+  File f = FRAMfs.open(settingsRecord, FILE_WRITE_BEGIN);
+taskEXIT_CRITICAL();
+  if (f)
+  {
+    size_t nameLen = strlen(fileName);
+taskENTER_CRITICAL();
+    f.write(fileName, nameLen);
+    f.close();
+taskEXIT_CRITICAL();
+    Serial.printf("Wrote '%s' to '%s'\n", fileName, settingsRecord);
+    result = true;
+  }
+  return result;
+}
+
+bool MainLCDtask::restoreLastSetting(void)
+{
+  bool result = false;
+taskENTER_CRITICAL();
+  File f = FRAMfs.open(settingsRecord, FILE_READ);
+taskEXIT_CRITICAL();
+  if (f)
+  {
+    char buf[40];
+taskENTER_CRITICAL();
+    size_t len = f.read(buf, sizeof buf-1);
+    f.close();
+taskEXIT_CRITICAL();
+    if (len > 0)
+    {
+      buf[len+1] = 0;
+   
+      loadWasManual = false;
+      result = doLoadSettings(buf) == InterTaskRequest::Result::done;
+    }
+    else
+      Serial.printf("Failed to read from %s\n", settingsRecord);
+  }
+
+  return result;
+
+}
+
 // save settings to CSV file
 InterTaskRequest::Result MainLCDtask::doSaveSettings(void* _fileName)
 {
@@ -231,6 +280,8 @@ taskENTER_CRITICAL();
     f.close();
 taskEXIT_CRITICAL();
     result = InterTaskRequest::Result::done;
+
+    recordLastSetting(fileName);
   }
 
   return result;
@@ -254,6 +305,9 @@ taskENTER_CRITICAL();
     f.close();
 taskEXIT_CRITICAL();
     result = InterTaskRequest::Result::done;
+
+    if (loadWasManual)
+      recordLastSetting(fileName);
   }
 
   return result;
@@ -317,6 +371,7 @@ InterTaskRequest& MainLCDtask::loadSettings(InterTaskRequest& req,  // request t
 {
     requestPayload payload{&MainLCDtask::doLoadSettings, fileName};
     opIsSave = false;
+    loadWasManual = true;
     return sendPayload(req, payload, timeout);
 }
 
@@ -494,7 +549,8 @@ taskEXIT_CRITICAL();
         Serial.printf("try %d failed; wait %d... ", i+1, i*10);
         vTaskDelay(i*10);
       }
-    }      
+    }
+    restoreLastSetting();
   }
   // ---------------------------------------------------------------------
 
