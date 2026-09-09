@@ -238,7 +238,8 @@ taskEXIT_CRITICAL();
                     offsetS.setter(base + offsetS.offset, comma);
                 offsetS.getter(valueAsString, &bitBucket);
             }
-            Serial.printf("Element '%s' with value field '%s'; offset %d; parsed value %s\n",
+            if (offsetS.offset < 464)
+                Serial.printf("Element '%s' with value field '%s'; offset %d; parsed value %s\n",
                             buf, comma, offsetS.offset, valueAsString);
 
         }

@@ -390,6 +390,8 @@ void SuperTask::loopFn(void)
         {
           sprintf(fileName, "scene-%c.csv", n);
           mainLCDtask.loadSettings(saveSettingsRequest, fileName);
+          for (int i=0;i<8;i++)
+            StripTask::getStripTask(i).tftColourChanged();
         }
       }
         break;

@@ -78,6 +78,14 @@ InterTaskRequest::Result StripTask::doTouchChange(void* pNothing)
     return InterTaskRequest::Result::done;
 }    
 
+InterTaskRequest::Result StripTask::doTFTcolourChange(void* pNothing)
+{
+  ui.begin(scribble, cfg.scribble); // update display
+
+  return InterTaskRequest::Result::done;
+}    
+
+
 
 //-------------------------------------------------------------------------
 //    888                      888      

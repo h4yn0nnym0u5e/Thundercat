@@ -604,6 +604,8 @@ class StripTask : public FaderMonsterTask
 
     InterTaskRequest::Result doPotChange(void* pNothing);
     InterTaskRequest::Result doTouchChange(void* pNothing);
+    InterTaskRequest::Result doTFTcolourChange(void* pNothing);
+    
     //------------------------------------------------------------------------
     static StripTask* tasks[NUM_POTS];
 
@@ -651,6 +653,7 @@ class StripTask : public FaderMonsterTask
     { }
     static void CreateTasks(void);
     static StripTask& getStripTask(int n) { return *tasks[n]; }
+    static TouchStatus& getStripTouch(int n) { return tasks[n]->potTouch; }
     
     void run(void) override;
 
@@ -675,6 +678,14 @@ class StripTask : public FaderMonsterTask
     void touchChanged(void)
     {
         requestPayload payload{&StripTask::doTouchChange, nullptr};
+        RequestQueue<StripTask, requestPayload>::queueEntry entry{&touchReq, payload};
+
+        reqQueue.request(entry, 0);
+    }
+
+    void tftColourChanged(void)
+    {
+        requestPayload payload{&StripTask::doTFTcolourChange, nullptr};
         RequestQueue<StripTask, requestPayload>::queueEntry entry{&touchReq, payload};
 
         reqQueue.request(entry, 0);

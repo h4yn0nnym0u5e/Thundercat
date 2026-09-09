@@ -76,7 +76,7 @@ class UIclass
     bool setArc(float newPot, float& lastPot);
     bool setText(char* buf, char* lastString, size_t sizeofLastString);
     bool setFloat(float potPos, char* lastString, size_t sizeofLastString);
-    bool setTouch(TouchStatus& touch, TouchStatus::eStatus& lastTouch);
+    bool setTouch(TouchStatus* pTouch, TouchStatus::eStatus& lastTouch);
 
     // display writing methods
     InterTaskRequest& writeToMainLCD(void);
@@ -122,7 +122,23 @@ class ScribblePotArc : public UIclass
     enum {idle, drawingArc, drawingNumber, drawingTouch, drawingBackground};
     char  lastText[MAX_TEXT_LEN]{0};
     float lastPot{POT_NOT_SET};
-    TouchStatus::eStatus lastTouch{};
+    TouchStatus::eStatus lastTouch{TouchStatus::eStatus::OFF};
+
+    bool setArc(void)
+        { return UIclass::setArc((currentTrigger.trigger.potValue + 1.0f) * (ea - sa) / 2.0f, lastPot); }
+    bool setFloat(void)
+        {
+            bool retVal;
+            // here is where we choose the position:
+            pSprite->setViewport(55+10*(SCRIBBLE_DP - 3),  100, 
+                                    140-15*(SCRIBBLE_DP - 3), 45);
+
+            retVal = UIclass::setFloat(currentTrigger.trigger.potValue, lastText, sizeof lastText);
+            pSprite->resetViewport();                        
+            return retVal;
+        }
+    bool setTouch(void)
+        { return UIclass::setTouch(currentTrigger.trigger.pTouchStatus, lastTouch); }
 
   public:
     virtual State begin(TFT_eSprite& sprite, colours_t c);
@@ -186,6 +202,7 @@ class MainColourPicker : public UIclass
 
     // the actual result!
     uint16_t hue, textColour, bgColour;
+    TFTcolours colours; // for export
 
     uint16_t angleToHue(int a);
     void hueCircle(int x, int y, int r, int ir, uint16_t bgcolour);

@@ -131,9 +131,11 @@ bool UIclass::setFloat(float potPos, char* lastString, size_t sizeofLastString)
 }
 
 
-bool UIclass::setTouch(TouchStatus& touch, TouchStatus::eStatus& lastTouch)
+bool UIclass::setTouch(TouchStatus* pTouch, TouchStatus::eStatus& lastTouch)
 {
-    TouchStatus::eStatus estatus = touch.getExtendedStatus();
+    TouchStatus::eStatus estatus = TouchStatus::eStatus::OFF;
+    if (nullptr != pTouch) 
+        estatus = pTouch->getExtendedStatus();
     bool changed = lastTouch != estatus;
 
     if (changed)
@@ -224,9 +226,20 @@ InterTaskRequest UIclass::autoFail{InterTaskRequest::Result::failed};
 UIclass::State ScribblePotArc::begin(TFT_eSprite& sprite, colours_t c)
 {
     UIclass::begin(sprite, c);
-    pSprite->fillScreen(colours.bg);
+    //pSprite->fillScreen(colours.bg); // setArc() will do this
+    float lastPotRaw = lastPot*2.0f/(ea-sa) - 1.0f; // back to raw pot value
+    currentTrigger.trigger.potValue = POT_NOT_SET == lastPot
+                                    ?0.0f
+                                    :lastPotRaw;
+    lastPot = POT_NOT_SET;
+    lastText[0] = 0;
+    setArc();
+    setFloat();
 
-    return State::push; // need to update display
+    currentTrigger.trigger.pTouchStatus = nullptr;
+    setTouch();
+
+    return (state = State::push); // need to update display
 }
 
 // update the sprite with new pixels
@@ -247,14 +260,14 @@ UIclass::State ScribblePotArc::update(Trigger trigger)
         case Trigger::eTriggerType::potValue: // draw pot value change
             currentTrigger = trigger; // keep the trigger and value(s)
             phase = drawingArc;
-            if (!setArc((currentTrigger.trigger.potValue + 1.0f) * (ea - sa) / 2.0f, lastPot))
+            if (!setArc())
                 result = State::next;
             break;
 
         case Trigger::eTriggerType::pTouchStatus: // draw button value change
             currentTrigger = trigger; // keep the trigger and value(s)
             phase = drawingTouch;
-            if (!setTouch(*currentTrigger.trigger.pTouchStatus, lastTouch))
+            if (!setTouch())
                 result = State::done;
             break;
         
@@ -270,13 +283,8 @@ UIclass::State ScribblePotArc::update(Trigger trigger)
 
                 case drawingArc:
                     phase = drawingNumber;
-                    // here is where we choose the position:
-                    pSprite->setViewport(55+10*(SCRIBBLE_DP - 3),  100, 
-                                         140-15*(SCRIBBLE_DP - 3), 45);
-
-                    if (!setFloat(currentTrigger.trigger.potValue, lastText, sizeof lastText))
+                    if (!setFloat())
                         result = State::done;
-                    pSprite->resetViewport();                        
                     break;
             }
             break;
@@ -450,14 +458,13 @@ void MainColourPicker::gradients(int x, int x2, int y, int w, int h, uint16_t c)
   tft.fillRectVGradient(x2,y,w,h, TFT_BLACK, c);
 }
 
-//const float PI = 3.1415926535f;
 // convert angle in radians to TFT_eSPI angle
 int MainColourPicker::rad2TFT(float rad)
 {
   return (int)(-90 + 360 - rad*180.0f/PI) % 360;
 }
 
-/*
+/** 
  * Mark the selected hue.
  * Hue angle zero is at 12 o'clock, whereas TFT_eSPI zero is 6 o'clock,
  * and conventional at 3 o'clock and runs anticlockwise. Sigh.
@@ -665,6 +672,22 @@ UIclass::State MainColourPicker::update(Trigger trigger)
             result = State::done;
             gradientOnly = true; // assume user touched text or background gradient
             GTPoint lastTouch = trigger.trigger.touchPoint;
+
+            // change a strip's colour scheme?
+            if (lastTouch.x < 50 && lastTouch.y < 50 && lastTouch.reserved == 255) // hacky hack!
+            {
+                colours = {hue,bgColour,textColour}; 
+                for (int i=0;i<NUM_POTS;i++)
+                {
+                    TouchStatus& stripTouch = StripTask::getStripTouch(i);
+                    if (TouchStatus::eStatus::LONG == stripTouch.getExtendedStatus())
+                    {
+                        faderMonsterSettings.stripsConfig.colours[i].scribble = colours;
+                        StripTask::getStripTask(i).tftColourChanged();
+                    }
+                }
+                break; // nothing else needed
+            }
 
             // Are we in the colour circle - if so select hue
             dx = lastTouch.x - hueX; dy = lastTouch.y - hueY;
