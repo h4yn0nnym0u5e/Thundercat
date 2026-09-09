@@ -57,7 +57,7 @@ namespace freertos
 }
 extern int rainbow[LEDS_PER_RING], cold2hot[LEDS_PER_RING];
 extern const image_4bit_info
-        tl_button_info;
+        tl_button_info, tr_button_info, bl_button_info, br_button_info;
 
 
 

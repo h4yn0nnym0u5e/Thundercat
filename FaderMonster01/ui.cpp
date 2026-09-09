@@ -641,16 +641,26 @@ UIclass::State MainColourPicker::begin(TFT_eSprite& sprite, colours_t c)
     drawSettingsExample();  // text + foreground + background
     showColours();          // hex values for the current colours
 
-    /*
+    //*
     // button image
-    uint16_t colour = TFT_DARKGREY;
+    uint16_t colour = TFT_LIGHTGREY;
     uint16_t cmap[16];
-    const image_4bit_info& btn = tl_button_info;
     for (int i=0;i<16;i++)
         cmap[i] = pSprite->alphaBlend(i*16,colour,TFT_BLACK);
-    
-    pSprite->pushImage(0,0, btn.width,btn.height, btn.data,false,cmap);
-    */
+    pSprite->setFreeFont(&FreeSans9pt7b);
+    pSprite->setTextColor(pSprite->alphaBlend(64, TFT_WHITE, TFT_BLACK), cmap[15]);
+
+    {    
+        const image_4bit_info& btn = tl_button_info;
+        pSprite->pushImage(0,0, btn.width,btn.height, (uint8_t*) btn.data, 0, false, &cmap[0]);
+        pSprite->drawString("TFT", 10,15);
+    }
+    {    
+        const image_4bit_info& btn = bl_button_info;
+        pSprite->pushImage(0,239-btn.height, btn.width,btn.height, (uint8_t*) btn.data, 0, false, &cmap[0]);
+        pSprite->drawString("Ring", 10,239-20-10);
+    }
+    //*/
     return (state = State::push); // need to update display
 }
 

@@ -2,6 +2,9 @@ from PIL import Image
 import re
 
 fn = "scene.png"
+
+# lots of images
+# SmartKnob
 fnl = [
     "scene.png",
     "bulb.png",
@@ -11,6 +14,10 @@ fnl = [
     "rainbow.png",
     "runner.png",
     "specs.png",
+]
+
+# just the buttons
+fnl = [
     "tl_button.png",
     "tr_button.png",
     "bl_button.png",
