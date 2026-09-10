@@ -23,6 +23,15 @@ fnl = [
     "bl_button.png",
     "br_button.png",
     "keycap28.png",
+    "keycap54.png",
+    "keycap90.png",
+    "keycap54_1a.png",
+    "keycap54_A1.png",
+    "keycap54_Aa.png",
+    "keycap54_cross.png",
+    "keycap54_del.png",
+    "keycap54_larr.png",
+    "keycap54_tick.png",
 ]
 ofn = "images.cpp"
 
@@ -71,10 +80,25 @@ def mkHeader(fn):
     return result        
 
 f = open(ofn, mode = "w")
-f.write('#include "header.h"\n\n')
+f.write("""#include "header.h"
+
+#if !defined(IMAGES_AS_HEADER)
+
+""")
 for fn in fnl:
     hdr = mkHeader(fn)
     #dumpHeader(hdr)
     f.write(mkImageData(hdr))
     f.write("\n\n")
+
+f.write("""#else
+
+extern const image_4bit_info
+    """)
+s = ",\n    ".join(fnl)
+s = s.replace(".png","_info")
+f.write(s+";\n")
+f.write("""
+#endif // defined(IMAGES_AS_HEADER)
+""")
 f.close()    

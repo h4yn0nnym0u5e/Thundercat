@@ -263,11 +263,14 @@ class MainQwerty : public UIclass
     int kbd{0};
     char currentKey;
     uint16_t* tempCmap{nullptr};
-    static constexpr int kWidth{28}, kHeight{28}, kPadding{1};
+    static constexpr int kWidth{28}, kHeight{28}, kPadding{1},
+                         kXoff{3}, xh{32}, yh{36};
 
     void drawRow(const char* keys, int row, int off);
     void drawKeyboard(int& n);
     char whichKey(int x, int y);
+    const image_4bit_info* getKeyCap(char c);
+
 
   public:
     virtual State begin(TFT_eSprite& sprite, colours_t c);

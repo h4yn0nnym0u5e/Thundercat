@@ -314,10 +314,8 @@ typedef struct
     const image_4bit_data* data;
 } image_4bit_info;
 
-extern const image_4bit_info 
-    tl_button,
-    tr_button,
-    bl_button,
-    br_button;
+#define IMAGES_AS_HEADER
+#include "images.cpp"
+#undef IMAGES_AS_HEADER
 
 #endif // !defined(_BASICS_H_)

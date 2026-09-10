@@ -864,24 +864,71 @@ UIclass::State MainColourPicker::update(Trigger trigger)
 //         888                                       Y8b d88P 
 //         888                                        "Y88P"  
 // 
-static constexpr char kbds[][3][15]
+static constexpr char kbds[][4][15]
 {
-    {"qwertyuiop","asdfghjkl;","zxcvbnm,./"},
-    {"QWERTYUIOP","ASDFGHJKL:","ZXCVBNM<>?"},
-    {"!\x22#$%^&*()","1234567890","_+-=[]{}'@"},
+    {"qwertyuiop","asdfghjkl;","zxcvbnm,./",    "\x01\x14 \x12\x13"},
+    {"QWERTYUIOP","ASDFGHJKL:","ZXCVBNM<>?",    "\x02\x14 \x12\x13"},
+    {"!\x22#$%^&*()","1234567890","_+-=[]{}'@", "\x03\x14 \x12\x13"},
 };
 
+const image_4bit_info* MainQwerty::getKeyCap(char c)
+{
+    const image_4bit_info* img = &keycap28_info; // assume letter keys  
+    switch (c)
+    {
+        default:
+            break;
+
+        case ' ':
+            img = &keycap90_info;
+            break;
+
+        case '\x01':
+            img = &keycap54_Aa_info;
+            break;
+
+        case '\x02':
+            img = &keycap54_A1_info;
+            break;
+
+        case '\x03':
+            img = &keycap54_1a_info;
+            break;
+
+        case '\x11':
+            img = &keycap54_info;
+            break;
+
+        case '\x12':
+            img = &keycap54_larr_info;
+            break;
+
+        case '\x13':
+            img = &keycap54_tick_info;
+            break;
+
+        case '\x14':
+            img = &keycap54_cross_info;
+            break;
+    } 
+    return img;
+}
 
 void MainQwerty::drawRow(const char* keys, int row, int off)
 {
+    const image_4bit_info* img = &keycap28_info; // assume letter keys
     size_t cols = strlen(keys);
     char buf[2]{0};
-    int x = off+10, y = pSprite->height() - (kHeight + kPadding)*(4-row);
+    int x = off+kXoff, y = pSprite->height() - (kHeight + kPadding)*(4-row);
     for (size_t i=0;i<cols;i++)
     {
         *buf = keys[i];
-        drawButton(x,y,keycap28_info, tempCmap, buf, kWidth/2,3);
-        x += kWidth+kPadding;
+        img = getKeyCap(keys[i]);
+
+        if (buf[0] <= ' ')
+            pSprite->fillRect(x+2,y+2, img->width - 4, img->height - 4, colours.txt);
+        drawButton(x,y,*img, tempCmap, buf[0]>' '?buf:nullptr, kWidth/2,3);
+        x += img->width + kPadding;
     }
 }
 
@@ -901,6 +948,7 @@ void MainQwerty::drawKeyboard(int& n)
     drawRow(&kbds[n][0][0],0,0);
     drawRow(&kbds[n][1][0],1,(kWidth + kPadding) / 4);
     drawRow(&kbds[n][2][0],2,(kWidth + kPadding) / 2);
+    drawRow(&kbds[n][3][0],3,0);
 
     tempCmap = nullptr;
 }
@@ -908,6 +956,7 @@ void MainQwerty::drawKeyboard(int& n)
 char MainQwerty::whichKey(int x, int y)
 {
     char result = 0; // Not A Key
+    x -= kXoff;
 
     //Serial.printf("x: %d, y: %d; ");
     int kbdTop = pSprite->height() - (kHeight + kPadding)*4;
@@ -918,7 +967,7 @@ char MainQwerty::whichKey(int x, int y)
 
         y = (y - kbdTop)/(kHeight + kPadding); // figure out row number
         //Serial.printf("row: %d; ", y);
-        if (y > 2) // deal with bottom row later
+        if (y > 3) // deal with bottom row later
             break;
 
         switch (y)
@@ -932,12 +981,29 @@ char MainQwerty::whichKey(int x, int y)
                 x -= (kWidth + kPadding) / 2;
                 break;
         }
-        x /= kWidth + kPadding; // column number
-        //Serial.printf("col: %d; ", x);
-        if ((size_t) x >= strlen(kbds[kbd][y]))
-            break;
-        result = kbds[kbd][y][x];
-        //Serial.printf("char: %c", result);
+
+        if (3 != y) // simple keys
+        {
+            x /= kWidth + kPadding; // column number
+            //Serial.printf("col: %d; ", x);
+            if ((size_t) x >= strlen(kbds[kbd][y])) // off the right
+                break;
+            result = kbds[kbd][y][x];
+            //Serial.printf("char: %c", result);
+        }
+        else // row 4
+        {
+            const char* rowChars = kbds[kbd][y];
+            size_t nKeys = strlen(rowChars);
+            for (size_t i=0;i < nKeys && 0 == result;i++)
+            {
+                const image_4bit_info* img = getKeyCap(rowChars[i]);
+                if (x < img->width)
+                    result = rowChars[i];
+                x -= img->width + kPadding;
+            }
+            //Serial.printf("Key: %02X\n", result);
+        }
     } while (0);
     //Serial.println();
 
@@ -973,37 +1039,52 @@ UIclass::State MainQwerty::update(Trigger trigger)
             GTPoint& newPt = trigger.trigger.touchPoint;
             if (isNewTouch(trigger))
             {
-                const int xh = 30, yh = 36;
                 currentTrigger = trigger; // keep the trigger and value(s)
                 char theKey = whichKey(newPt.x, newPt.y);
-                if (0 != theKey)
+                switch (theKey)
                 {
-                    if (theKey != currentKey)
-                    {
-                        char buf[2]{0};
-                        currentKey = theKey;
-                        pSprite->setFreeFont(&FreeSansBold18pt7b);
-                        pSprite->setTextColor(colours.fg, colours.bg, true); // no background fill
-                        pSprite->setTextDatum(TC_DATUM);
-                        *buf = theKey;
+                    case '\x13': // tick
+                        theKey = '\n';
+                    default:
+                        if (theKey != currentKey)
+                        {
+                            char buf[2]{0};
+                            currentKey = theKey;
+                            if (theKey >= ' ') // can't draw a newline!
+                            {
+                                pSprite->setFreeFont(&FreeSansBold18pt7b);
+                                pSprite->setTextColor(colours.fg, colours.bg, true); // no background fill
+                                pSprite->setTextDatum(TC_DATUM);
+                                *buf = theKey;
+                                pSprite->fillRect(0,0,xh,yh, colours.bg);
+                                pSprite->drawString(buf,15,2);
+                            }
+                        }
+                        if (255 == newPt.reserved)
+                        {
+                            if (theKey >= ' ' || '\n' == theKey)
+                                Serial.print(theKey); // do something better here!
+                            pSprite->fillRect(0,0,xh,yh, colours.bg);
+                            currentKey = 0; // allow for double letters!
+                        }
+                        break;
+
+                    case '\x12': // back-arrow
+                        break;
+
+                    case '\x14': // cross
+                        break;
+
+                    case '\x01':
+                    case '\x02':
+                    case '\x03':
+                        if (255 == newPt.reserved)
+                        {
+                            kbd++;
+                            drawKeyboard(kbd);
+                        }
                         pSprite->fillRect(0,0,xh,yh, colours.bg);
-                        pSprite->drawString(buf,15,2);
-                    }
-                    if (255 == newPt.reserved)
-                    {
-                        Serial.print(theKey); // do something better here!
-                        pSprite->fillRect(0,0,xh,yh, colours.bg);
-                        currentKey = 0; // allow for double letters!
-                    }
-                }
-                else
-                {
-                    if (newPt.x<50 && newPt.y>210 && 255 == newPt.reserved)
-                    {
-                        kbd++;
-                        drawKeyboard(kbd);
-                    }
-                    pSprite->fillRect(0,0,xh,yh, colours.bg);
+                        break;
                 }
 
                 result = State::push;
