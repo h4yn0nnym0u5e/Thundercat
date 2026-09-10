@@ -78,6 +78,12 @@ class UIclass
     bool setFloat(float potPos, char* lastString, size_t sizeofLastString);
     bool setTouch(TouchStatus* pTouch, TouchStatus::eStatus& lastTouch);
 
+    uint16_t* makeCmap(uint16_t* cmap, uint16_t fg, uint16_t bg);
+    void drawButton(int x, int y,
+                    const image_4bit_info& img, const uint16_t* cmap,
+                    const char* txt, int xoff, int yoff);
+    bool isNewTouch(Trigger trigger);
+
     // display writing methods
     InterTaskRequest& writeToMainLCD(void);
     InterTaskRequest& writeToScribble(void);
@@ -255,10 +261,13 @@ class MainQwerty : public UIclass
 {
     enum {idle, drawingRect};
     int kbd{0};
+    char currentKey;
+    uint16_t* tempCmap{nullptr};
     static constexpr int kWidth{28}, kHeight{28}, kPadding{1};
 
     void drawRow(const char* keys, int row, int off);
     void drawKeyboard(int& n);
+    char whichKey(int x, int y);
 
   public:
     virtual State begin(TFT_eSprite& sprite, colours_t c);

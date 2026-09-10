@@ -22,6 +22,7 @@ fnl = [
     "tr_button.png",
     "bl_button.png",
     "br_button.png",
+    "keycap28.png",
 ]
 ofn = "images.cpp"
 

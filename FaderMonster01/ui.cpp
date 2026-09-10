@@ -11,6 +11,46 @@
 //    Y88b. .d88P   888  Y88b.    888 888  888      X88      X88 
 //     "Y88888P"  8888888 "Y8888P 888 "Y888888  88888P'  88888P' 
 // 
+
+bool UIclass::isNewTouch(Trigger trigger)
+{
+    bool result = false;
+
+    if (Trigger::eTriggerType::touchPoint == trigger.type
+     && Trigger::eTriggerType::touchPoint == currentTrigger.type
+     && (trigger.trigger.touchPoint.x !=  currentTrigger.trigger.touchPoint.x
+      || trigger.trigger.touchPoint.y !=  currentTrigger.trigger.touchPoint.y
+      || trigger.trigger.touchPoint.reserved !=  currentTrigger.trigger.touchPoint.reserved)
+        )
+        result = true;
+
+    return result;
+}
+
+uint16_t* UIclass::makeCmap(uint16_t* cmap, uint16_t fg, uint16_t bg)
+{
+    for (int i=0;i<16;i++)
+        cmap[i] = pSprite->alphaBlend(i*16,fg,bg);
+
+    return cmap;
+}
+
+
+/**
+ * Draw a button with text label.
+ * pushImage seems to have issues with a Viewport,
+ * so for now we have to use absolute screen co-ordinates.
+ */
+void UIclass::drawButton(int x, int y,
+                const image_4bit_info& img, const uint16_t* cmap,
+                const char* txt, int xoff, int yoff)
+{
+    if (nullptr != cmap) // check user hasn't forgotten!
+        pSprite->pushImage(x,y, img.width,img.height, (uint8_t*) img.data, 0,false, (uint16_t*) cmap);
+    if (nullptr != txt)
+        pSprite->drawString(txt,x+xoff,y+yoff);
+}                
+
 void UIclass::drawArc(float s, float e, uint16_t fg, uint16_t bg)
 {
   pSprite->drawArc(120, 120, 110, 80, s+sa, e+sa, fg, bg);
@@ -646,21 +686,14 @@ UIclass::State MainColourPicker::begin(TFT_eSprite& sprite, colours_t c)
     // button image
     uint16_t colour = TFT_LIGHTGREY;
     uint16_t cmap[16];
-    for (int i=0;i<16;i++)
-        cmap[i] = pSprite->alphaBlend(i*16,colour,TFT_BLACK);
+    makeCmap(cmap,colour,TFT_BLACK);
+
     pSprite->setFreeFont(&FreeSans9pt7b);
     pSprite->setTextColor(pSprite->alphaBlend(64, TFT_WHITE, TFT_BLACK), cmap[15]);
 
-    {    
-        const image_4bit_info& btn = tl_button_info;
-        pSprite->pushImage(0,0, btn.width,btn.height, (uint8_t*) btn.data, 0, false, &cmap[0]);
-        pSprite->drawString("TFT", 10,15);
-    }
-    {    
-        const image_4bit_info& btn = bl_button_info;
-        pSprite->pushImage(0,239-btn.height, btn.width,btn.height, (uint8_t*) btn.data, 0, false, &cmap[0]);
-        pSprite->drawString("Ring", 10,239-20-10);
-    }
+    drawButton(0,0, tl_button_info, cmap, "TFT", 10,15);
+    drawButton(0,239-bl_button_info.height, bl_button_info, cmap, "Ring", 10,60);
+
     //*/
     return (state = State::push); // need to update display
 }
@@ -838,6 +871,7 @@ static constexpr char kbds[][3][15]
     {"!\x22#$%^&*()","1234567890","_+-=[]{}'@"},
 };
 
+
 void MainQwerty::drawRow(const char* keys, int row, int off)
 {
     size_t cols = strlen(keys);
@@ -845,18 +879,20 @@ void MainQwerty::drawRow(const char* keys, int row, int off)
     int x = off+10, y = pSprite->height() - (kHeight + kPadding)*(4-row);
     for (size_t i=0;i<cols;i++)
     {
-        pSprite->setViewport(x,y,kWidth,kHeight);
-        pSprite->fillRoundRect(0,0,kWidth-1,kHeight-1,3,colours.bg);
-        pSprite->drawRoundRect(0,0,kWidth-1,kHeight-1,3,colours.fg);
         *buf = keys[i];
-        pSprite->drawString(buf,kWidth/2,3);
-        pSprite->resetViewport();
+        drawButton(x,y,keycap28_info, tempCmap, buf, kWidth/2,3);
         x += kWidth+kPadding;
     }
 }
 
 void MainQwerty::drawKeyboard(int& n)
 {
+    uint16_t cmap[16];
+    pSprite->setFreeFont(&FreeSansBold9pt7b);
+
+    tempCmap = makeCmap(cmap, TFT_BLACK, colours.bg);
+    pSprite->setTextColor(colours.fg, cmap[15], false); // no background fill
+
     if (n >= COUNT_OF(kbds)) n = 0;
 
     int kbdTop = pSprite->height() - (kHeight + kPadding)*4;
@@ -865,6 +901,47 @@ void MainQwerty::drawKeyboard(int& n)
     drawRow(&kbds[n][0][0],0,0);
     drawRow(&kbds[n][1][0],1,(kWidth + kPadding) / 4);
     drawRow(&kbds[n][2][0],2,(kWidth + kPadding) / 2);
+
+    tempCmap = nullptr;
+}
+
+char MainQwerty::whichKey(int x, int y)
+{
+    char result = 0; // Not A Key
+
+    //Serial.printf("x: %d, y: %d; ");
+    int kbdTop = pSprite->height() - (kHeight + kPadding)*4;
+    do
+    {
+        if (y < kbdTop)
+            break;
+
+        y = (y - kbdTop)/(kHeight + kPadding); // figure out row number
+        //Serial.printf("row: %d; ", y);
+        if (y > 2) // deal with bottom row later
+            break;
+
+        switch (y)
+        {
+            default:
+                break;
+            case 1:
+                x -= (kWidth + kPadding) / 4;
+                break;
+            case 2:
+                x -= (kWidth + kPadding) / 2;
+                break;
+        }
+        x /= kWidth + kPadding; // column number
+        //Serial.printf("col: %d; ", x);
+        if ((size_t) x >= strlen(kbds[kbd][y]))
+            break;
+        result = kbds[kbd][y][x];
+        //Serial.printf("char: %c", result);
+    } while (0);
+    //Serial.println();
+
+    return result;
 }
 
 UIclass::State MainQwerty::begin(TFT_eSprite& sprite, colours_t c)
@@ -894,18 +971,42 @@ UIclass::State MainQwerty::update(Trigger trigger)
         case Trigger::eTriggerType::touchPoint:
         {
             GTPoint& newPt = trigger.trigger.touchPoint;
-            if (255 == newPt.reserved)
+            if (isNewTouch(trigger))
             {
-                // GT911 seems to repeat itself a lot - just do first touch
-                GTPoint& oldPt = currentTrigger.trigger.touchPoint;
-                if (oldPt.x != newPt.x || oldPt.y != newPt.y || oldPt.reserved != newPt.reserved)
+                const int xh = 30, yh = 36;
+                currentTrigger = trigger; // keep the trigger and value(s)
+                char theKey = whichKey(newPt.x, newPt.y);
+                if (0 != theKey)
                 {
-                    currentTrigger = trigger; // keep the trigger and value(s)
-                    kbd++;
-                    drawKeyboard(kbd);
-
-                    result = State::push;
+                    if (theKey != currentKey)
+                    {
+                        char buf[2]{0};
+                        currentKey = theKey;
+                        pSprite->setFreeFont(&FreeSansBold18pt7b);
+                        pSprite->setTextColor(colours.fg, colours.bg, true); // no background fill
+                        pSprite->setTextDatum(TC_DATUM);
+                        *buf = theKey;
+                        pSprite->fillRect(0,0,xh,yh, colours.bg);
+                        pSprite->drawString(buf,15,2);
+                    }
+                    if (255 == newPt.reserved)
+                    {
+                        Serial.print(theKey); // do something better here!
+                        pSprite->fillRect(0,0,xh,yh, colours.bg);
+                        currentKey = 0; // allow for double letters!
+                    }
                 }
+                else
+                {
+                    if (newPt.x<50 && newPt.y>210 && 255 == newPt.reserved)
+                    {
+                        kbd++;
+                        drawKeyboard(kbd);
+                    }
+                    pSprite->fillRect(0,0,xh,yh, colours.bg);
+                }
+
+                result = State::push;
             }
         }
             break;
