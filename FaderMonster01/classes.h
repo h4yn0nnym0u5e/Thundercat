@@ -544,6 +544,8 @@ class MainLCDtask : public FaderMonsterTask
     bool tftInitComplete(void) { return initComplete; }
     TFT_eSprite& getSprite(void) { return sprite; }
 
+    char headerText[40]{0}; // header for main LCD screen
+
     bool pauseOutput{false}; // temporary hack...
     bool zapScreen{false}; // as is this
     bool opIsSave;

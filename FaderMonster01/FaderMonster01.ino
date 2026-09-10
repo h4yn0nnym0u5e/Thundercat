@@ -244,6 +244,7 @@ bool SuperTask::processUI(void)
         break;
 
       case 2:
+        sprintf(mainLCDtask.headerText,"Enter Stuff!");
         new(_ui.space) MainQwerty; 
         break;
     }

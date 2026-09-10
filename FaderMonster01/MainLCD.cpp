@@ -237,7 +237,7 @@ taskEXIT_CRITICAL();
   {
     size_t nameLen = strlen(fileName);
 taskENTER_CRITICAL();
-    f.write(fileName, nameLen);
+    f.write(fileName, nameLen+1); // write the terminating null character, too!
     f.close();
 taskEXIT_CRITICAL();
     Serial.printf("Wrote '%s' to '%s'\n", fileName, settingsRecord);
@@ -517,49 +517,76 @@ taskEXIT_CRITICAL();
   // Start the filesystem
   if (initFS())
   {
-    // quick test - dump a pre-existing file
-    int dumped = 999; // don't dump!
     vTaskDelay(2);
 
-    for (int i=0;i<10 && dumped < 1;i++)
-    {
-      //File f = FRAMfs.open("log.txt", FILE_READ);
-taskENTER_CRITICAL();
-      File f = FRAMfs.open("scene-1.csv", FILE_READ);
-taskEXIT_CRITICAL();
-      if (f)
+    { // dump a file at startup ... maybe 
+      // quick test - dump a pre-existing file
+      int dumped = 999; // don't dump!
+      for (int i=0;i<10 && dumped < 1;i++)
       {
-        int fch, idx = 0;
-        char buf[50];
-        Serial.println("=======================");
-        do
+        //File f = FRAMfs.open("log.txt", FILE_READ);
+  taskENTER_CRITICAL();
+        File f = FRAMfs.open("scene-1.csv", FILE_READ);
+  taskEXIT_CRITICAL();
+        if (f)
         {
-          // seems to need a critical section
-taskENTER_CRITICAL();
-          fch = f.readBytes(buf,sizeof buf - 1);
-taskEXIT_CRITICAL();
-          if (fch > 0)
+          int fch, idx = 0;
+          char buf[50];
+          Serial.println("=======================");
+          do
           {
-            buf[fch] = 0;
-            Serial.print(buf);
-          }
-          else 
-            fch = -1;
-        } while (fch >= 0);
-        buf[idx] = 0;
-        
-        
-        Serial.print(buf);
-taskENTER_CRITICAL();
-        f.close();
-taskEXIT_CRITICAL();
-        Serial.println("=======================");
-        dumped++;
+            // seems to need a critical section
+  taskENTER_CRITICAL();
+            fch = f.readBytes(buf,sizeof buf - 1);
+  taskEXIT_CRITICAL();
+            if (fch > 0)
+            {
+              buf[fch] = 0;
+              Serial.print(buf);
+            }
+            else 
+              fch = -1;
+          } while (fch >= 0);
+          buf[idx] = 0;
+          
+          
+          Serial.print(buf);
+  taskENTER_CRITICAL();
+          f.close();
+  taskEXIT_CRITICAL();
+          Serial.println("=======================");
+          dumped++;
+        }
+        else
+        {
+          Serial.printf("try %d failed; wait %d... ", i+1, i*10);
+          vTaskDelay(i*10);
+        }
       }
-      else
+    }
+    
+    { // list scenes at startup ... maybe
+taskENTER_CRITICAL();
+      File dir = FRAMfs.open("/");
+taskEXIT_CRITICAL();
+      if (dir)
       {
-        Serial.printf("try %d failed; wait %d... ", i+1, i*10);
-        vTaskDelay(i*10);
+        File entry;
+        Serial.println("Opened root OK");
+        while (1)
+        {
+taskENTER_CRITICAL();
+          entry = dir.openNextFile();
+taskEXIT_CRITICAL();
+          if (!entry)
+            break;
+
+          if (!entry.isDirectory() && 0 == strncmp(entry.name(), "scene", 5))
+            Serial.println(entry.name());
+taskENTER_CRITICAL();
+          entry.close();
+taskEXIT_CRITICAL();
+        }
       }
     }
     restoreLastSetting();

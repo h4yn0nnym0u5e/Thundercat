@@ -919,7 +919,7 @@ void MainQwerty::drawRow(const char* keys, int row, int off)
     const image_4bit_info* img = &keycap28_info; // assume letter keys
     size_t cols = strlen(keys);
     char buf[2]{0};
-    int x = off+kXoff, y = pSprite->height() - (kHeight + kPadding)*(4-row);
+    int x = off+kXoff, y = kbdTop + (kHeight + kPadding)*row;
     for (size_t i=0;i<cols;i++)
     {
         *buf = keys[i];
@@ -942,9 +942,7 @@ void MainQwerty::drawKeyboard(int& n)
 
     if (n >= COUNT_OF(kbds)) n = 0;
 
-    int kbdTop = pSprite->height() - (kHeight + kPadding)*4;
-
-    pSprite->fillRect(0,kbdTop,pSprite->width(),pSprite->height()-kbdTop,colours.bg);
+    pSprite->fillRect(0,kbdTop,pSprite->width(),4*(kHeight+kPadding),colours.bg);
     drawRow(&kbds[n][0][0],0,0);
     drawRow(&kbds[n][1][0],1,(kWidth + kPadding) / 4);
     drawRow(&kbds[n][2][0],2,(kWidth + kPadding) / 2);
@@ -959,7 +957,6 @@ char MainQwerty::whichKey(int x, int y)
     x -= kXoff;
 
     //Serial.printf("x: %d, y: %d; ");
-    int kbdTop = pSprite->height() - (kHeight + kPadding)*4;
     do
     {
         if (y < kbdTop)
@@ -967,7 +964,7 @@ char MainQwerty::whichKey(int x, int y)
 
         y = (y - kbdTop)/(kHeight + kPadding); // figure out row number
         //Serial.printf("row: %d; ", y);
-        if (y > 3) // deal with bottom row later
+        if (y > 3) // beyond bottom row 
             break;
 
         switch (y)
@@ -1014,11 +1011,23 @@ UIclass::State MainQwerty::begin(TFT_eSprite& sprite, colours_t c)
 {
     State result = State::push;
     UIclass::begin(sprite, c); // do standard setup
+    kbdTop = pSprite->height() - (kHeight + kPadding)*4 - 10;
 
+    // clear screen
+    pSprite->fillScreen(colours.bg);
+
+    // draw heading 
+    pSprite->fillRect(0,0,pSprite->width(), yo, TFT_BLACK);
+    pSprite->setFreeFont(&FreeSans12pt7b);
+    pSprite->setTextColor(colours.fg, TFT_BLACK);
+    pSprite->drawString(mainLCDtask.headerText,2,2);
+    
+    // preset text choices
     pSprite->setFreeFont(&FreeSansBold9pt7b);
     pSprite->setTextColor(colours.fg, colours.bg, false); // no background fill
     pSprite->setTextDatum(TC_DATUM);
-    pSprite->fillScreen(colours.bg);
+
+    // draw the initial keyboard
     drawKeyboard(kbd);
 
     return (state = result); // save and return state
@@ -1050,21 +1059,30 @@ UIclass::State MainQwerty::update(Trigger trigger)
                         {
                             char buf[2]{0};
                             currentKey = theKey;
-                            if (theKey >= ' ') // can't draw a newline!
+                            if (theKey > ' ') // can't draw a newline!
                             {
                                 pSprite->setFreeFont(&FreeSansBold18pt7b);
                                 pSprite->setTextColor(colours.fg, colours.bg, true); // no background fill
                                 pSprite->setTextDatum(TC_DATUM);
                                 *buf = theKey;
-                                pSprite->fillRect(0,0,xh,yh, colours.bg);
-                                pSprite->drawString(buf,15,2);
+                                blankTheChar();
+                                pSprite->drawString(buf,xo+15,yo+2);
+                            }
+                            else if (' ' == theKey)
+                            {
+                                const int indent = 4;
+                                blankTheChar();
+                                pSprite->setViewport(xo,yo,xh,yh);
+                                pSprite->fillRect(indent,  yh*2/3,xh-indent*2,  4,colours.fg);
+                                pSprite->fillRect(indent+2,yh*2/3,xh-indent*2-4,2,colours.bg);
+                                pSprite->resetViewport();
                             }
                         }
                         if (255 == newPt.reserved)
                         {
                             if (theKey >= ' ' || '\n' == theKey)
                                 Serial.print(theKey); // do something better here!
-                            pSprite->fillRect(0,0,xh,yh, colours.bg);
+                            blankTheChar();
                             currentKey = 0; // allow for double letters!
                         }
                         break;
@@ -1083,7 +1101,7 @@ UIclass::State MainQwerty::update(Trigger trigger)
                             kbd++;
                             drawKeyboard(kbd);
                         }
-                        pSprite->fillRect(0,0,xh,yh, colours.bg);
+                        blankTheChar();
                         break;
                 }
 

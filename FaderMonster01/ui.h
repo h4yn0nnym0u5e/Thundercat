@@ -260,16 +260,18 @@ class MainColourPicker : public UIclass
 class MainQwerty : public UIclass 
 {
     enum {idle, drawingRect};
-    int kbd{0};
+    int kbd{0}, kbdTop;
     char currentKey;
     uint16_t* tempCmap{nullptr};
     static constexpr int kWidth{28}, kHeight{28}, kPadding{1},
-                         kXoff{3}, xh{32}, yh{36};
+                         kXoff{3}, 
+                         xo{5}, yo{30}, xh{32}, yh{36};
 
     void drawRow(const char* keys, int row, int off);
     void drawKeyboard(int& n);
     char whichKey(int x, int y);
     const image_4bit_info* getKeyCap(char c);
+    void blankTheChar(void) { pSprite->fillRect(xo,yo,xh,yh, colours.bg); }
 
 
   public:
