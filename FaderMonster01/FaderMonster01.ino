@@ -93,7 +93,8 @@ TaskHandle_t* handles[]{nullptr, nullptr,    // 0-1
                         &scribbleTask.handle, &mainLCDtask.handle, // 2-3
                         nullptr, nullptr, // 4-5
                         &superTask.handle,  &ringLEDsTask.handle, // 6-7
-                        &potsTask.handle, &touchTask.handle, &midiTask.handle}; // 8-10
+                        &smartKnobTask.handle, // 8
+                        &potsTask.handle, &touchTask.handle, &midiTask.handle}; // 9-11
 void printTaskStates(void)
 {
   TaskHandle_t handleIdle = xTaskGetIdleTaskHandle();
@@ -377,7 +378,7 @@ void SuperTask::loopFn(void)
         enableADCprint = !enableADCprint;
         break;
 
-      case 's':
+      case 's': // save scene
       {
         char n = Serial.read();
         if (n >= '0' && n <= '9')
@@ -390,7 +391,17 @@ void SuperTask::loopFn(void)
       }
         break;
 
-      case 'l':
+      case 'k': // set SmartKnob config
+      {
+        char n = Serial.read();
+        if (n >= '0' && n <= '4')
+        {
+          smartKnobTask.setConfig(generalRequest, SmartKnobTask::configs[n-'0']);
+        }
+      }
+        break;
+
+      case 'l': // load scene
       {
         char n = Serial.read();
         if (n >= '0' && n <= '9')
@@ -540,7 +551,7 @@ void setup()
   ringLEDsTask.create();
   scribbleTask.create();
   mainLCDtask.create();
-  // mainLCDtask.create();
+  smartKnobTask.create();
   potsTask.create(); // need to be before...
 
   // "client" tasks

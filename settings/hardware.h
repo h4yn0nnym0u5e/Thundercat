@@ -97,3 +97,25 @@
 #define USB_T_1 3
 #define USB_T_3 24
 #define USB_T_4 25 // 6V enable: active high
+
+/**
+ * Hacky wiring notes
+ * 
+ * SmartKnob v1.05
+ * 4-pin comms connector broken out to 3-pin Molex with
+ * Outboard    : Rd : ESP32 Tx
+ * Centre      : Br : Ground
+ * Nearest USB : Or : ESP32 Rx
+ * 
+ * SK-DATA on main PCB v1.12
+ * 5-pin comms 
+ * (not using I²C, but it's on Wire)
+ * Serial comms uses Serial7
+ * 
+ * Outboard : Bl : Teensy Tx - no, Rx (oops...)
+ * <next>   : Gr : Teensy Rx - no, Tx (oops...)
+ * Centre   : Yl : Ground
+ * <next>   : Bk : SDA
+ * Inboard  : Rd : SCL
+ */
+ 

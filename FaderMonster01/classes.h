@@ -243,7 +243,7 @@ class MIDItask : public FaderMonsterTask
         return result;
     }
 };
-extern MIDItask midiTask;
+extern MIDItask midiTask; // needed here for use by subsequent classes
 
 //                                                
 //    .d8888b  888  888 88888b.   .d88b.  888d888 
@@ -272,7 +272,7 @@ class SuperTask : public FaderMonsterTask
     //------------------------------------------------------------------------
 
     void loopFn(void);
-    InterTaskRequest touchCalibrationRequest, saveSettingsRequest;
+    InterTaskRequest touchCalibrationRequest, saveSettingsRequest, generalRequest;
 
     // display UI
     MainUIholder _ui;
@@ -779,6 +779,62 @@ class PotsTask : public FaderMonsterTask
             midiTask.sendMIDI(midiReqs[n].req, msg);
         }
     }
+};
+
+
+
+//     .d8888b.                                 888    888    d8P                    888      
+//    d88P  Y88b                                888    888   d8P                     888      
+//    Y88b.                                     888    888  d8P                      888      
+//     "Y888b.   88888b.d88b.   8888b.  888d888 888888 888d88K     88888b.   .d88b.  88888b.  
+//        "Y88b. 888 "888 "88b     "88b 888P"   888    8888888b    888 "88b d88""88b 888 "88b 
+//          "888 888  888  888 .d888888 888     888    888  Y88b   888  888 888  888 888  888 
+//    Y88b  d88P 888  888  888 888  888 888     Y88b.  888   Y88b  888  888 Y88..88P 888 d88P 
+//     "Y8888P"  888  888  888 "Y888888 888      "Y888 888    Y88b 888  888  "Y88P"  88888P"  
+// 
+
+class SmartKnobTask : public FaderMonsterTask
+{
+    //------------------------------------------------------------------------
+    // stuff to deal with async requests from another task:
+    //typedef InterTaskRequest::Result (SmartKnobTask::* RequestExecutor)(void*);
+    typedef InterTaskRequest::Result (SmartKnobTask::* RequestExecutor)(void*);
+    struct requestPayload
+    {
+        RequestExecutor requestExecutor;
+        void* context;
+    };
+    RequestQueue<SmartKnobTask, requestPayload> reqQueue;
+
+    InterTaskRequest::Result doSetConfig(void*);
+    //------------------------------------------------------------------------
+    static void knobPacketHandler(const uint8_t* buffer, size_t size);
+    void packetHandler(const uint8_t* buffer, size_t size);
+    void knobSendConfig(const PB_SmartKnobConfig& cfg);
+
+    PacketSerial_<COBS, 0, 512> knobSerial;
+    size_t last_size;
+    int last_position;
+    uint8_t tx_buffer_[300]; // should be enough...
+    uint32_t tx_nonce;
+    static SmartKnobTask* pThisTask;
+    //------------------------------------------------------------------------
+
+  public:
+    SmartKnobTask(const char* _name, 
+              configSTACK_DEPTH_TYPE _stackDepth, 
+              void* _params,
+              UBaseType_t _priority,
+            
+              int _reqQlen)
+    : FaderMonsterTask{_name, _stackDepth, _params, _priority},
+      reqQueue{_reqQlen}
+    {}
+    
+    void run(void) override;
+    InterTaskRequest& setConfig(InterTaskRequest& req, const PB_SmartKnobConfig& cfg);
+
+    static PB_SmartKnobConfig configs[5];
 };
 
 

@@ -8,11 +8,15 @@
 #include <WS2812Serial.h>
 #include <initGT911.h>
 #include <LittleFS.h>
+#include <PacketSerial.h>
+
 
 #define CONCAT(a,b,c) a##b##c
 
 #include "hardware.h"
 #include "config.h"
+#include "crc32.h"
+#include "smartknob.pb.h"
 #include <arduino_freertos.h>
 #include <queue.h>
 #include "expanders.h"
@@ -28,6 +32,7 @@ extern TouchTask touchTask;
 extern ScribbleTask scribbleTask;
 extern MainLCDtask mainLCDtask;
 extern PotsTask potsTask;
+extern SmartKnobTask smartKnobTask;
 extern RingLEDsTask ringLEDsTask;
 extern SuperTask superTask;
 extern MIDItask midiTask;

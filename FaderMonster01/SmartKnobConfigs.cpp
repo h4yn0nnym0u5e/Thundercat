@@ -1,7 +1,7 @@
-#include "smartknob.pb.h"
+#include "header.h"
 #define PI 3.141265358979323f
 
-PB_SmartKnobConfig SmartKnob::configs[5] = 
+PB_SmartKnobConfig SmartKnobTask::configs[] = 
  {
     // int32_t position;
     // float sub_position_unit;

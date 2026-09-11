@@ -7,6 +7,10 @@
 #else
 #define SER_TERM Serial
 
+// settings for Main PCB
+#define SK_SERIAL Serial7
+#define EN_6V 25
+
 #include <PacketSerial.h>
 
 #include "smartknob.pb.h"
@@ -112,15 +116,20 @@ void knobSendConfig(const PB_SmartKnobConfig& cfg)
 
 void setup() 
 {
+#if defined(EN_6V)
+  // FaderMonster main PCB:
+  pinMode(EN_6V, OUTPUT);
+  digitalWriteFast(EN_6V, HIGH);
+#endif // defined(EN_6V)
   // Teensy USB serial ports
   Serial.begin(0);
   SerialUSB1.begin(0);
 
   // USART port to SmartKnob
-  Serial1.begin(115200);
+  SK_SERIAL.begin(115200);
   
 #if defined(DECODE_SERIAL)
-  knobSerial.setStream(&Serial1);
+  knobSerial.setStream(&SK_SERIAL);
   knobSerial.setPacketHandler(knobPacketHandler);
 #endif // defined(DECODE_SERIAL)
 
@@ -147,7 +156,7 @@ void loop()
   }
 
 #if !defined(DECODE_SERIAL)
-  ch = Serial1.read();
+  ch = SK_SERIAL.read();
   if (ch >= 0)
   {
     Serial.print((char) ch);
