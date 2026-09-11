@@ -1,5 +1,5 @@
 #include "header.h"
-#define PI 3.141265358979323f
+//#define PI 3.141265358979323f
 
 PB_SmartKnobConfig SmartKnobTask::configs[] = 
  {

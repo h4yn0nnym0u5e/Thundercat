@@ -155,6 +155,34 @@ InterTaskRequest::Result SuperTask::doUpdateMainTouch(void* pGTPoint)
   return InterTaskRequest::Result::done;
 }
 
+//----------------------------------------------------------------
+/**
+ * Queue a request for the supervisor task to process a SmartKnob report.
+ * This is guaranteed to have changed from the previous value.
+ */
+//!
+InterTaskRequest& SuperTask::sendSmartKnobReport(InterTaskRequest& req, SmartKnobReport& SKreport, TickType_t timeout)
+{
+  requestPayload payload{&SuperTask::doProcessSmartKnob, &SKreport};
+  RequestQueue<SuperTask, requestPayload>::queueEntry entry{&req,payload};
+
+  reqQueue.request(entry, timeout);
+
+  return req;
+}
+
+//! execute a SmartKnob change message
+InterTaskRequest::Result SuperTask::doProcessSmartKnob(void* pSKreport)
+{
+  SmartKnobReport& skReport = *((SmartKnobReport*) pSKreport);
+  if (skReport.isInteger)
+    Serial.printf("[%lu] : Position: %d\n", skReport.ms, skReport.position);
+  else
+    Serial.printf("[%lu] : Position: %.3f\n", skReport.ms, skReport.sub_position);
+
+  return InterTaskRequest::Result::done;
+}
+
 //================================================================
 
 TouchStatus powerButton;
@@ -259,8 +287,8 @@ bool SuperTask::processUI(void)
   {
       case UIclass::State::done: // ready for a new trigger
         // poll for queued requests
-        if (InterTaskRequest::Result::inactive == reqQueue.executeRequest(*this, 10))
-            wait = false; // already waited 10 ticks
+        if (InterTaskRequest::Result::inactive == reqQueue.executeRequest(*this, 2))
+            wait = false; // already waited 2 ticks
         break;
 
       case UIclass::State::next: // can do next phase, if any
@@ -307,7 +335,7 @@ void SuperTask::loopFn(void)
     vTaskDelay(2);
 
   // deal with a string of commands all in one go,
-  // unless an unrecognised commands is given
+  // unless an unrecognised command is given
   while (1)
   {
     bool exitWhile = false;
@@ -462,6 +490,12 @@ void SuperTask::loopFn(void)
     saveSettingsRequest.setInactive();            
   }
 
+  if (generalRequest.isFinished())
+  {
+    if (generalRequest.isFailed())
+      Serial.printf("General-purpose request failed!\n");
+    generalRequest.setInactive();            
+  }
 }
 
 

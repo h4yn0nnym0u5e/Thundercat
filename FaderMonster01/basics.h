@@ -61,6 +61,9 @@ class InterTaskRequest
     //! \return true if request has completed
     bool isFinished(void) { return done == status || failed == status; }
 
+    //! \return true if request has failed
+    bool isFailed(void) { return failed == status; }
+
     //! \return true if request is not busy
     bool isInactive(void) { return inactive == status || done == status || failed == status; }
 
@@ -183,11 +186,22 @@ class RequestQueue
     UBaseType_t messagesWaiting(void) { return uxQueueMessagesWaiting(queue); }
 };
 
-/*
-struct colours_t {
-    uint16_t fg,bg,txt;
+//     .d8888b.                                 888    888    d8P                    888      
+//    d88P  Y88b                                888    888   d8P                     888      
+//    Y88b.                                     888    888  d8P                      888      
+//     "Y888b.   88888b.d88b.   8888b.  888d888 888888 888d88K     88888b.   .d88b.  88888b.  
+//        "Y88b. 888 "888 "88b     "88b 888P"   888    8888888b    888 "88b d88""88b 888 "88b 
+//          "888 888  888  888 .d888888 888     888    888  Y88b   888  888 888  888 888  888 
+//    Y88b  d88P 888  888  888 888  888 888     Y88b.  888   Y88b  888  888 Y88..88P 888 d88P 
+//     "Y8888P"  888  888  888 "Y888888 888      "Y888 888    Y88b 888  888  "Y88P"  88888P"  
+// 
+struct SmartKnobReport
+{
+    uint32_t ms;
+    int32_t position;
+    float   sub_position;
+    bool    isInteger;
 };
-*/
 
 //                      888    888    d8b                            
 //                      888    888    Y8P                            

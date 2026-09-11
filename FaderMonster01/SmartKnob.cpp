@@ -40,7 +40,6 @@ void SmartKnobTask::packetHandler(const uint8_t* buffer, size_t size)
       SER_TERM.print('.');
       break;
     }
-    // SER_TERM.println(millis());
   
     uint32_t computed_crc = 0;
     last_size = size;
@@ -69,17 +68,43 @@ void SmartKnobTask::packetHandler(const uint8_t* buffer, size_t size)
     if (pb_rx_buffer_.which_payload != PB_FromSmartKnob_smartknob_state_tag)
       break;
 
-    if (last_position != pb_rx_buffer_.payload.smartknob_state.current_position)
+    PB_SmartKnobState SKstate = pb_rx_buffer_.payload.smartknob_state;
+    PB_SmartKnobConfig& config = SKstate.config;
+    
+    if (lastConfigChange > smoothAfter)
     {
-      last_position = pb_rx_buffer_.payload.smartknob_state.current_position;
-      SER_TERM.printf("Position: %d", pb_rx_buffer_.payload.smartknob_state.current_position);
-      SER_TERM.println();
+        smooth_sub_position = SKstate.sub_position_unit * smoothFactor
+                            + smooth_sub_position * (1.0f - smoothFactor);
+    }
+    else
+        smooth_sub_position = SKstate.sub_position_unit;
+
+    report = {millis(), SKstate.current_position, smooth_sub_position, true};
+
+    if (0 == config.min_position && 0 == config.max_position) // return-to-centre
+    {
+        if (fabs(last_sub_position - smooth_sub_position) >= 0.001f)
+        {
+            last_sub_position = smooth_sub_position;
+            report.isInteger = false;
+            if (lastConfigChange >= suspendFor)
+                superTask.sendSmartKnobReport(toSuper, report, 0);
+        }
+    }
+    else // integer result
+    {
+        if (last_position != SKstate.current_position)
+        {
+            last_position = SKstate.current_position;
+            superTask.sendSmartKnobReport(toSuper, report, 0);
+        }
     }
   } while (0);
 }
 
-void SmartKnobTask::knobSendConfig(const PB_SmartKnobConfig& cfg)
+bool SmartKnobTask::knobSendConfig(const PB_SmartKnobConfig& cfg)
 {
+    bool result = false;
     // Encode protobuf message to byte buffer
     PB_ToSmartknob pb_tx_buffer_{};
     pb_tx_buffer_.nonce = ++tx_nonce;
@@ -107,14 +132,21 @@ void SmartKnobTask::knobSendConfig(const PB_SmartKnobConfig& cfg)
 
       // Encode and send proto+CRC as a COBS packet
       knobSerial.send(tx_buffer_, stream.bytes_written + 4);  
+      result = true;
     } while (0);
+    pCurrentConfig = &cfg;
+    lastConfigChange = 0;
+
+    return result;
 }
 
 InterTaskRequest::Result SmartKnobTask::doSetConfig(void* _PB_SmartKnobConfig)
 {
+    InterTaskRequest::Result result = InterTaskRequest::Result::done;
     const PB_SmartKnobConfig cfg = *(const PB_SmartKnobConfig*) _PB_SmartKnobConfig;
-    knobSendConfig(cfg);
-    return InterTaskRequest::Result::done;
+    if (!knobSendConfig(cfg))
+        result = InterTaskRequest::Result::failed;
+    return result;
 }
 
 //========================================================================
@@ -167,4 +199,4 @@ void SmartKnobTask::run(void)
     }
 }
 
-SmartKnobTask smartKnobTask{"SmartKnob", 512, nullptr, 3, 1};
+SmartKnobTask smartKnobTask{"SmartKnob", 640, nullptr, 3, 1};
