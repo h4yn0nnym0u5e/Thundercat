@@ -781,6 +781,9 @@ class PotsTask : public FaderMonsterTask
             midiTask.sendMIDI(midiReqs[n].req, msg);
         }
     }
+
+    // debug stuff
+    static void printADCs(void);
 };
 
 
@@ -814,22 +817,26 @@ class SmartKnobTask : public FaderMonsterTask
     static void knobPacketHandler(const uint8_t* buffer, size_t size);
     void packetHandler(const uint8_t* buffer, size_t size);
     bool knobSendConfig(const PB_SmartKnobConfig& cfg);
+    void weirdStartup(void);
 
     PacketSerial_<COBS, 0, 512> knobSerial;
     size_t last_size;
     // last reported values
+    PB_SmartKnobState SKstate;
     int last_position;
     float last_sub_position;
     SmartKnobReport report; // persistent report to which we can pass a pointer
     const uint32_t suspendFor{100}; // suspend reports for this many milliseconds after config change
     const uint32_t smoothAfter{300}; // start smoothing this many milliseconds after config change
     elapsedMillis lastConfigChange{0};
+    uint32_t packetCount{0};
     static constexpr float smoothFactor = 0.1f;
     float smooth_sub_position; // used to reduce jitter in sub-position reports
     uint8_t tx_buffer_[300]; // should be enough...
     uint32_t tx_nonce;
     static SmartKnobTask* pThisTask;
     const PB_SmartKnobConfig* pCurrentConfig{nullptr};
+    bool configChangePending{false};
     //------------------------------------------------------------------------
 
   public:

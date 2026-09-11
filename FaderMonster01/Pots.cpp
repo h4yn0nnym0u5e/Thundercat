@@ -47,7 +47,7 @@ void zeroPots(void)
 }
 
 
-void printADCs(void)
+void PotsTask::printADCs(void)
 {
   for (int i=0;i<NUM_POTS;i++)
   {

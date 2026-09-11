@@ -37,7 +37,7 @@ void SmartKnobTask::packetHandler(const uint8_t* buffer, size_t size)
   {
     if (size <= 4)
     {
-      SER_TERM.print('.');
+      //SER_TERM.print('.');
       break;
     }
   
@@ -64,13 +64,15 @@ void SmartKnobTask::packetHandler(const uint8_t* buffer, size_t size)
       break;
     }
 
+    packetCount++; // got a valid packet - count it
+
     // ignore acks and such for now
     if (pb_rx_buffer_.which_payload != PB_FromSmartKnob_smartknob_state_tag)
       break;
 
-    PB_SmartKnobState SKstate = pb_rx_buffer_.payload.smartknob_state;
+    SKstate = pb_rx_buffer_.payload.smartknob_state;
     PB_SmartKnobConfig& config = SKstate.config;
-    
+
     if (lastConfigChange > smoothAfter)
     {
         smooth_sub_position = SKstate.sub_position_unit * smoothFactor
@@ -136,6 +138,7 @@ bool SmartKnobTask::knobSendConfig(const PB_SmartKnobConfig& cfg)
     } while (0);
     pCurrentConfig = &cfg;
     lastConfigChange = 0;
+    configChangePending = true; // sent, but may get old-style ones for a while
 
     return result;
 }
@@ -176,26 +179,91 @@ InterTaskRequest& SmartKnobTask::setConfig(InterTaskRequest& req, const PB_Smart
     return req;
 }
 
+/**
+ * Weird startup stuff.
+ * SmartKnob boots in text mode, and spews stuf at us for a bit. We
+ * have to send it a bunch of '\0' bytes to switch to the protobuf
+ * mode, which eventually results in a "Small packet" message, 
+ * signalling we finally succeeded!
+ */
+void SmartKnobTask::weirdStartup(void)
+{
+    elapsedMillis em = 0;
+    char buf[10];
+    int idx = 0;
+    do
+    {
+        char ch;
+        ch = SK_SERIAL.read();
+        if (ch > 0)
+        {
+            //if (0xFF != ch)
+            //    Serial.print(ch);
+            SK_SERIAL.write('\0');
+        }
+        else
+            vTaskDelay(2);
+        
+        if (0 != idx)
+        {
+            buf[idx++] = ch;
+            if (idx >= 5)
+            {
+                buf[idx] = 0;
+                //Serial.printf("\nGot '%s'\n", buf);
+                if (0 == strncmp(buf, "Small", 5))
+                    break;
+                else 
+                    idx = 0;                        
+            }
+        }
+
+        if ('S' == ch)
+            buf[idx++] = ch;
+
+    } while (em < 500);
+}
+
 //============================================================================
 void SmartKnobTask::run(void)
 {
-    vTaskDelay(100);
     // USART port to SmartKnob
     SK_SERIAL.begin(115200);
     
+    pThisTask = this;
+    weirdStartup();
+    vTaskDelay(20); // tests suggest SmartKnob takes 250ms to wake up
+
     knobSerial.setStream(&SK_SERIAL);
     knobSerial.setPacketHandler(knobPacketHandler);
 
-    pThisTask = this;
-    vTaskDelay(100);
-    knobSendConfig(configs[0]);
-    vTaskDelay(100);
-    knobSendConfig(configs[0]);
-    
+    knobSendConfig(configs[0]); // send initial config
+    Serial.printf("[%ul] SmartKnob ready\n", micros());
+
     while (1)
     {
         reqQueue.executeRequest(*this, 5);
-        knobSerial.update();            
+        knobSerial.update(); // process all available packets
+        /*
+        if (0 == packetCount) // not getting packets
+        {            
+            if (lastConfigChange > 50)
+                knobSendConfig(configs[0]);
+        }
+        else 
+        {
+            if (configChangePending)
+            {
+                if (0 == strcmp(SKstate.config.text, pCurrentConfig->text))
+                    configChangePending = false;
+                else
+                {
+                    if (lastConfigChange > 50)
+                        knobSendConfig(*pCurrentConfig);
+                }                    
+            }
+        }
+            */
     }
 }
 

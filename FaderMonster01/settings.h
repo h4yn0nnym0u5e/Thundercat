@@ -6,7 +6,7 @@
 
 #define TO_OFFSET_LEAF_ARRAY(...)
 
-// types: ['cfgButtonLED', 'cfgRingLEDs', 'FaderMonsterSettings', 'MIDIcontrolSetting', 'StripColours', 'StripControls', 'StripSettings', 'TFTcolours']
+// types: ['cfgButtonLED', 'cfgRingLEDs', 'FaderMonsterSettings', 'MIDIcontrolSetting', 'MiscControls', 'StripColours', 'StripControls', 'StripSettings', 'TFTcolours']
 #if 0
 { {
      {{ /* colour, */ /* pattern, */}, { /* colour, */}, { /* fg, */ /* bg, */ /* txt, */}, }, 
@@ -28,7 +28,7 @@
      {{ /* controlType, */ /* controlNum, */ /* name, */ /* minVal, */ /* maxVal, */ /* channel, */}, { /* controlType, */ /* controlNum, */ /* name, */ /* minVal, */ /* maxVal, */ /* channel, */}, { /* controlType, */ /* controlNum, */ /* name, */ /* minVal, */ /* maxVal, */ /* channel, */}, }, 
      {{ /* controlType, */ /* controlNum, */ /* name, */ /* minVal, */ /* maxVal, */ /* channel, */}, { /* controlType, */ /* controlNum, */ /* name, */ /* minVal, */ /* maxVal, */ /* channel, */}, { /* controlType, */ /* controlNum, */ /* name, */ /* minVal, */ /* maxVal, */ /* channel, */}, }, 
     },
-}, { /* fg, */ /* bg, */ /* txt, */}, 
+}, {{ /* controlType, */ /* controlNum, */ /* name, */ /* minVal, */ /* maxVal, */ /* channel, */}, { /* controlType, */ /* controlNum, */ /* name, */ /* minVal, */ /* maxVal, */ /* channel, */}, { /* controlType, */ /* controlNum, */ /* name, */ /* minVal, */ /* maxVal, */ /* channel, */}, { /* controlType, */ /* controlNum, */ /* name, */ /* minVal, */ /* maxVal, */ /* channel, */}, }, { /* fg, */ /* bg, */ /* txt, */}, 
 #endif
 
 /*
@@ -65,6 +65,35 @@ char stripsConfig.controls.1.button.name
 int stripsConfig.controls.1.button.minVal
 int stripsConfig.controls.1.button.maxVal
 int stripsConfig.controls.1.button.channel
+miscControls
+miscControls.pedal
+MIDIcontrolType miscControls.pedal.controlType
+int miscControls.pedal.controlNum
+char miscControls.pedal.name
+int miscControls.pedal.minVal
+int miscControls.pedal.maxVal
+int miscControls.pedal.channel
+miscControls.smartknob
+MIDIcontrolType miscControls.smartknob.controlType
+int miscControls.smartknob.controlNum
+char miscControls.smartknob.name
+int miscControls.smartknob.minVal
+int miscControls.smartknob.maxVal
+int miscControls.smartknob.channel
+miscControls.touchX
+MIDIcontrolType miscControls.touchX.controlType
+int miscControls.touchX.controlNum
+char miscControls.touchX.name
+int miscControls.touchX.minVal
+int miscControls.touchX.maxVal
+int miscControls.touchX.channel
+miscControls.touchY
+MIDIcontrolType miscControls.touchY.controlType
+int miscControls.touchY.controlNum
+char miscControls.touchY.name
+int miscControls.touchY.minVal
+int miscControls.touchY.maxVal
+int miscControls.touchY.channel
 mainColours
 uint16_t mainColours.fg
 uint16_t mainColours.bg
@@ -72,7 +101,7 @@ uint16_t mainColours.txt
 
 ['char', 'int', 'MIDIcontrolType', 'pattern_t', 'uint16_t']
 
-27 leaves:
+51 leaves:
 "stripsConfig.colours.1.ringLEDs.colour", // 0
 "stripsConfig.colours.1.ringLEDs.pattern", // 1
 "stripsConfig.colours.1.buttonLED.colour", // 2
@@ -97,9 +126,33 @@ uint16_t mainColours.txt
 "stripsConfig.controls.1.button.minVal", // 21
 "stripsConfig.controls.1.button.maxVal", // 22
 "stripsConfig.controls.1.button.channel", // 23
-"mainColours.fg", // 24
-"mainColours.bg", // 25
-"mainColours.txt", // 26
+"miscControls.pedal.controlType", // 24
+"miscControls.pedal.controlNum", // 25
+"miscControls.pedal.name", // 26
+"miscControls.pedal.minVal", // 27
+"miscControls.pedal.maxVal", // 28
+"miscControls.pedal.channel", // 29
+"miscControls.smartknob.controlType", // 30
+"miscControls.smartknob.controlNum", // 31
+"miscControls.smartknob.name", // 32
+"miscControls.smartknob.minVal", // 33
+"miscControls.smartknob.maxVal", // 34
+"miscControls.smartknob.channel", // 35
+"miscControls.touchX.controlType", // 36
+"miscControls.touchX.controlNum", // 37
+"miscControls.touchX.name", // 38
+"miscControls.touchX.minVal", // 39
+"miscControls.touchX.maxVal", // 40
+"miscControls.touchX.channel", // 41
+"miscControls.touchY.controlType", // 42
+"miscControls.touchY.controlNum", // 43
+"miscControls.touchY.name", // 44
+"miscControls.touchY.minVal", // 45
+"miscControls.touchY.maxVal", // 46
+"miscControls.touchY.channel", // 47
+"mainColours.fg", // 48
+"mainColours.bg", // 49
+"mainColours.txt", // 50
 
 */
 //========================================
@@ -352,21 +405,56 @@ class StripSettings : public CfgBaseOffset
     }
 };
 
+//! settings for miscellaneous MIDI controls
+class MiscControls : public CfgBaseOffset
+{
+  public:
+    static constexpr const char* className{"MiscControls"};
+    const char* getName(int n) { return n<0?className:memberNames[n]; }
+    MiscControls(MIDIcontrolSetting _pedal, MIDIcontrolSetting _smartknob, MIDIcontrolSetting _touchX, MIDIcontrolSetting _touchY)
+    : pedal{_pedal}, smartknob{_smartknob}, touchX{_touchX}, touchY{_touchY} {}
+    MiscControls() {}
+
+    MIDIcontrolSetting pedal; //!< expression pedal MIDI settings
+    MIDIcontrolSetting smartknob; //!< SmartKnob MIDI settings
+    MIDIcontrolSetting touchX; //!< touch screen X MIDI settings
+    MIDIcontrolSetting touchY; //!< touch screen Y MIDI settings
+
+    static constexpr const char* memberNames[]{"pedal", "smartknob", "touchX", "touchY"};
+    int getMemberCount(void) { return 4; }
+
+    //-------------------------------------------------
+    virtual offsetResult toOffset(const char* str, int& consume)
+    {
+        offsetResult result{-1, 1, 0, nullptr, nullptr}; // not found
+        [[maybe_unused]] int consumed = 0;
+        do
+        {
+            TO_OFFSET(pedal);
+            TO_OFFSET(smartknob);
+            TO_OFFSET(touchX);
+            TO_OFFSET(touchY);
+        } while (0);
+        return result;
+    }
+};
+
 //! all settings
 class FaderMonsterSettings : public CfgBaseOffset
 {
   public:
     static constexpr const char* className{"FaderMonsterSettings"};
     const char* getName(int n) { return n<0?className:memberNames[n]; }
-    FaderMonsterSettings(StripSettings _stripsConfig, TFTcolours _mainColours)
-    : stripsConfig{_stripsConfig}, mainColours{_mainColours} {}
+    FaderMonsterSettings(StripSettings _stripsConfig, MiscControls _miscControls, TFTcolours _mainColours)
+    : stripsConfig{_stripsConfig}, miscControls{_miscControls}, mainColours{_mainColours} {}
     FaderMonsterSettings() {}
 
     StripSettings stripsConfig; //!< settings for strips
+    MiscControls miscControls; //!< settings for miscellaneous MIDI controls
     TFTcolours mainColours; //!< settings for main LCD
 
-    static constexpr const char* memberNames[]{"stripsConfig", "mainColours"};
-    int getMemberCount(void) { return 2; }
+    static constexpr const char* memberNames[]{"stripsConfig", "miscControls", "mainColours"};
+    int getMemberCount(void) { return 3; }
 
     //-------------------------------------------------
     virtual offsetResult toOffset(const char* str, int& consume)
@@ -376,6 +464,7 @@ class FaderMonsterSettings : public CfgBaseOffset
         do
         {
             TO_OFFSET(stripsConfig);
+            TO_OFFSET(miscControls);
             TO_OFFSET(mainColours);
         } while (0);
         return result;

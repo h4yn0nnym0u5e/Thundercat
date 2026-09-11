@@ -115,7 +115,7 @@ void TouchTask::startGT911(TaskHandle_t owner)
   {
     if (Touchscreen.begin(INT_PIN, RST_PIN, I2C_FREQ)) 
     {
-      Serial.println("GT911 initialized (interrupt mode).");
+      Serial.printf("[%lu] GT911 initialized (interrupt mode)\n", micros());
       Touchscreen.setupDisplay(TFT_HOR_RES, TFT_VER_RES, initGT911_ROTATION_0);
       Touchscreen.getWire().set_callback(touchWireCallback);
       Touchscreen.getWire().set_context(&touchWireContext);

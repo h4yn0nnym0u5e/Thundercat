@@ -55,10 +55,21 @@ d1 = {
             {"type": "StripControls", "name": "controls", "count": "NUM_POTS", "doc": "array of settings for strip MIDI outputs"}, 
         ],
 
+    "MiscControls":
+        [
+            "settings for miscellaneous MIDI controls",
+            {"type": "MIDIcontrolSetting", "name": "pedal", "doc": "expression pedal MIDI settings"},
+            {"type": "MIDIcontrolSetting", "name": "smartknob", "doc": "SmartKnob MIDI settings"},
+            {"type": "MIDIcontrolSetting", "name": "touchX", "doc": "touch screen X MIDI settings"},
+            {"type": "MIDIcontrolSetting", "name": "touchY", "doc": "touch screen Y MIDI settings"},
+        ],
+
+
     "FaderMonsterSettings": 
         [
             "all settings",
             {"type": "StripSettings", "name": "stripsConfig", "doc": "settings for strips"},
+            {"type": "MiscControls", "name": "miscControls", "doc": "settings for miscellaneous MIDI controls"},
             {"type": "TFTcolours", "name": "mainColours", "doc": "settings for main LCD"}
         ],
 }

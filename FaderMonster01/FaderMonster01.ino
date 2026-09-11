@@ -3,29 +3,18 @@
 #include <usb_names.h>
 
 //================================================================
-//                                                             
-//                                                             
-//    888d888 .d88b.  88888b.d88b.   .d88b.  888  888  .d88b.  
-//    888P"  d8P  Y8b 888 "888 "88b d88""88b 888  888 d8P  Y8b 
-//    888    88888888 888  888  888 888  888 Y88  88P 88888888 
-//    888    Y8b.     888  888  888 Y88..88P  Y8bd8P  Y8b.     
-//    888     "Y8888  888  888  888  "Y88P"    Y88P    "Y8888  
+//                      888    888    d8b                            
+//                      888    888    Y8P                            
+//                      888    888                                   
+//    .d8888b   .d88b.  888888 888888 888 88888b.   .d88b.  .d8888b  
+//    88K      d8P  Y8b 888    888    888 888 "88b d88P"88b 88K      
+//    "Y8888b. 88888888 888    888    888 888  888 888  888 "Y8888b. 
+//         X88 Y8b.     Y88b.  Y88b.  888 888  888 Y88b 888      X88 
+//     88888P'  "Y8888   "Y888  "Y888 888 888  888  "Y88888  88888P' 
+//                                                      888          
+//                                                 Y8b d88P          
+//                                                  "Y88P"           
 //
-ContinuousPot allPots[NUM_POTS]
-  {
-    {4.096f, CH1_POL, CH2_POL, 0.1f},
-    {4.096f, CH1_POL, CH2_POL, 0.1f},
-    {4.096f, CH1_POL, CH2_POL, 0.1f},
-    {4.096f, CH1_POL, CH2_POL, 0.1f},
-    {4.096f, CH1_POL, CH2_POL, 0.1f},
-    {4.096f, CH1_POL, CH2_POL, 0.1f},
-    {4.096f, CH1_POL, CH2_POL, 0.1f},
-    {4.096f, CH1_POL, CH2_POL, 0.1f}
-  };
-
-  extern DPex U3, U5;
-
-//================================================================
 // some default settings
 static TFTcolours mainColours{TFT_LIGHTGREY, TFT_DARKGREY, TFT_WHITE};
 static StripColours stripColours[8] =
@@ -40,25 +29,10 @@ static StripColours stripColours[8] =
     { {xWHITE,  {0}}, {0}, {{ TFT_VIOLET }}}
   };
 static StripControls stripControls[8];  
+static MiscControls miscControls;
 
-FaderMonsterSettings faderMonsterSettings{{stripColours,stripControls}, mainColours};
-/*
-FaderMonsterSettings faderMonsterSettings
-{
-  .stripsConfig = 
-  {
-    { .ringLEDs = {xRED,    {0}}, .scribble = {{ .fg = TFT_RED }}},
-    { .ringLEDs = {xORANGE, {0}}, .scribble = {{ .fg = TFT_ORANGE2 }}},
-    { .ringLEDs = {xYELLOW, {0}}, .scribble = {{ .fg = TFT_YELLOW }}},
-    { .ringLEDs = {xGREEN,  {0}}, .scribble = {{ .fg = TFT_GREEN }}},
-    { .ringLEDs = {xBLUE,   {0}}, .scribble = {{ .fg = TFT_CYAN }}},
-    { .ringLEDs = {xPURPLE, {0}}, .scribble = {{ .fg = TFT_BLUE }}},
-    { .ringLEDs = {xPINK,   {0}}, .scribble = {{ .fg = TFT_MAGENTA }}},
-    { .ringLEDs = {xWHITE,  {0}}, .scribble = {{ .fg = TFT_VIOLET }}}
-  },
-  .mainColours = {TFT_LIGHTGREY, TFT_DARKGREY, TFT_WHITE}
-};
-*/
+FaderMonsterSettings faderMonsterSettings{{stripColours,stripControls}, miscControls, mainColours};
+
 //================================================================
 // one source of truth on where / how to allocate a 
 // buffer used for DMA transfer of sprite image data
@@ -129,8 +103,19 @@ char dbgBuffer[200];
 bool dbgWritten;
 
 bool enableADCprint;
-
 //================================================================
+//                                                        888             
+//                                                        888             
+//                                                        888             
+//    888d888 .d88b.   .d88888 888  888  .d88b.  .d8888b  888888 .d8888b  
+//    888P"  d8P  Y8b d88" 888 888  888 d8P  Y8b 88K      888    88K      
+//    888    88888888 888  888 888  888 88888888 "Y8888b. 888    "Y8888b. 
+//    888    Y8b.     Y88b 888 Y88b 888 Y8b.          X88 Y88b.       X88 
+//    888     "Y8888   "Y88888  "Y88888  "Y8888   88888P'  "Y888  88888P' 
+//                         888                                            
+//                         888                                            
+//                         888                                            
+//
 //! queue a request for the supervisor task to process a main LCD touch
 InterTaskRequest& SuperTask::updateMainTouch(InterTaskRequest& req, GTPoint& touchPoint, TickType_t timeout)
 {
@@ -176,7 +161,12 @@ InterTaskRequest::Result SuperTask::doProcessSmartKnob(void* pSKreport)
 {
   SmartKnobReport& skReport = *((SmartKnobReport*) pSKreport);
   if (skReport.isInteger)
-    Serial.printf("[%lu] : Position: %d\n", skReport.ms, skReport.position);
+  {
+    //Serial.printf("[%lu] : Position: %d\n", skReport.ms, skReport.position);
+    flipui = true;
+    whichUI = skReport.position % 3; // magic!
+    whichUI--; // because flipping increments it
+  }
   else
     Serial.printf("[%lu] : Position: %.3f\n", skReport.ms, skReport.sub_position);
 
@@ -184,7 +174,18 @@ InterTaskRequest::Result SuperTask::doProcessSmartKnob(void* pSKreport)
 }
 
 //================================================================
-
+//                                                     888888b.            888    888                     
+//                                                     888  "88b           888    888                     
+//                                                     888  .88P           888    888                     
+//    88888b.   .d88b.  888  888  888  .d88b.  888d888 8888888K.  888  888 888888 888888 .d88b.  88888b.  
+//    888 "88b d88""88b 888  888  888 d8P  Y8b 888P"   888  "Y88b 888  888 888    888   d88""88b 888 "88b 
+//    888  888 888  888 888  888  888 88888888 888     888    888 888  888 888    888   888  888 888  888 
+//    888 d88P Y88..88P Y88b 888 d88P Y8b.     888     888   d88P Y88b 888 Y88b.  Y88b. Y88..88P 888  888 
+//    88888P"   "Y88P"   "Y8888888P"   "Y8888  888     8888888P"   "Y88888  "Y888  "Y888 "Y88P"  888  888 
+//    888                                                                                                 
+//    888                                                                                                 
+//    888                                                                                                 
+//
 TouchStatus powerButton;
 void pollPowerButton(void)
 {
@@ -223,7 +224,7 @@ void pollPowerButton(void)
 
           Serial.print("6V ... ");
           digitalWriteFast(EN_6V, arduino::LOW); // 6V supply off
-          vTaskDelay(1000);
+          vTaskDelay(1);
 
           Serial.println("shutdown!");
           SET_BIT(TOGGLE_POWER, 1); // shutdown!
@@ -247,9 +248,18 @@ void pollPowerButton(void)
   }
 }
 
+//                           d8b          888      .d8888b.  8888888b.  
+//                           Y8P          888     d88P  Y88b 888  "Y88b 
+//                                        888     888    888 888    888 
+//    88888b.d88b.   8888b.  888 88888b.  888     888        888    888 
+//    888 "888 "88b     "88b 888 888 "88b 888     888        888    888 
+//    888  888  888 .d888888 888 888  888 888     888    888 888    888 
+//    888  888  888 888  888 888 888  888 888     Y88b  d88P 888  .d88P 
+//    888  888  888 "Y888888 888 888  888 88888888 "Y8888P"  8888888P"  
+// 
 /**
  * Process the supervisor task's UI (main LCD).
- * \return true if extra dealy might be wanted, e.g. if screen update was requested
+ * \return true if extra delay might be wanted, e.g. if screen update was requested
  */
 bool SuperTask::processUI(void)
 {
@@ -309,6 +319,18 @@ bool SuperTask::processUI(void)
   return wait;
 }
 
+//    888                            8888888888       
+//    888                            888              
+//    888                            888              
+//    888  .d88b.   .d88b.  88888b.  8888888 88888b.  
+//    888 d88""88b d88""88b 888 "88b 888     888 "88b 
+//    888 888  888 888  888 888  888 888     888  888 
+//    888 Y88..88P Y88..88P 888 d88P 888     888  888 
+//    888  "Y88P"   "Y88P"  88888P"  888     888  888 
+//                          888                       
+//                          888                       
+//                          888                       
+//
 extern FlexIOSPI SPIflex;
 extern int stallCount;
 static char fileName[30];
@@ -320,7 +342,7 @@ void SuperTask::loopFn(void)
     {
       em = 0;
       if (enableADCprint)
-        printADCs();
+        PotsTask::printADCs();
     }
   }
 
@@ -548,7 +570,7 @@ void setup()
     ;
 
   Serial.print("\n\n*************************************************************");
-  Serial.printf("\n" __FILE_NAME__ "; Teensyduino %.2f; " __DATE__ " " __TIME__ "\n", (float) TEENSYDUINO / 100.0f);
+  Serial.printf("\n[%lu]\n" __FILE_NAME__ "; Teensyduino %.2f; " __DATE__ " " __TIME__ "\n", micros(), (float) TEENSYDUINO / 100.0f);
   {
     char buf[11];
     getSerialNumber(buf);
