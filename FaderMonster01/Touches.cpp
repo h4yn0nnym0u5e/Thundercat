@@ -10,7 +10,7 @@ AT42QT2120_Wire potsWire{POTS_TOUCH_I2C, POTS_TOUCH_ADDR};
 /*/
 AT42QT2120_Wire_Async potsWire{POTS_TOUCH_I2C_ASYNC, POTS_TOUCH_ADDR};
 //*/
-touchChipDriver potsTouch{potsWire, 0xFF0};
+touchChipDriverAsync potsTouch{potsWire, 0xFF0};
 
 static void isrTouch(void);
 
@@ -207,22 +207,18 @@ void AT42QT2120::setTouchRecalDelay(uint8_t theDelay)
 //
 static void isrTouch(void)
 {
-  //xTaskResumeFromISR(handleTouch);
   BaseType_t xHigherPriorityTaskWoken = pdFALSE; 
 
   touchTask.checkChange = true;
-  /*
-  vTaskNotifyGiveFromISR(touchTask.handle, &xHigherPriorityTaskWoken);
-  /*/
   xTaskNotifyFromISR(touchTask.handle,    // notify touch task ...
                      TouchTask::touchFlag, eSetBits, // ...setting the touch flag
                      &xHigherPriorityTaskWoken);
-  //*/                     
+  
   portYIELD_FROM_ISR( xHigherPriorityTaskWoken );
 }
 
 
-void TouchTask::updateKeyStatuses(touchChipDriver& touch)
+void TouchTask::updateKeyStatuses(touchChipDriverAsync& touch)
 {
   int keyNum;
   bool state;
@@ -260,18 +256,6 @@ InterTaskRequest::Result TouchTask::doCalibrateTouch(void* context)
 
 void TouchTask::updateTouch() 
 {
-  if (0)
-  {
-    static int dots = 0;
-    Serial.print('.');
-    dots++;
-    if (dots > 30)
-    {
-      Serial.println();
-      dots = 0;
-    }
-  }
-
   if (checkChange)
   {
     touchChip.prepReadKeys();
@@ -290,7 +274,7 @@ void TouchTask::pollTouch(void)
     {
       //int status = (int) keyStatuses[i].getExtendedStatus();
       //Serial.printf("Touch %d: status %d\n", i+1, status);
-      StripTask::getStripTask(i).touchChanged();
+      StripTask::getStripTask(i).touchChanged(keyStatuses[i]);
     }
   }
 }

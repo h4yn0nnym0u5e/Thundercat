@@ -313,7 +313,7 @@ class SuperTask : public FaderMonsterTask
 //    Y88b. Y88..88P Y88b 888 Y88b.    888  888 
 //     "Y888 "Y88P"   "Y88888  "Y8888P 888  888 
 //
-typedef AT42QT2120<AT42QT2120_Wire_Async> touchChipDriver;
+typedef AT42QT2120<AT42QT2120_Wire_Async> touchChipDriverAsync;
 class TouchTask : public FaderMonsterTask
 {
     //------------------------------------------------------------------------
@@ -333,7 +333,7 @@ class TouchTask : public FaderMonsterTask
     void initTouch(void);
     void updateTouch(void);
     void pollTouch(void);
-    void updateKeyStatuses(touchChipDriver& touch);
+    void updateKeyStatuses(touchChipDriverAsync& touch);
 
     void startGT911(TaskHandle_t owner);
     uint8_t updateGT911(void);
@@ -350,7 +350,7 @@ class TouchTask : public FaderMonsterTask
               UBaseType_t _priority,
 
               int _queueLength,
-              touchChipDriver& _atq
+              touchChipDriverAsync& _atq
             )
             : FaderMonsterTask{_name, _stackDepth, _params, _priority},
               reqQueue{_queueLength}, touchChip{_atq}
@@ -367,7 +367,7 @@ class TouchTask : public FaderMonsterTask
     }
     //------------------------------------------------------------------------
     
-    touchChipDriver& touchChip;
+    touchChipDriverAsync& touchChip;
 
     // CTP touch screen stuff
     GTPoint lastTouch;
@@ -379,6 +379,71 @@ class TouchTask : public FaderMonsterTask
     static TouchStatus keyStatuses[NUM_POTS];
     UBaseType_t messagesWaiting(void) { return reqQueue.messagesWaiting(); }
 };
+
+//    888                              888             d8888 8888888b.   .d8888b.  
+//    888                              888            d88888 888  "Y88b d88P  Y88b 
+//    888                              888           d88P888 888    888 888    888 
+//    888888 .d88b.  888  888  .d8888b 88888b.      d88P 888 888    888 888        
+//    888   d88""88b 888  888 d88P"    888 "88b    d88P  888 888    888 888        
+//    888   888  888 888  888 888      888  888   d88P   888 888    888 888    888 
+//    Y88b. Y88..88P Y88b 888 Y88b.    888  888  d8888888888 888  .d88P Y88b  d88P 
+//     "Y888 "Y88P"   "Y88888  "Y8888P 888  888 d88P     888 8888888P"   "Y8888P"  
+//
+typedef AT42QT2120<AT42QT2120_Wire> touchChipDriverWire;
+class TouchADCtask : public FaderMonsterTask
+{
+    //------------------------------------------------------------------------
+    // stuff to deal with async requests from another task:
+    typedef InterTaskRequest::Result (TouchADCtask::* RequestExecutor)(void*);
+    struct requestPayload
+    {
+        RequestExecutor requestExecutor;
+        void* context;
+    };
+    RequestQueue<TouchADCtask, requestPayload> reqQueue;
+
+    InterTaskRequest::Result doCalibrateTouch(void*);
+    InterTaskRequest faderTouchReq;
+    //------------------------------------------------------------------------
+
+    void initTouch(void);
+    void updateTouch(void);
+    void pollTouch(void);
+    void updateKeyStatuses(touchChipDriverWire& touch);
+
+  public:
+    static constexpr uint32_t touchFlag = 1;
+
+    TouchADCtask(const char* _name, 
+              configSTACK_DEPTH_TYPE _stackDepth, 
+              void* _params,
+              UBaseType_t _priority,
+
+              int _queueLength,
+              touchChipDriverWire& _atq
+            )
+            : FaderMonsterTask{_name, _stackDepth, _params, _priority},
+              reqQueue{_queueLength}, touchChip{_atq}
+        {}
+    void run(void) override;
+            
+    //------------------------------------------------------------------------
+    // stuff to allow another task to make async requests:
+    InterTaskRequest::Result requestCalibration(InterTaskRequest& req)
+    {
+        requestPayload payload{&TouchADCtask::doCalibrateTouch, nullptr};
+        RequestQueue<TouchADCtask, requestPayload>::queueEntry entry{&req, payload};
+        return reqQueue.request(entry);
+    }
+    //------------------------------------------------------------------------
+    
+    touchChipDriverWire& touchChip;
+
+    bool checkChange{true}; // public: set by ISR
+    static TouchStatus keyStatuses[NUM_POTS];
+    UBaseType_t messagesWaiting(void) { return reqQueue.messagesWaiting(); }
+};
+
 
 //            d8b                   888      8888888888 8888888b.           
 //            Y8P                   888      888        888  "Y88b          
@@ -620,7 +685,8 @@ class StripTask : public FaderMonsterTask
 
     LEDring<NUM_POTS> ring;   // our LED ring
     ContinuousPot& pot;       // ...continuous pot...
-    TouchStatus& potTouch;    // ...and its touch sensor...
+    TouchStatus& potTouch,    // ...and its pot 
+               & faderTouch;  // and fader touch sensors...
     TFT_eSprite& scribble;    // ...scribble strip display...
     // Fader& fader;            // ...fader
     // Button& button;          // ...button (control and LED)
@@ -646,13 +712,15 @@ class StripTask : public FaderMonsterTask
             
               int _num, int _reqQlen,
               RingLEDs<NUM_POTS>& _rings,
-              ContinuousPot& _pot, TouchStatus& _potTouch,
+              ContinuousPot& _pot, 
+              TouchStatus& _potTouch, TouchStatus& _faderTouch,
               TFT_eSprite& _scribble,
               StripColours& _cfg
             )
     : FaderMonsterTask{_name, _stackDepth, _params, _priority},
       reqQueue{_reqQlen}, cfg{_cfg},
-      ring{LEDring{_rings,_num}}, pot{_pot}, potTouch{_potTouch},
+      ring{LEDring{_rings,_num}}, pot{_pot}, 
+      potTouch{_potTouch}, faderTouch{_faderTouch},
       scribble{_scribble}, 
       ui{*((UIclass*) _ui.space)},
       num{_num}, bright{0},
@@ -660,7 +728,8 @@ class StripTask : public FaderMonsterTask
     { }
     static void CreateTasks(void);
     static StripTask& getStripTask(int n) { return *tasks[n]; }
-    static TouchStatus& getStripTouch(int n) { return tasks[n]->potTouch; }
+    static TouchStatus& getStripPotTouch(int n) { return tasks[n]->potTouch; }
+    static TouchStatus& getStripFaderTouch(int n) { return tasks[n]->faderTouch; }
     
     void run(void) override;
 
@@ -682,9 +751,9 @@ class StripTask : public FaderMonsterTask
         reqQueue.request(entry, 0);
     }
 
-    void touchChanged(void)
+    void touchChanged(TouchStatus& touch)
     {
-        requestPayload payload{&StripTask::doTouchChange, nullptr};
+        requestPayload payload{&StripTask::doTouchChange, &touch};
         RequestQueue<StripTask, requestPayload>::queueEntry entry{&touchReq, payload};
 
         reqQueue.request(entry, 0);

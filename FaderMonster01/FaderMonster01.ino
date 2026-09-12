@@ -67,8 +67,8 @@ TaskHandle_t* handles[]{nullptr, nullptr,    // 0-1
                         &scribbleTask.handle, &mainLCDtask.handle, // 2-3
                         nullptr, nullptr, // 4-5
                         &superTask.handle,  &ringLEDsTask.handle, // 6-7
-                        &smartKnobTask.handle, // 8
-                        &potsTask.handle, &touchTask.handle, &midiTask.handle}; // 9-11
+                        &smartKnobTask.handle, &potsTask.handle, // 8-9
+                        &touchTask.handle, &touchADCtask.handle, &midiTask.handle}; // 10-12
 void printTaskStates(void)
 {
   TaskHandle_t handleIdle = xTaskGetIdleTaskHandle();
@@ -603,7 +603,7 @@ void setup()
 
   // hardware "server" tasks - independent of one another
   touchTask.create(); // creates task - doesn't start it
-  // fadersTask.create(); // just touch - potsTask deals with analogue
+  touchADCtask.create();
   ringLEDsTask.create();
   scribbleTask.create();
   mainLCDtask.create();

@@ -67,14 +67,23 @@ InterTaskRequest::Result StripTask::doPotChange(void* pNothing)
 }    
 
 
-InterTaskRequest::Result StripTask::doTouchChange(void* pNothing)
+InterTaskRequest::Result StripTask::doTouchChange(void* pTouchStatus)
 {
-    ring.setPixel(10, potTouch?xWHITE:xBLACK,bright);
-    
-    Trigger trigger{.type    = Trigger::eTriggerType::pTouchStatus, 
-                    .trigger = { .pTouchStatus = &potTouch }};
-    ui.update(trigger);
+    // need to distinguish fader and pot touches - later...
+    TouchStatus& theTouch = *(TouchStatus*) pTouchStatus;
 
+    if (pTouchStatus == &potTouch)
+    {
+      ring.setPixel(10, potTouch?xWHITE:xBLACK,bright);
+      
+      Trigger trigger{.type    = Trigger::eTriggerType::pTouchStatus, 
+                      .trigger = { .pTouchStatus = &potTouch }};
+      ui.update(trigger);
+    }
+    else if (pTouchStatus == &faderTouch)
+    {
+      ring.setPixel(10, faderTouch?xBLUE:xBLACK,bright);
+    }
     return InterTaskRequest::Result::done;
 }    
 
@@ -201,7 +210,8 @@ void StripTask::CreateTasks(void)
                     i, // strip number
                     5, // request queue length - just a guess
                     rings,               // task-specific stuff
-                    potsTask.getPot(i), TouchTask::keyStatuses[i],      
+                    potsTask.getPot(i), 
+                    TouchTask::keyStatuses[i], TouchADCtask::keyStatuses[i], 
                     scribble,
                     faderMonsterSettings.stripsConfig.colours[i]}; 
 

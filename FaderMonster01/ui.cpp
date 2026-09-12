@@ -723,7 +723,7 @@ UIclass::State MainColourPicker::update(Trigger trigger)
                 colours = {hue,bgColour,textColour}; 
                 for (int i=0;i<NUM_POTS;i++)
                 {
-                    TouchStatus& stripTouch = StripTask::getStripTouch(i);
+                    TouchStatus& stripTouch = StripTask::getStripPotTouch(i);
                     if (TouchStatus::eStatus::LONG == stripTouch.getExtendedStatus())
                     {
                         faderMonsterSettings.stripsConfig.colours[i].scribble = colours;
@@ -739,7 +739,7 @@ UIclass::State MainColourPicker::update(Trigger trigger)
                 uint32_t LEDcolour = pSprite->color16to24(bgColour); // allow brightness control
                 for (int i=0;i<NUM_POTS;i++)
                 {
-                    TouchStatus& stripTouch = StripTask::getStripTouch(i);
+                    TouchStatus& stripTouch = StripTask::getStripPotTouch(i);
                     if (TouchStatus::eStatus::LONG == stripTouch.getExtendedStatus())
                     {
                         faderMonsterSettings.stripsConfig.colours[i].ringLEDs.colour = LEDcolour;

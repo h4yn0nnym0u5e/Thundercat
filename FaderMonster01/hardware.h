@@ -39,7 +39,8 @@
 #define FADERS_TOUCH_SCL 19
 #define FADERS_TOUCH_SDA 18
 
-#define FADERS_TOUCH_I2C Wire
+#define FADERS_TOUCH_I2C   Wire
+#define FADERS_TOUCH_ADDR  0x1C
 
 // Ambient light sensor
 #define LT_SENS_ADC 41

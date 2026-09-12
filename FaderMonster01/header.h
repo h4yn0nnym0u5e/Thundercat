@@ -29,6 +29,7 @@
 #include "classes.h"
 
 extern TouchTask touchTask;
+extern TouchADCtask touchADCtask;
 extern ScribbleTask scribbleTask;
 extern MainLCDtask mainLCDtask;
 extern PotsTask potsTask;
