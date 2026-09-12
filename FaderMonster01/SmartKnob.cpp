@@ -81,7 +81,7 @@ void SmartKnobTask::packetHandler(const uint8_t* buffer, size_t size)
     else
         smooth_sub_position = SKstate.sub_position_unit;
 
-    report = {millis(), SKstate.current_position, smooth_sub_position, true};
+    report = {millis(), SKstate.current_position, smooth_sub_position, true, config.min_position, config.max_position};
 
     if (0 == config.min_position && 0 == config.max_position) // return-to-centre
     {
@@ -267,4 +267,5 @@ void SmartKnobTask::run(void)
     }
 }
 
-SmartKnobTask smartKnobTask{"SmartKnob", 640, nullptr, 3, 1};
+// high priority start, need to catch the boot strings etc.
+SmartKnobTask smartKnobTask{"SmartKnob", 640, nullptr, 3, 1}; 

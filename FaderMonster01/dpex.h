@@ -124,7 +124,8 @@ class DPex
             gppu |= mask;
         else            
             gppu &= ~mask;
-        dirtyPU |= mask;            
+        dirtyPU |= mask;    
+        //Serial.printf("GPPU: %04hX; dirty: : %04hX\n", gppu, dirtyPU);        
     }
 
     //! set GPIO bit immediately in hardware.

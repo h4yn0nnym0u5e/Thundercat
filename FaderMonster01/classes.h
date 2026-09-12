@@ -185,7 +185,7 @@ class ExpressionPedal
         if (result)
         {
             mcp4018.setDelay(0);
-            mcp4018.setWiperByte(0x3F); // middle gain
+            mcp4018.setWiperByte(55); // middle-ish gain
             isOK = true;
         }
         return result;
@@ -503,7 +503,7 @@ class TouchADCtask : public FaderMonsterTask
     static TouchStatus keyStatuses[NUM_POTS];
     UBaseType_t messagesWaiting(void) { return reqQueue.messagesWaiting(); }
 
-    bool enablePedalPrint{true};
+    uint32_t enablePedalPrint{10};
 };
 
 

@@ -209,8 +209,13 @@ void TouchADCtask::run(void)
         if (em >= 250)    
         {
             em = 0;
-            if (enablePedalPrint)
+            if (enablePedalPrint > 0)
+            {
                 Serial.printf("Expr: %.3f\n", raw);
+                enablePedalPrint--;
+                if (0 == enablePedalPrint)
+                    Serial.println("Pedal print stopped");
+            }
         }
     }
 

@@ -201,6 +201,7 @@ struct SmartKnobReport
     int32_t position;
     float   sub_position;
     bool    isInteger;
+    int32_t min, max; // min and max values
 };
 
 //                      888    888    d8b                            
