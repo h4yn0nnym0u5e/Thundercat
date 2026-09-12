@@ -428,6 +428,10 @@ void SuperTask::loopFn(void)
         enableADCprint = !enableADCprint;
         break;
 
+      case 'e':
+        touchADCtask.enablePedalPrint = !touchADCtask.enablePedalPrint;
+        break;
+
       case 's': // save scene
       {
         char n = Serial.read();
@@ -446,6 +450,7 @@ void SuperTask::loopFn(void)
         char n = Serial.read();
         if (n >= '0' && n <= '4')
         {
+          smartKnobTask.whichConfig = n - '0'; // hackety hack hack hack!
           smartKnobTask.setConfig(generalRequest, SmartKnobTask::configs[n-'0']);
         }
       }

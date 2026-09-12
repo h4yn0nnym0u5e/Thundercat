@@ -138,10 +138,36 @@ static void transferComplete(EventResponderRef evref)
     // We have two of these, which we need to write if they're
     // "dirty", and read every time
     // fallthrough
-#if 11
-    case 100:
+    case 90: // U3 pull-ups
       DPex::beginTransaction(); // will always do something
-#if 1
+
+      ADCtoDo = 91;
+      if (U3.isDirtyPU())
+      {
+        U3.assertCS();
+        U3.write16async(REG_GPPUA, U3.getGPPU(), SPIresponder);
+        ADCtoDo = 92;
+        break;
+      }
+
+    // fallthrough if U3 didn't need a write
+    case 91:
+    case 92:
+      if (92 == ADCtoDo) // write occurred
+      {
+        U3.negateCS();    // new transfer needed
+        delayNanoseconds(100); // Table 1-4 item 3
+      }
+      ADCtoDo = 93;
+      if (U5.isDirtyPU())
+      {
+        U5.assertCS();
+        U5.write16async(REG_GPPUA, U5.getGPPU(), SPIresponder);
+        ADCtoDo = 100;
+        break;
+      }
+
+    case 100: // U3 GPIO write
       ADCtoDo = 101;
       if (U3.isDirty())
       {
@@ -152,7 +178,7 @@ static void transferComplete(EventResponderRef evref)
       }
 
     // fallthrough if U3 didn't need a write
-    case 101:
+    case 101: // U5 GPIO write
     case 102:
       if (102 == ADCtoDo) // write occurred
       {
@@ -169,20 +195,20 @@ static void transferComplete(EventResponderRef evref)
       }
 
     // fallthrough if U5 didn't need a write
-    case 103:
+    case 103: // U3 GPIO read
     case 104:
       if (104 == ADCtoDo) // write occurred
       {
         U5.negateCS();    // new transfer needed
         delayNanoseconds(100); // Table 1-4 item 3
       }
-#endif // 0      
+      
       U3.assertCS();
       U3.read16async(REG_GPIOA, SPIresponder);
       ADCtoDo = 105;
       break;
 
-    case 105:
+    case 105: // U5 GPIO read
       U3.negateCS();    // new transfer needed
       delayNanoseconds(100); // Table 1-4 item 3
       U3.setGPIO(U3.convertAsyncRead());
@@ -197,7 +223,7 @@ static void transferComplete(EventResponderRef evref)
       delayNanoseconds(100); // Table 1-4 item 3
       U5.setGPIO(U5.convertAsyncRead());
       DPEX_SPI.endTransaction();
-#endif // 00
+
 
       ADCtoDo = -1; // extra flag to say we're done
       ADCupdateMicros = micros() - now;

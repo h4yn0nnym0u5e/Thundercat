@@ -9,6 +9,7 @@
 #include <initGT911.h>
 #include <LittleFS.h>
 #include <PacketSerial.h>
+#include <DS_MCP4018.h>
 
 
 #define CONCAT(a,b,c) a##b##c

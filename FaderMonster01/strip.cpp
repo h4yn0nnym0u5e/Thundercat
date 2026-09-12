@@ -69,9 +69,7 @@ InterTaskRequest::Result StripTask::doPotChange(void* pNothing)
 
 InterTaskRequest::Result StripTask::doTouchChange(void* pTouchStatus)
 {
-    // need to distinguish fader and pot touches - later...
-    TouchStatus& theTouch = *(TouchStatus*) pTouchStatus;
-
+    // Distinguish fader and pot touches
     if (pTouchStatus == &potTouch)
     {
       ring.setPixel(10, potTouch?xWHITE:xBLACK,bright);

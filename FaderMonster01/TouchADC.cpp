@@ -2,12 +2,20 @@
 #include "header.h"
 
 // AT42QT2120 touch sensor on fader caps:
-AT42QT2120_Wire fadersWire{FADERS_TOUCH_I2C, FADERS_TOUCH_ADDR};
-touchChipDriverWire fadersTouch{fadersWire, 0xFF0};
+static AT42QT2120_Wire fadersWire{FADERS_TOUCH_I2C, FADERS_TOUCH_ADDR};
+static touchChipDriverWire fadersTouch{fadersWire, 0xFF0};
 TouchStatus TouchADCtask::keyStatuses[NUM_POTS];
 
 static void isrTouch(void);
 
+static ExpressionPedal expressionPedal{
+    EXPR_PED_I2C, EXPR_PED_MCP4018_RES,
+    [](void){ return analogRead(EXPR_PED_ADC);}, 4095,
+    [](bool trctl) { SET_BIT(PEDAL_TRCTRL, trctl); },
+    [](bool pull_up_rs_in) { SET_PULLUP(PEDAL_RSIN, pull_up_rs_in); },
+    [](void){ return GET_BIT(PEDAL_RSIN);},
+    [](void){ return GET_BIT(PEDAL_DET);},
+};
 
 //**************************************************************************
 //**************************************************************************
@@ -134,6 +142,15 @@ void TouchADCtask::initTouch(void)
   updateTouch();
 }
 
+/**
+ * Get pedal reading, scaled to ±1.0f
+ */
+float ExpressionPedal::getValue(void)
+{
+    float raw = (*ADCread)();
+    return raw/ADCmax2 - 1.0f;
+}
+
 //=========================================================================
 //
 //    888                      888      
@@ -148,21 +165,65 @@ void TouchADCtask::initTouch(void)
 void TouchADCtask::run(void)
 {
   uint32_t whichISR = 0;
-  vTaskDelay(5);
+  vTaskDelay(1500);
   initTouch();
+  bool pedalPresent{false};
+  elapsedMillis em;
+
+  // set up analogue to suit our purposes
+  analogReadRes(12);        // 12-bit, 0..4095
+  analogReadAveraging(4);   // do some inbuilt averaging
+
+  // do some dummy reads
+  analogRead(EXPR_PED_ADC);
+  analogRead(LT_SENS_ADC);
+
+  // start the expression pedal
+  expressionPedal.begin();
+  expressionPedal.setExprMode(true); // set to Expression mode (rather than Switch)
 
   while (1)
   {
     reqQueue.executeRequest(*this, 0); // execute any pending requests (calibration)
 
-    if (pdTRUE == xTaskNotifyWait(0UL, UINT32_MAX, &whichISR, 10)) // wait for notification from touch ISR
+    if (pdTRUE == xTaskNotifyWait(0UL, UINT32_MAX, &whichISR, 2)) // wait for notification from touch ISR
     {
-      // Pot touch chip triggered?
+      // Fader touch chip triggered?
       if (0 != (whichISR & touchFlag))
         updateTouch(); // only does I²C if ISR fired
     }
 
     pollTouch(); // generate state outputs, e.g. time long presses
+
+    if (expressionPedal.isPresent() != pedalPresent)
+    {
+        pedalPresent = !pedalPresent;
+        Serial.printf("Pedal is %spresent\n", pedalPresent?"":"not ");
+    }
+
+    if (expressionPedal)
+    {
+        static float raw;
+        raw = expressionPedal.getValue();
+
+        if (em >= 250)    
+        {
+            em = 0;
+            if (enablePedalPrint)
+                Serial.printf("Expr: %.3f\n", raw);
+        }
+    }
+
+    if (3 == smartKnobTask.whichConfig)
+    {
+        static int lastSKpos = 127;
+        if (smartKnobTask.last_position != lastSKpos)
+        {
+            lastSKpos = smartKnobTask.last_position;
+            expressionPedal.setGain(lastSKpos / 2);
+            Serial.printf("Set expr pot to 0x%02X\n", lastSKpos / 2);
+        }
+    }
   }
 }
 

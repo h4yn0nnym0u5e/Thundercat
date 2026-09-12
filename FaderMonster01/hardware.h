@@ -32,7 +32,8 @@
 // Expression pedal
 #define EXPR_PED_ADC 40
 
-#define EXPR_PED_I2C Wire
+#define EXPR_PED_I2C         Wire
+#define EXPR_PED_MCP4018_RES 10000.0f
 
 // Faders touch 
 #define FADERS_TOUCH_INT 39

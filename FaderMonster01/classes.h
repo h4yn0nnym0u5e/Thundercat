@@ -136,6 +136,66 @@ class ButtonLED
     void setBrightness(uint8_t n) { ledString.setBrightness(n); }
 };
 
+//                           888          888 
+//                           888          888 
+//                           888          888 
+//    88888b.   .d88b.   .d88888  8888b.  888 
+//    888 "88b d8P  Y8b d88" 888     "88b 888 
+//    888  888 88888888 888  888 .d888888 888 
+//    888 d88P Y8b.     Y88b 888 888  888 888 
+//    88888P"   "Y8888   "Y88888 "Y888888 888 
+//    888                                     
+//    888                                     
+//    888                                     
+//
+// Support an expression / dual footswitch pedal on the 
+// Premium Pro Pedal Board v1.34 (at the time of writing...)
+class ExpressionPedal
+{
+    MCP4018 mcp4018;
+    int  (*ADCread)(void);
+    void (*setTRCTL)(bool);
+    void (*pullupRS_IN)(bool);
+    bool (*getRS_IN)(void);
+    bool (*getSENSE)(void);
+
+    bool isOK{false};
+    int  ADCmax2; // half the maximum expected reading
+    
+  public:
+    ExpressionPedal(TwoWire& _wire, 
+                    float _mcpResistance,
+                    int (*_ADCread)(void), int _ADCmax, 
+                    void (*_setTRCTL)(bool),
+                    void (*_pullupRS_IN)(bool),
+                    bool (*_getRS_IN)(void),
+                    bool (*_getSENSE)(void)
+                    )
+        : mcp4018{_wire, _mcpResistance},
+          ADCread{_ADCread}, setTRCTL{_setTRCTL},
+          pullupRS_IN{_pullupRS_IN}, getRS_IN{_getRS_IN},
+          getSENSE{_getSENSE},
+          ADCmax2{_ADCmax/2}
+          {}
+    
+    operator bool() { return isOK && isPresent(); }
+    bool begin(void) 
+    { 
+        bool result = mcp4018.begin(); 
+        if (result)
+        {
+            mcp4018.setDelay(0);
+            mcp4018.setWiperByte(0x3F); // middle gain
+            isOK = true;
+        }
+        return result;
+    }
+    bool isPresent(void) { return (*getSENSE)(); }
+    void setExprMode(bool b) { setTRCTL(!b); pullupRS_IN(!b); }
+    float getValue(void);
+    void setGain(uint8_t g) { mcp4018.setWiperByte(g); }
+};
+
 //                                             888                    
 //                                             888                    
 //                                             888                    
@@ -442,6 +502,8 @@ class TouchADCtask : public FaderMonsterTask
     bool checkChange{true}; // public: set by ISR
     static TouchStatus keyStatuses[NUM_POTS];
     UBaseType_t messagesWaiting(void) { return reqQueue.messagesWaiting(); }
+
+    bool enablePedalPrint{true};
 };
 
 
@@ -892,7 +954,6 @@ class SmartKnobTask : public FaderMonsterTask
     size_t last_size;
     // last reported values
     PB_SmartKnobState SKstate;
-    int last_position;
     float last_sub_position;
     SmartKnobReport report; // persistent report to which we can pass a pointer
     const uint32_t suspendFor{100}; // suspend reports for this many milliseconds after config change
@@ -923,6 +984,8 @@ class SmartKnobTask : public FaderMonsterTask
     InterTaskRequest& setConfig(InterTaskRequest& req, const PB_SmartKnobConfig& cfg);
 
     static PB_SmartKnobConfig configs[5];
+    int whichConfig;
+    int last_position;
 };
 
 

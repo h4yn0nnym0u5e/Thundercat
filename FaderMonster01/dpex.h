@@ -21,15 +21,20 @@ extern void ADCsReset(void);
 
 class DPex
 {
-    uint8_t addr;   //!< address (0-7)
-    uint16_t gpio;  //!< current value
-    uint16_t dirty; //!< dirty bits for output later
-    uint32_t asyncTx;     //!< async transmit buffer
-    uint32_t asyncResult; //!< place to put async read result
+    uint8_t addr;           //!< address (0-7)
+    // GPIO
+    uint16_t gpio;          //!< current gpio value
+    uint16_t dirty;         //!< dirty bits for output later
+    // pull-ups
+    uint16_t gppu;          //!< current pull-ups value
+    uint16_t dirtyPU;       //!< dirty bits for output later
+
+    uint32_t asyncTx;       //!< async transmit buffer
+    uint32_t asyncResult;   //!< place to put async read result
     void setCS(bool b) { digitalWriteFast(DPEX_CS, b); }
   public:    
     DPex(uint8_t _addr) 
-    : addr{_addr}
+    : addr{_addr}, dirty{0}, dirtyPU{0}
     {}
     static SPISettings spiSettings;
     uint32_t makeTransactionWord(uint8_t reg = REG_GPIOA, bool write = false, uint16_t value = 0)
@@ -44,10 +49,11 @@ class DPex
         return result;
     }
 
-    void begin(uint16_t iodir, uint16_t gppu)
+    void begin(uint16_t _iodir, uint16_t _gppu)
     {
-        write16(REG_GPIOA, iodir);
-        write16(REG_GPPUA, gppu);
+        write16(REG_GPIOA, _iodir);
+        write16(REG_GPPUA, _gppu);
+        gppu = _gppu;
         gpio = read16(REG_GPIOA);
     }
 
@@ -81,11 +87,19 @@ class DPex
     //! may be stale if there are dirty bits pending write
     uint16_t getGPIO(void) { return gpio; }
 
+    //! get stored GPPU value.
+    //! may be stale if there are dirty bits pending write
+    //! clears dirty bits: only for use in async update!
+    uint16_t getGPPU(void) { dirtyPU = 0; return gppu; }
+
     //! set stored GPIO value, e.g. after async read
     void setGPIO(uint16_t val) { gpio = val; dirty = 0; }
 
     //! \return true if stored gpio has dirty bits
     bool isDirty(void) { return dirty != 0; }
+
+    //! \return true if stored gpio has dirty bits
+    bool isDirtyPU(void) { return dirtyPU != 0; }
 
     //! get stored GPIO bit.
     //! may be stale if there are dirty bits pending write
@@ -100,6 +114,17 @@ class DPex
         else            
             gpio &= ~mask;
         dirty |= mask;            
+    }
+
+    //! set a bit in the stored GPPU value
+    void setGPPUbit(uint8_t n, bool state)
+    {
+        uint16_t mask = 1<<n;
+        if (state)
+            gppu |= mask;
+        else            
+            gppu &= ~mask;
+        dirtyPU |= mask;            
     }
 
     //! set GPIO bit immediately in hardware.
@@ -148,3 +173,5 @@ extern DPex U3, U5;
 #define SET_BIT_NOW(pin,val) _DO_SET(setBit,val,pin)
 #define GET_BIT(pin) _DO_GET(getGPIObit, pin)
 #define GET_BUTTON(pin) !_DO_GET(getGPIObit, pin)
+
+#define SET_PULLUP(pin,val) _DO_SET(setGPPUbit,val,pin)
