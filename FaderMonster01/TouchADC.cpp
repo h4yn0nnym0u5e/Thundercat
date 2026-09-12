@@ -8,7 +8,7 @@ TouchStatus TouchADCtask::keyStatuses[NUM_POTS];
 
 static void isrTouch(void);
 
-static ExpressionPedal expressionPedal{
+ExpressionPedal expressionPedal{
     EXPR_PED_I2C, EXPR_PED_MCP4018_RES,
     [](void){ return analogRead(EXPR_PED_ADC);}, 4095,
     [](bool trctl) { SET_BIT(PEDAL_TRCTRL, trctl); },
@@ -219,6 +219,7 @@ void TouchADCtask::run(void)
         }
     }
 
+    // Hacky way of setting expression pedal gain
     if (3 == smartKnobTask.whichConfig)
     {
         static int lastSKpos = 127;
@@ -226,7 +227,7 @@ void TouchADCtask::run(void)
         {
             lastSKpos = smartKnobTask.last_position;
             expressionPedal.setGain(lastSKpos / 2);
-            Serial.printf("Set expr pot to 0x%02X\n", lastSKpos / 2);
+            // Serial.printf("Set expr pot to 0x%02X\n", lastSKpos / 2);
         }
     }
   }

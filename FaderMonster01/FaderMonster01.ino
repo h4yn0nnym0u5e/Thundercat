@@ -166,7 +166,7 @@ InterTaskRequest::Result SuperTask::doProcessSmartKnob(void* pSKreport)
     {
       //Serial.printf("[%lu] : Position: %d\n", skReport.ms, skReport.position);
       flipui = true;
-      whichUI = skReport.position % 3; // magic!
+      whichUI = skReport.position % 4; // magic!
       whichUI--; // because flipping increments it
     }
   }
@@ -289,6 +289,11 @@ bool SuperTask::processUI(void)
         sprintf(mainLCDtask.headerText,"Enter Stuff!");
         new(_ui.space) MainQwerty; 
         break;
+
+      case 3:
+        new(_ui.space) MainExprTune; 
+        break;
+
     }
     ui.begin(mainLCDtask.getSprite(), faderMonsterSettings.mainColours);
   }

@@ -65,7 +65,7 @@ extern int rainbow[LEDS_PER_RING], cold2hot[LEDS_PER_RING];
 extern const image_4bit_info
         tl_button_info, tr_button_info, bl_button_info, br_button_info,
         keycap28_info;
-
+extern ExpressionPedal expressionPedal;
 
 
 #define COUNT_OF(a) (int)(sizeof a / sizeof a[0])

@@ -161,6 +161,7 @@ class ExpressionPedal
 
     bool isOK{false};
     int  ADCmax2; // half the maximum expected reading
+    int gain;
     
   public:
     ExpressionPedal(TwoWire& _wire, 
@@ -185,7 +186,7 @@ class ExpressionPedal
         if (result)
         {
             mcp4018.setDelay(0);
-            mcp4018.setWiperByte(55); // middle-ish gain
+            setGain(55); // middle-ish gain
             isOK = true;
         }
         return result;
@@ -193,7 +194,8 @@ class ExpressionPedal
     bool isPresent(void) { return (*getSENSE)(); }
     void setExprMode(bool b) { setTRCTL(!b); pullupRS_IN(!b); }
     float getValue(void);
-    void setGain(uint8_t g) { mcp4018.setWiperByte(g); }
+    void setGain(uint8_t g) { mcp4018.setWiperByte(g); gain = g;}
+    int getGain(void) { return gain; }
 };
 
 //                                             888                    
