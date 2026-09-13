@@ -52,7 +52,7 @@ class DPex
 
     void begin(uint16_t _iodir, uint16_t _gppu)
     {
-        write16(REG_GPIOA, _iodir);
+        write16(REG_IODIRA, _iodir);
         write16(REG_GPPUA, _gppu);
         gppu = _gppu;
         gpio = read16(REG_GPIOA);
