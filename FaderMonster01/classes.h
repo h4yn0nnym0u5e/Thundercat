@@ -482,10 +482,12 @@ class TouchADCtask : public FaderMonsterTask
               UBaseType_t _priority,
 
               int _queueLength,
-              touchChipDriverWire& _atq
+              touchChipDriverWire& _atq,
+              ExpressionPedal& _expr
             )
             : FaderMonsterTask{_name, _stackDepth, _params, _priority},
-              reqQueue{_queueLength}, touchChip{_atq}
+              reqQueue{_queueLength}, touchChip{_atq},
+              expressionPedal{_expr}
         {}
     void run(void) override;
             
@@ -506,6 +508,7 @@ class TouchADCtask : public FaderMonsterTask
     UBaseType_t messagesWaiting(void) { return reqQueue.messagesWaiting(); }
 
     uint32_t enablePedalPrint{10};
+    ExpressionPedal& expressionPedal;
 };
 
 

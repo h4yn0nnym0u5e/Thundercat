@@ -8,7 +8,10 @@ TouchStatus TouchADCtask::keyStatuses[NUM_POTS];
 
 static void isrTouch(void);
 
-ExpressionPedal expressionPedal{
+/**
+ * ExpressionPedal instance to inject into touchTask
+ */
+static ExpressionPedal exprPedal{
     EXPR_PED_I2C, EXPR_PED_MCP4018_RES,
     [](void){ return analogRead(EXPR_PED_ADC);}, 4095,
     [](bool trctl) { SET_BIT(PEDAL_TRCTRL, trctl); },
@@ -164,74 +167,77 @@ float ExpressionPedal::getValue(void)
 // 
 void TouchADCtask::run(void)
 {
-  uint32_t whichISR = 0;
-  vTaskDelay(1500);
-  initTouch();
-  bool pedalPresent{false};
-  elapsedMillis em;
+    uint32_t whichISR = 0;
+    vTaskDelay(1500);
+    initTouch();
+    bool pedalPresent{false};
+    elapsedMillis em;
 
-  // set up analogue to suit our purposes
-  analogReadRes(12);        // 12-bit, 0..4095
-  analogReadAveraging(4);   // do some inbuilt averaging
+    // set up analogue to suit our purposes
+    analogReadRes(12);        // 12-bit, 0..4095
+    analogReadAveraging(4);   // do some inbuilt averaging
 
-  // do some dummy reads
-  analogRead(EXPR_PED_ADC);
-  analogRead(LT_SENS_ADC);
+    // do some dummy reads
+    analogRead(EXPR_PED_ADC);
+    analogRead(LT_SENS_ADC);
 
-  // start the expression pedal
-  expressionPedal.begin();
-  expressionPedal.setExprMode(true); // set to Expression mode (rather than Switch)
-
-  while (1)
-  {
-    reqQueue.executeRequest(*this, 0); // execute any pending requests (calibration)
-
-    if (pdTRUE == xTaskNotifyWait(0UL, UINT32_MAX, &whichISR, 2)) // wait for notification from touch ISR
+    // start the expression pedal
+    expressionPedal.begin();
+    //*
+    expressionPedal.setExprMode(true); // set to Expression mode (rather than Switch)
+    /*/
+    expressionPedal.setExprMode(false); // set to Expression mode (rather than Switch)
+    //*/
+    while (1)
     {
-      // Fader touch chip triggered?
-      if (0 != (whichISR & touchFlag))
-        updateTouch(); // only does I²C if ISR fired
-    }
+        reqQueue.executeRequest(*this, 0); // execute any pending requests (calibration)
 
-    pollTouch(); // generate state outputs, e.g. time long presses
-
-    if (expressionPedal.isPresent() != pedalPresent)
-    {
-        pedalPresent = !pedalPresent;
-        Serial.printf("Pedal is %spresent\n", pedalPresent?"":"not ");
-    }
-
-    if (expressionPedal)
-    {
-        static float raw;
-        raw = expressionPedal.getValue();
-
-        if (em >= 250)    
+        if (pdTRUE == xTaskNotifyWait(0UL, UINT32_MAX, &whichISR, 2)) // wait for notification from touch ISR
         {
-            em = 0;
-            if (enablePedalPrint > 0)
+        // Fader touch chip triggered?
+        if (0 != (whichISR & touchFlag))
+            updateTouch(); // only does I²C if ISR fired
+        }
+
+        pollTouch(); // generate state outputs, e.g. time long presses
+
+        if (expressionPedal.isPresent() != pedalPresent)
+        {
+            pedalPresent = !pedalPresent;
+            Serial.printf("Pedal is %spresent\n", pedalPresent?"":"not ");
+        }
+
+        if (expressionPedal)
+        {
+            static float raw;
+            raw = expressionPedal.getValue();
+
+            if (em >= 250)    
             {
-                Serial.printf("Expr: %.3f\n", raw);
-                enablePedalPrint--;
-                if (0 == enablePedalPrint)
-                    Serial.println("Pedal print stopped");
+                em = 0;
+                if (enablePedalPrint > 0)
+                {
+                    Serial.printf("Expr: %.3f; gain %d\n", raw, expressionPedal.getGain());
+                    enablePedalPrint--;
+                    if (0 == enablePedalPrint)
+                        Serial.println("Pedal print stopped");
+                }
+            }
+        }
+
+        // Hacky way of setting expression pedal gain
+        if (3 == smartKnobTask.whichConfig)
+        {
+            static int lastSKpos = 127;
+            if (smartKnobTask.last_position != lastSKpos)
+            {
+                lastSKpos = smartKnobTask.last_position;
+                expressionPedal.setGain(lastSKpos / 2);
+                // Serial.printf("Set expr pot to 0x%02X\n", lastSKpos / 2);
             }
         }
     }
-
-    // Hacky way of setting expression pedal gain
-    if (3 == smartKnobTask.whichConfig)
-    {
-        static int lastSKpos = 127;
-        if (smartKnobTask.last_position != lastSKpos)
-        {
-            lastSKpos = smartKnobTask.last_position;
-            expressionPedal.setGain(lastSKpos / 2);
-            // Serial.printf("Set expr pot to 0x%02X\n", lastSKpos / 2);
-        }
-    }
-  }
 }
 
 
-TouchADCtask touchADCtask{"TouchADC", 512, nullptr, 7, 1, fadersTouch};
+TouchADCtask touchADCtask{"TouchADC", 512, nullptr, 7, 1, fadersTouch, exprPedal};

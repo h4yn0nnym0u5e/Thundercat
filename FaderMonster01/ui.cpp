@@ -1215,14 +1215,13 @@ UIclass::State MainExprTune::update(Trigger trigger)
     return (state = result); // save and return state
 }
 
-extern ExpressionPedal expressionPedal;
 uint32_t MainExprTune::poll(void)
 {
     const uint32_t updateEvery{50'000};
     uint32_t result = interval;
     if (interval >= updateEvery) // every 10ms
     {
-        float pedal = expressionPedal.getValue();
+        float pedal = touchADCtask.expressionPedal.getValue();
         //Serial.printf("tune: %.3f\n", pedal);
         last = pedal;
         if (drawBarTo(pedal))
