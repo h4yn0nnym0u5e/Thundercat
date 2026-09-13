@@ -21,6 +21,7 @@ extern void ADCsReset(void);
 
 class DPex
 {
+  public:    
     uint8_t addr;           //!< address (0-7)
     // GPIO
     uint16_t gpio;          //!< current gpio value
