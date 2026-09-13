@@ -334,6 +334,9 @@ bool SuperTask::processUI(void)
 extern FlexIOSPI SPIflex;
 extern int stallCount;
 static char fileName[30];
+uint8_t bits;
+static bool countBits;
+
 void SuperTask::loopFn(void)
 {
   { // debug print of ADCs
@@ -429,7 +432,10 @@ void SuperTask::loopFn(void)
         break;
 
       case 'e':
-        touchADCtask.enablePedalPrint = !touchADCtask.enablePedalPrint;
+        if (0 == touchADCtask.enablePedalPrint)
+          touchADCtask.enablePedalPrint = 100;
+        else
+          touchADCtask.enablePedalPrint = 0;
         break;
 
       case 's': // save scene
@@ -487,7 +493,12 @@ void SuperTask::loopFn(void)
 
       case 't':
         printTaskStates();
-        break;        
+        break;
+
+      case '.':
+        countBits = !countBits;
+        if (!countBits) bits = 0;
+        break;
     }
     if (exitWhile)
       break;
@@ -529,7 +540,6 @@ void SuperTask::loopFn(void)
 SuperTask superTask{"Super", 512, nullptr, 2, 
                     8 /* plenty of requests (?) */};
 
-uint8_t bits;
 void SuperTask::run(void)
 {
   Serial.printf("\n\n[%d]: started supervisor task\n", micros());
@@ -550,7 +560,8 @@ void SuperTask::run(void)
     if (em >= 20)
     {
       em = 0;
-      bits++;
+      if (countBits)
+        bits++;
     }
   }
 }

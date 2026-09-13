@@ -161,6 +161,7 @@ class ExpressionPedal
 
     bool isOK{false};
     int  ADCmax2; // half the maximum expected reading
+    int gain;
     
   public:
     ExpressionPedal(TwoWire& _wire, 
@@ -185,7 +186,7 @@ class ExpressionPedal
         if (result)
         {
             mcp4018.setDelay(0);
-            mcp4018.setWiperByte(0x3F); // middle gain
+            setGain(55); // middle-ish gain
             isOK = true;
         }
         return result;
@@ -193,7 +194,8 @@ class ExpressionPedal
     bool isPresent(void) { return (*getSENSE)(); }
     void setExprMode(bool b) { setTRCTL(!b); pullupRS_IN(!b); }
     float getValue(void);
-    void setGain(uint8_t g) { mcp4018.setWiperByte(g); }
+    void setGain(uint8_t g) { mcp4018.setWiperByte(g); gain = g;}
+    int getGain(void) { return gain; }
 };
 
 //                                             888                    
@@ -480,10 +482,12 @@ class TouchADCtask : public FaderMonsterTask
               UBaseType_t _priority,
 
               int _queueLength,
-              touchChipDriverWire& _atq
+              touchChipDriverWire& _atq,
+              ExpressionPedal& _expr
             )
             : FaderMonsterTask{_name, _stackDepth, _params, _priority},
-              reqQueue{_queueLength}, touchChip{_atq}
+              reqQueue{_queueLength}, touchChip{_atq},
+              expressionPedal{_expr}
         {}
     void run(void) override;
             
@@ -503,7 +507,8 @@ class TouchADCtask : public FaderMonsterTask
     static TouchStatus keyStatuses[NUM_POTS];
     UBaseType_t messagesWaiting(void) { return reqQueue.messagesWaiting(); }
 
-    bool enablePedalPrint{true};
+    uint32_t enablePedalPrint{10};
+    ExpressionPedal& expressionPedal;
 };
 
 

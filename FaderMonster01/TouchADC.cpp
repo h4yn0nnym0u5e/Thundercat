@@ -8,7 +8,10 @@ TouchStatus TouchADCtask::keyStatuses[NUM_POTS];
 
 static void isrTouch(void);
 
-static ExpressionPedal expressionPedal{
+/**
+ * ExpressionPedal instance to inject into touchTask
+ */
+static ExpressionPedal exprPedal{
     EXPR_PED_I2C, EXPR_PED_MCP4018_RES,
     [](void){ return analogRead(EXPR_PED_ADC);}, 4095,
     [](bool trctl) { SET_BIT(PEDAL_TRCTRL, trctl); },
@@ -209,10 +212,15 @@ void TouchADCtask::run(void)
         if (em >= 250)    
         {
             em = 0;
-            if (enablePedalPrint)
-                Serial.printf("Expr: %.3f\n", raw);
+                if (enablePedalPrint > 0)
+                {
+                    Serial.printf("Expr: %.3f; gain %d\n", raw, expressionPedal.getGain());
+                    enablePedalPrint--;
+                    if (0 == enablePedalPrint)
+                        Serial.println("Pedal print stopped");
+                }
+            }
         }
-    }
 
     if (3 == smartKnobTask.whichConfig)
     {
@@ -228,4 +236,4 @@ void TouchADCtask::run(void)
 }
 
 
-TouchADCtask touchADCtask{"TouchADC", 512, nullptr, 7, 1, fadersTouch};
+TouchADCtask touchADCtask{"TouchADC", 512, nullptr, 7, 1, fadersTouch, exprPedal};

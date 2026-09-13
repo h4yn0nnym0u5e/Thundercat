@@ -67,6 +67,5 @@ extern const image_4bit_info
         keycap28_info;
 
 
-
 #define COUNT_OF(a) (int)(sizeof a / sizeof a[0])
 #endif // !defined(_HEADER_H_)
