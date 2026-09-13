@@ -25,6 +25,7 @@ class ContinuousPot
     float minChange;      //!< minimum reported change
     bool limitsApplied;   //!< true to apply limits to current value
     bool changed;         //!< true if value change is greater than minChange
+    bool forceCurrent;    //!< force reading to currently set value
     int accelDisable;     //!< true to disable acceleration
     elapsedMicros updateInterval; //!< interval since last update (microseconds)
   public:
@@ -34,7 +35,7 @@ class ContinuousPot
         rate{0.0f}, current{0.0f},
         scale{1.0f}, accelThreshold{0.0f}, accelFactor{0.0f}, 
         smooth{0.1f}, minChange{0.000002f},
-        limitsApplied{false}, changed{false},
+        limitsApplied{false}, changed{false}, forceCurrent{false},
         accelDisable{5}, updateInterval{0}
         ,debug{false}
       {}
@@ -57,7 +58,7 @@ class ContinuousPot
 
     //! [re]set logical position
     void  setCurrent(float c) //!< new position
-      { current = c; } 
+      { current = c; forceCurrent = true; } 
 
     //! set limits of logical position
     void setLimits(float l, float h) { minLimit = l; maxLimit = h; } 

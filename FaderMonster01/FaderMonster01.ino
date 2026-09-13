@@ -433,6 +433,7 @@ void SuperTask::loopFn(void)
 
       case 'z':
         mainLCDtask.zapScreen = true;
+        PotsTask::potsToRaw();
         break;
 
       case 'p':

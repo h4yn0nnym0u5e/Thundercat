@@ -30,14 +30,6 @@ PotsTask::MIDIreq PotsTask::midiReqs[NUM_POTS];
 static const int potMap[] = POT_MAP;
 
 //================================================================================
-void potsToRaw(void)
-{
-  for (int i=0;i<NUM_POTS;i++)
-  {
-    allPots[i].setCurrent(allPots[i].getRaw());
-  }
-}
-
 void zeroPots(void)
 {
   for (int i=0;i<NUM_POTS;i++)

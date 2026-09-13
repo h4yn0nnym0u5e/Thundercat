@@ -82,7 +82,15 @@ DBG(current);
     current = newVal; // one point of update - safe for RTOS
   }
 
-  changed = current != oldVal;
+  if (forceCurrent)
+  {
+    forceCurrent = false;
+    changed = true;
+    current = oldVal;
+    raw = t3;
+  }
+  else
+    changed = current != oldVal;
 
   // stash values ready for next update:
   if (current != oldVal || limited)
