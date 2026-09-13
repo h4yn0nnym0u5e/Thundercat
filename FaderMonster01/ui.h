@@ -83,6 +83,7 @@ class UIclass
                     const image_4bit_info& img, const uint16_t* cmap,
                     const char* txt, int xoff, int yoff);
     bool isNewTouch(Trigger trigger);
+    void drawHeader(const char* txt);
 
     // display writing methods
     InterTaskRequest& writeToMainLCD(void);
@@ -280,6 +281,21 @@ class MainQwerty : public UIclass
     virtual InterTaskRequest& writeToDisplay(void) { return writeToMainLCD(); }
     //virtual uint32_t poll(void);
 };
+//------------------------------------------------------------------
+class MainExprTune : public UIclass 
+{
+    static constexpr int barX{10}, barY{50}, barW{300}, barH{20};
+    bool drawBarTo(float pos);
+
+    float min, max, last;
+
+  public:
+    virtual State begin(TFT_eSprite& sprite, colours_t c);
+    virtual State update(Trigger trigger);
+    virtual InterTaskRequest& writeToDisplay(void) { return writeToMainLCD(); }
+    virtual uint32_t poll(void);
+};
+
 //==================================================================
 class MainDummy : public UIclass {};
 union MainUI
@@ -288,6 +304,7 @@ union MainUI
     MainTestRects testRects;
     MainColourPicker colourPicker;
     MainQwerty qwerty;
+    MainExprTune expr;
 };
 
 union MainUIholder

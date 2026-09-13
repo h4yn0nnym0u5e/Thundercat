@@ -162,10 +162,13 @@ InterTaskRequest::Result SuperTask::doProcessSmartKnob(void* pSKreport)
   SmartKnobReport& skReport = *((SmartKnobReport*) pSKreport);
   if (skReport.isInteger)
   {
-    //Serial.printf("[%lu] : Position: %d\n", skReport.ms, skReport.position);
-    flipui = true;
-    whichUI = skReport.position % 3; // magic!
-    whichUI--; // because flipping increments it
+    if (skReport.max != 255) // don't use fine values for flipping UI
+    {
+      //Serial.printf("[%lu] : Position: %d\n", skReport.ms, skReport.position);
+      flipui = true;
+      whichUI = skReport.position % 4; // magic!
+      whichUI--; // because flipping increments it
+    }
   }
   else
     Serial.printf("[%lu] : Position: %.3f\n", skReport.ms, skReport.sub_position);
@@ -286,6 +289,11 @@ bool SuperTask::processUI(void)
         sprintf(mainLCDtask.headerText,"Enter Stuff!");
         new(_ui.space) MainQwerty; 
         break;
+
+      case 3:
+        new(_ui.space) MainExprTune; 
+        break;
+
     }
     ui.begin(mainLCDtask.getSprite(), faderMonsterSettings.mainColours);
   }
@@ -425,6 +433,7 @@ void SuperTask::loopFn(void)
 
       case 'z':
         mainLCDtask.zapScreen = true;
+        PotsTask::potsToRaw();
         break;
 
       case 'p':

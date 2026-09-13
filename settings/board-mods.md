@@ -21,3 +21,10 @@ Change R10 / R11 to 2k2
 
 ## Pot board v1.03 ##
 Add 15pF series caps to touch lines
+
+# Notes #
+The M-Audio EX-P _must_ have its trim dialled right down, but 
+the switch position doesn't appear to matter (?).
+
+Gain byte of 55 seems roughly optimal.
+

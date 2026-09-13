@@ -920,6 +920,13 @@ class PotsTask : public FaderMonsterTask
 
     // debug stuff
     static void printADCs(void);
+    static void potsToRaw(void)
+    {
+        for (int i=0;i<NUM_POTS;i++)
+        {
+            allPots[i].setCurrent(allPots[i].getRaw());
+        }
+    }
 };
 
 

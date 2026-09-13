@@ -11,6 +11,14 @@
 //    Y88b. .d88P   888  Y88b.    888 888  888      X88      X88 
 //     "Y88888P"  8888888 "Y8888P 888 "Y888888  88888P'  88888P' 
 // 
+void UIclass::drawHeader(const char* txt)
+{
+    // draw heading 
+    pSprite->fillRect(0,0,pSprite->width(), 30, TFT_BLACK);
+    pSprite->setFreeFont(&FreeSans12pt7b);
+    pSprite->setTextColor(colours.fg, TFT_BLACK);
+    pSprite->drawString(txt,2,2);
+} 
 
 bool UIclass::isNewTouch(Trigger trigger)
 {
@@ -1017,10 +1025,7 @@ UIclass::State MainQwerty::begin(TFT_eSprite& sprite, colours_t c)
     pSprite->fillScreen(colours.bg);
 
     // draw heading 
-    pSprite->fillRect(0,0,pSprite->width(), yo, TFT_BLACK);
-    pSprite->setFreeFont(&FreeSans12pt7b);
-    pSprite->setTextColor(colours.fg, TFT_BLACK);
-    pSprite->drawString(mainLCDtask.headerText,2,2);
+    drawHeader(mainLCDtask.headerText);
     
     // preset text choices
     pSprite->setFreeFont(&FreeSansBold9pt7b);
@@ -1111,4 +1116,117 @@ UIclass::State MainQwerty::update(Trigger trigger)
             break;
     }
     return (state = result); // save and return state
+}
+
+//    8888888888                       88888888888                         
+//    888                                  888                             
+//    888                                  888                             
+//    8888888    888  888 88888b.  888d888 888  888  888 88888b.   .d88b.  
+//    888        `Y8bd8P' 888 "88b 888P"   888  888  888 888 "88b d8P  Y8b 
+//    888          X88K   888  888 888     888  888  888 888  888 88888888 
+//    888        .d8""8b. 888 d88P 888     888  Y88b 888 888  888 Y8b.     
+//    8888888888 888  888 88888P"  888     888   "Y88888 888  888  "Y8888  
+//                        888                                              
+//                        888                                              
+//                        888                                              
+// 
+
+bool MainExprTune::drawBarTo(float pos)
+{
+    int w,x;
+
+    if (pos > max)
+    {
+        w = (int)((pos - max)*barW / 2.0f);
+        x = barX + (int)((max+1)*barW / 2.0f);
+        if (w > 0) 
+        {
+            max = pos;
+            w++;
+            x--;
+        }
+    }
+    else if (pos < min)
+    {
+        w = (int)((min - pos)*barW / 2.0f);
+        x = barX + (int)((pos+1)*barW / 2.0f);
+        if (w > 0) 
+        {
+            min = pos;
+            w++;            
+        }
+    }
+    if (w > 0)
+        pSprite->fillRect(x,barY,w,barH, colours.fg);
+    return w>0;        
+}
+
+UIclass::State MainExprTune::begin(TFT_eSprite& sprite, colours_t c)
+{
+    State result = State::push;
+    UIclass::begin(sprite, c); // do standard setup
+
+    // clear screen
+    pSprite->fillScreen(colours.bg);
+
+    // draw heading 
+    drawHeader("Tune pedal");
+    
+    // preset text choices
+    pSprite->setFreeFont(&FreeSansBold9pt7b);
+    pSprite->setTextColor(colours.fg, colours.bg, false); // no background fill
+    pSprite->setTextDatum(TC_DATUM);
+
+    const int d = 2;
+    pSprite->fillRect(barX-d,barY-d,barW+2*d, barH+2*d, TFT_BLACK);
+    pSprite->fillRect(barX,barY,barW, barH, colours.bg);
+
+    return (state = result); // save and return state
+}
+
+UIclass::State MainExprTune::update(Trigger trigger)
+{
+    State result = State::done;
+
+    switch (trigger.type)
+    {
+        default: // we don't react to that trigger type
+            result = State::done;
+            break;
+        //----------------------------------------------------------------------
+        case Trigger::eTriggerType::touchPoint:
+        {
+            GTPoint& newPt = trigger.trigger.touchPoint;
+            if (isNewTouch(trigger))
+            {
+                currentTrigger = trigger; // keep the trigger and value(s)
+
+                if (255 == newPt.reserved)
+                {
+                    max = min = last;
+                    pSprite->fillRect(barX, barY, barW, barH, colours.bg);
+                    drawBarTo(last + 1.1f / barW);
+                    result = State::push;
+                }
+            }
+        }
+            break;
+    }
+    return (state = result); // save and return state
+}
+
+uint32_t MainExprTune::poll(void)
+{
+    const uint32_t updateEvery{50'000};
+    uint32_t result = interval;
+    if (interval >= updateEvery) // every 10ms
+    {
+        float pedal = touchADCtask.expressionPedal.getValue();
+        //Serial.printf("tune: %.3f\n", pedal);
+        last = pedal;
+        if (drawBarTo(pedal))
+            state = State::push; // update needed
+        interval -= updateEvery; // try to stay in sync
+    }
+    return result;
 }
