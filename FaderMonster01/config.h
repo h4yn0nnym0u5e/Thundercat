@@ -84,6 +84,7 @@
 
 #define FONT_3DP FreeSansBold24pt7b
 #define FONT_4DP FreeSansBold18pt7b
+#define FONT_BUTTON FreeSans9pt7b
 #define FMT_3DP "%6.3f"
 #define FMT_4DP "%7.4f"
 

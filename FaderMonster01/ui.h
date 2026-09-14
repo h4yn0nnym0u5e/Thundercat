@@ -120,6 +120,46 @@ class UIclass
     InterTaskRequest updateReq;
 };
 
+//==================================================================
+//    888               888    888                     
+//    888               888    888                     
+//    888               888    888                     
+//    88888b.  888  888 888888 888888 .d88b.  88888b.  
+//    888 "88b 888  888 888    888   d88""88b 888 "88b 
+//    888  888 888  888 888    888   888  888 888  888 
+//    888 d88P Y88b 888 Y88b.  Y88b. Y88..88P 888  888 
+//    88888P"   "Y88888  "Y888  "Y888 "Y88P"  888  888 
+//  
+class UIbutton
+{
+    TFTcolours& colours;
+    int x,y,w,h;
+    char* label; 
+    const GFXfont *font;
+    int labXoff, labYoff;
+    bool isHit{false};
+  public:
+    UIbutton(TFTcolours& c,
+             int _x, int _y, int _w, int _h,
+             char* _label, const GFXfont *_f = &FONT_BUTTON, 
+             int _labXoff = 0, int _labYoff = 0)
+      : colours{c},
+        x{_x}, y{_y}, w{_w}, h{_h},
+        label{_label}, 
+        font{_f}, labXoff{_labXoff}, labYoff{_labYoff}
+        {}       
+    virtual void draw(TFT_eSprite* pSprite, bool hit = false);
+    virtual bool isIn(GTPoint&);
+    virtual bool unHit(TFT_eSprite* pSprite) 
+    { 
+        bool wasHit = isHit;
+        if (isHit) 
+            draw(pSprite); 
+        return wasHit;            
+    }
+};
+
+
 
 //==================================================================
 //
@@ -292,6 +332,10 @@ class MainExprTune : public UIclass
                      textW{60}, textH{25}, textLen{10};
     UIclass::State drawBarTo(float pos);
     UIclass::State _setFloat(float f, char* buf, char* stash);
+
+    UIbutton set    {colours,   20,    180, 80,40, (char*) "Set"};
+    UIbutton clear  {colours, 160- 40, 180, 80,40, (char*) "Clear"};
+    UIbutton autocal{colours, 320-100, 180, 80,40, (char*) "Cal"};
 
     float min{0.0f}, max{0.0f}, last{0.0f};
     char minText[textLen]{0}, maxText[textLen]{0}, 

@@ -262,7 +262,43 @@ bool UIclass::writeFinished(void)
 InterTaskRequest UIclass::autoFail{InterTaskRequest::Result::failed};
 //==========================================================================
 
+//==================================================================
+//    888               888    888                     
+//    888               888    888                     
+//    888               888    888                     
+//    88888b.  888  888 888888 888888 .d88b.  88888b.  
+//    888 "88b 888  888 888    888   d88""88b 888 "88b 
+//    888  888 888  888 888    888   888  888 888  888 
+//    888 d88P Y88b 888 Y88b.  Y88b. Y88..88P 888  888 
+//    88888P"   "Y88888  "Y888  "Y888 "Y88P"  888  888 
+//  
+void UIbutton::draw(TFT_eSprite* pSprite, bool hit)
+{
+    int bg = colours.bg, txt = colours.txt;
+    if (hit)
+    {
+        bg = colours.txt;
+        txt = colours.bg;
+    }
+    pSprite->fillRoundRect(x,y,w,h,5,colours.fg);
+    pSprite->fillRoundRect(x+2,y+2,w-4,h-4,4,bg);
+    pSprite->setFreeFont(font);
+    pSprite->setTextDatum(CC_DATUM); 
+    pSprite->setTextColor(txt, bg);
+    pSprite->drawString(label,x+w/2+labXoff,y+h/2+labYoff);
 
+    isHit = hit;
+}
+
+bool UIbutton::isIn(GTPoint& pt)
+{
+    /*
+    Serial.printf("x: %d, xl: %d, xu: %d; y: %d, yl: %d, yu: %d\n",
+                    pt.x,x,x+w, pt.y,y,y+h);
+    */
+    return pt.x >= x && pt.x <= x+w
+        && pt.y >= y && pt.y <= y+h;
+}
 //==================================================================
 //
 //                              d8b 888      888      888          
@@ -1189,6 +1225,11 @@ UIclass::State MainExprTune::begin(TFT_eSprite& sprite, colours_t c)
     pSprite->fillRect(barX-d,barY-d,barW+2*d, barH+2*d, TFT_BLACK);
     pSprite->fillRect(barX,barY,barW, barH, colours.bg);
 
+    // buttons
+    set.draw(pSprite);
+    clear.draw(pSprite);
+    autocal.draw(pSprite);
+
     return (state = result); // save and return state
 }
 
@@ -1226,16 +1267,30 @@ UIclass::State MainExprTune::update(Trigger trigger)
             if (isNewTouch(trigger))
             {
                 currentTrigger = trigger; // keep the trigger and value(s)
+                bool lifted = 255 == newPt.reserved;
 
-                if (255 == newPt.reserved)
+                if (clear.isIn(newPt)) // clear existing limits bar
                 {
-                    // clear existing drawing
-                    pSprite->fillRect(barX, barY, barW, barH, colours.bg);
-                    phase = idle;
+                    if (lifted)
+                    {
+                        pSprite->fillRect(barX, barY, barW, barH, colours.bg);
+                        max = min = last;
+                        phase = idle;
+                        clear.unHit(pSprite);
+                    }
+                    else
+                    {
+                        clear.draw(pSprite, true);
+                    }
                     result = State::push;
+                }
+                else
+                    result = clear.unHit(pSprite) ? State::push : result;
 
-                    //Serial.printf("x: %d, y: %d; last: %.3f\n", newPt.x, newPt.y, last);
-                    if (newPt.x > 280 && newPt.y > 200)
+                //Serial.printf("x: %d, y: %d; last: %.3f\n", newPt.x, newPt.y, last);
+                if (autocal.isIn(newPt))
+                {
+                    if (lifted)
                     {
                         int gain = touchADCtask.expressionPedal.autoCalibrate(0.97f, 0.01f);
                         Serial.printf("Autocalibrate: gain=%d, value=%.3f\n", 
@@ -1247,15 +1302,35 @@ UIclass::State MainExprTune::update(Trigger trigger)
                                     gain, touchADCtask.expressionPedal.getValue());
                         }
                         last = touchADCtask.expressionPedal.getValue();
+                        max = min = last;
+                        autocal.unHit(pSprite);
                     }
-
-                    if (newPt.x < 40 && newPt.y > 200)
+                    else
                     {
-                        touchADCtask.expressionPedal.setScale(min, max);
+                        autocal.draw(pSprite, true);
                     }
-
-                    max = min = last;
+                    result = State::push;
                 }
+                else
+                    result = autocal.unHit(pSprite) ? State::push : result;
+
+                if (set.isIn(newPt))
+                {
+                    if (lifted)
+                    {
+                        touchADCtask.expressionPedal.setScale(min+0.003f, max-0.003f);
+                        set.unHit(pSprite);
+                    }
+                    else
+                    {
+                        set.draw(pSprite, true);
+                    }
+                    result = State::push;
+                }
+                else
+                    result = set.unHit(pSprite) ? State::push : result;
+
+                
             }
         }
             break;
@@ -1294,7 +1369,7 @@ UIclass::State MainExprTune::update(Trigger trigger)
                     pSprite->setViewport(barX+(barW-textW)/2, barY+barH+5, textW, textH);
                     pSprite->setTextDatum(TC_DATUM);
                     result = _setFloat(last, buf, curText);
-                    phase = idle;
+                    phase = drawScaled;
                     break;
 
                 case drawScaled:
@@ -1319,7 +1394,8 @@ uint32_t MainExprTune::poll(void)
     {
         phase = drawBar;
         state = State::next;
-        interval -= updateEvery; // try to stay in sync
+        interval -= updateEvery; // try to stay in sync...
+        if (interval > updateEvery) interval = 0; // ...but failed!
     }
     return result;
 }

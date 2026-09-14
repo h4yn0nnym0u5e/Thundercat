@@ -306,8 +306,8 @@ bool SuperTask::processUI(void)
   {
       case UIclass::State::done: // ready for a new trigger
         // poll for queued requests
-        if (InterTaskRequest::Result::inactive == reqQueue.executeRequest(*this, 2))
-            wait = false; // already waited 2 ticks
+        if (InterTaskRequest::Result::inactive == reqQueue.executeRequest(*this, 0))
+            wait = true;
         break;
 
       case UIclass::State::next: // can do next phase, if any
@@ -343,7 +343,7 @@ bool SuperTask::processUI(void)
 extern FlexIOSPI SPIflex;
 static char fileName[30];
 uint8_t bits;
-static bool countBits;
+bool countBits;
 
 void SuperTask::loopFn(void)
 {
@@ -581,8 +581,8 @@ void SuperTask::run(void)
     if (em >= 20)
     {
       em = 0;
-      if (countBits)
-        bits++;
+      //if (countBits)
+      //  bits++;
     }
   }
 }

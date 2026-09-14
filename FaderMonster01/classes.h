@@ -167,7 +167,7 @@ class ExpressionPedal
     bool isOK{false};
     int  ADCmax2; // half the maximum expected reading
     int gain;
-    float lastValue;
+    float raw, lastValue, smooth;
     float scaleMin, scaleMax;
     
   public:
@@ -184,7 +184,7 @@ class ExpressionPedal
           pullupRS_IN{_pullupRS_IN}, getRS_IN{_getRS_IN},
           getSENSE{_getSENSE},
           ADCmax2{_ADCmax/2},
-          scaleMin{-0.7f}, scaleMax{0.7f}
+          smooth{0.03125f}, scaleMin{-0.7f}, scaleMax{0.7f}
           {}
     
     operator bool() { return isOK && isPresent(); }
@@ -208,6 +208,8 @@ class ExpressionPedal
         (*pullupRS_IN)(!b); 
     }
     float getValue(void) {return lastValue; };
+    float getRaw(void)   {return raw; };
+    void setSmooth(float s) { smooth = s; }
     float setValue(void);
     void setGain(uint8_t g) { mcp4018.setWiperByte(g); gain = g;}
     int getGain(void) { return gain; }
@@ -216,7 +218,14 @@ class ExpressionPedal
     enum class eType {none, expression, singleSwitch, dualSwitch} type;
     eType autoDetect(void);
     int autoCalibrate(float target, float range = 0.05f);
-    void setScale(float min, float max) { scaleMin = min; scaleMax = max; }
+    void setScale(float min, float max) 
+    { 
+        if (max - min > 0.1f)
+        {
+            scaleMin = min; scaleMax = max; 
+            Serial.printf("Scaling set: %.3f - %.3f\n", scaleMin, scaleMax);
+        }
+    }
     float getScaled(void)
     {
         float mapped = map(lastValue, scaleMin, scaleMax, -1.0f, +1.0f);

@@ -318,6 +318,16 @@ void PotsTask::run(void)
     ADCtoDo = 8;  // tell timer we're ready for new data...
     vTaskSuspend(nullptr); // ...suspend until it's available...
     updateADCs(); // ...and process it  
+
+    if (countBits)
+    {
+        static int count = 50;
+        if (--count <0 )
+        {
+            count = 50;
+            bits ^= 4;
+        }
+    }
   }
 }
 

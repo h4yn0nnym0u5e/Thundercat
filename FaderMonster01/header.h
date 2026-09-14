@@ -54,6 +54,7 @@ extern FaderMonsterSettings faderMonsterSettings;
 // hacky things to be got rid of later. Probably.
 extern WS2812Serial leds;
 extern uint8_t bits;
+extern bool countBits;
 extern char dbgBuffer[200];
 extern bool dbgWritten;
 extern uint32_t ADCupdateMicros;

@@ -329,7 +329,7 @@ void TouchTask::run(void)
   {
     reqQueue.executeRequest(*this, 0); // execute any pending requests (calibration)
 
-    if (pdTRUE == xTaskNotifyWait(0UL, UINT32_MAX, &whichISR, 10)) // wait for notification from touch ISR
+    if (pdTRUE == xTaskNotifyWait(0UL, UINT32_MAX, &whichISR, 2)) // wait for notification from touch ISR
     {
       // Pot touch chip triggered?
       if (0 != (whichISR & touchFlag))
@@ -355,6 +355,17 @@ void TouchTask::run(void)
     }
 
     pollTouch(); // generate state outputs, e.g. time long presses
+
+    if (countBits)
+    {
+      static int count = 50;
+      if (--count <0 )
+      {
+        count = 50;
+        bits ^= 1;
+      }
+    }
+
   }
 }
 

@@ -163,8 +163,14 @@ void TouchADCtask::initTouch(void)
  */
 float ExpressionPedal::setValue(void)
 {
-    float raw = (*ADCread)();
-    lastValue = raw/ADCmax2 - 1.0f;
+    raw = (*ADCread)();
+    float newValue = raw/ADCmax2 - 1.0f;
+    if (fabs(newValue - lastValue) > 0.01f) // big jump, act quickly
+        lastValue = newValue;
+    else 
+    {        
+        lastValue = lastValue * (1.0f - smooth) + newValue * smooth;
+    }
     return lastValue;
 }
 
@@ -254,6 +260,8 @@ int ExpressionPedal::gainSeek(float lower, float upper)
 ExpressionPedal::eType ExpressionPedal::autoDetect(void)
 {
     eType result = eType::none;
+    float oldSmooth = smooth;
+    smooth = 0.75f; // don't really smooth
 
     do 
     {
@@ -283,6 +291,8 @@ ExpressionPedal::eType ExpressionPedal::autoDetect(void)
     } while (0);
 
     type = result; // save for later
+    smooth = oldSmooth;
+
     return result;
 }
 
@@ -324,7 +334,7 @@ void TouchADCtask::run(void)
 
     // set up analogue to suit our purposes
     analogReadRes(12);        // 12-bit, 0..4095
-    analogReadAveraging(4);   // do some inbuilt averaging
+    analogReadAveraging(16);   // do some inbuilt averaging
 
     // do some dummy reads
     analogRead(EXPR_PED_ADC);
@@ -415,8 +425,18 @@ void TouchADCtask::run(void)
                 // Serial.printf("Set expr pot to 0x%02X\n", lastSKpos / 2);
             }
         }
+
+        if (countBits)
+        {
+            static int count = 50;
+            if (--count <0 )
+            {
+                count = 50;
+                bits ^= 2;
+            }
+        }
     }
 }
 
 
-TouchADCtask touchADCtask{"TouchADC", 512, nullptr, 7, 1, fadersTouch, exprPedal};
+TouchADCtask touchADCtask{"TouchADC", 512, nullptr, 6, 1, fadersTouch, exprPedal};
