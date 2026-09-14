@@ -24,11 +24,11 @@ class DPex
   public:    
     uint8_t addr;           //!< address (0-7)
     // GPIO
-    uint16_t gpio;          //!< current gpio value
-    uint16_t dirty;         //!< dirty bits for output later
+    volatile uint16_t gpio;          //!< current gpio value
+    volatile uint16_t dirty;         //!< dirty bits for output later
     // pull-ups
-    uint16_t gppu;          //!< current pull-ups value
-    uint16_t dirtyPU;       //!< dirty bits for output later
+    volatile uint16_t gppu;          //!< current pull-ups value
+    volatile uint16_t dirtyPU;       //!< dirty bits for output later
 
     uint32_t asyncTx;       //!< async transmit buffer
     uint32_t asyncResult;   //!< place to put async read result
@@ -114,7 +114,7 @@ class DPex
             gpio |= mask;
         else            
             gpio &= ~mask;
-        dirty |= mask;            
+        dirty |= mask;
     }
 
     //! set a bit in the stored GPPU value
@@ -161,19 +161,23 @@ class DPex
 extern DPex U3, U5;
 
 // "pin" parameter comes from expanders.h...
-#define _DO_SET_A(fn,val, u,b,o) u.fn(b+8,val)
-#define _DO_SET_B(fn,val, u,b,o) u.fn(b,val)
-#define _DO_SET(fn,val, u,p,b,o) _DO_SET_##p(fn,val, u,b,o)
-#define DO_SET(fn,val,pin) _DO_SET(fn,val,pin)
+#define _DO_SET_A(fn,val, u,b,o)  u.fn(b+8,val)
+#define _DO_SET_B(fn,val, u,b,o)  u.fn(b,val)
+#define _DO_SET(fn,val, u,p,b,o)  _DO_SET_##p(fn,val, u,b,o)
+#define  DO_SET(fn,val,pin)       _DO_SET(fn,val,pin)
 
-#define _DO_GET_A(fn, u,b,o) u.fn(b+8)
-#define _DO_GET_B(fn, u,b,o) u.fn(b)
-#define _DO_GET(fn, u,p,b,o) _DO_GET_##p(fn, u,b,o)
-#define DO_GET(fn,pin) _DO_GET(fn,pin)
+#define _DO_GET_A(fn, u,b,o)  u.fn(b+8)
+#define _DO_GET_B(fn, u,b,o)  u.fn(b)
+#define _DO_GET(fn, u,p,b,o)  _DO_GET_##p(fn, u,b,o)
+#define  DO_GET(fn,pin)       _DO_GET(fn,pin)
 
-#define SET_BIT(pin,val) _DO_SET(setGPIObit,val,pin)
-#define SET_BIT_NOW(pin,val) _DO_SET(setBit,val,pin)
-#define GET_BIT(pin) _DO_GET(getGPIObit, pin)
-#define GET_BUTTON(pin) !_DO_GET(getGPIObit, pin)
+#define _DO_GET_VOID(fn, u,p,b,o)  u.fn()
+#define  DO_GET_VOID(fn,pin)  _DO_GET_VOID(fn,pin)
 
-#define SET_PULLUP(pin,val) _DO_SET(setGPPUbit,val,pin)
+#define SET_BIT(pin,val)      _DO_SET(setGPIObit,val,pin)
+#define SET_BIT_NOW(pin,val)  _DO_SET(setBit,val,pin)
+#define GET_BIT(pin)          _DO_GET(getGPIObit, pin)
+#define GET_BUTTON(pin)      !_DO_GET(getGPIObit, pin)
+
+#define SET_PULLUP(pin,val)   _DO_SET(setGPPUbit,val,pin)
+#define IS_DIRTY(pin)         _DO_GET_VOID(isDirty,pin)

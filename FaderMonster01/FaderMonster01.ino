@@ -440,6 +440,18 @@ void SuperTask::loopFn(void)
         enableADCprint = !enableADCprint;
         break;
 
+      case 'j':
+      {
+        char n = Serial.read();
+        if (n>0)
+        {
+          bool x = 'x' == n; // x for eXpression
+          touchADCtask.expressionPedal.setExprMode(x);
+          Serial.printf("Pedal set to %s mode\n", x?"expression":"switch");
+        }
+      }
+        break;
+
       case 'e':
         if (0 == touchADCtask.enablePedalPrint)
           touchADCtask.enablePedalPrint = 100;

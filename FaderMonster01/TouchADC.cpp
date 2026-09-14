@@ -183,10 +183,10 @@ void TouchADCtask::run(void)
 
     // start the expression pedal
     expressionPedal.begin();
-    //*
+    /*
     expressionPedal.setExprMode(true); // set to Expression mode (rather than Switch)
     /*/
-    expressionPedal.setExprMode(false); // set to Expression mode (rather than Switch)
+    expressionPedal.setExprMode(false); // set to Switch mode (rather than Expression)
     //*/
     while (1)
     {

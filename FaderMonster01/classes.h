@@ -192,7 +192,13 @@ class ExpressionPedal
         return result;
     }
     bool isPresent(void) { return (*getSENSE)(); }
-    void setExprMode(bool b) { setTRCTL(!b); pullupRS_IN(!b); }
+    void setExprMode(bool b) 
+    { 
+        (*setTRCTL)(!b);
+        while (IS_DIRTY(PEDAL_TRCTRL))
+            vTaskDelay(1);
+        (*pullupRS_IN)(!b); 
+    }
     float getValue(void);
     void setGain(uint8_t g) { mcp4018.setWiperByte(g); gain = g;}
     int getGain(void) { return gain; }
