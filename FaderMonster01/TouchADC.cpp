@@ -145,13 +145,162 @@ void TouchADCtask::initTouch(void)
   updateTouch();
 }
 
+//=========================================================================
+//                           888          888 
+//                           888          888 
+//                           888          888 
+//    88888b.   .d88b.   .d88888  8888b.  888 
+//    888 "88b d8P  Y8b d88" 888     "88b 888 
+//    888  888 88888888 888  888 .d888888 888 
+//    888 d88P Y8b.     Y88b 888 888  888 888 
+//    88888P"   "Y8888   "Y88888 "Y888888 888 
+//    888                                     
+//    888                                     
+//    888                                     
+//
 /**
  * Get pedal reading, scaled to ±1.0f
  */
-float ExpressionPedal::getValue(void)
+float ExpressionPedal::setValue(void)
 {
     float raw = (*ADCread)();
-    return raw/ADCmax2 - 1.0f;
+    lastValue = raw/ADCmax2 - 1.0f;
+    return lastValue;
+}
+
+float ExpressionPedal::getStableValue(int n, int d)
+{
+    float newVal, oldVal = UNSTABLE;
+    bool ok = false;
+    while (n--)
+    {
+        newVal = setValue();
+        if (fabs(newVal - oldVal) <= THRESHOLD)
+        {
+            ok = true;
+            break;
+        }
+        oldVal = newVal;
+        vTaskDelay(d);            
+    }
+Serial.printf("Value is %.3f at gain of %d; %d tries left\n", newVal, getGain(), n);
+    return ok?newVal:UNSTABLE;
+}
+
+/**
+ * Find out if one of the fottswitches is pressed.
+ * The numbers are 1 and 2 - using musician-speak here!
+ * \return true if pedal is correct type and switch is pressed
+ */
+bool ExpressionPedal::isPressed(int footSwitch)
+{
+    bool result = false;
+
+    switch (footSwitch)
+    {
+        default:
+            break;
+
+        case 1:
+            if (eType::dualSwitch   == type
+             || eType::singleSwitch == type)
+                result = getValue() < 0.0f;
+            break;
+
+        case 2:
+            if (eType::dualSwitch == type)
+                result = !getRS_IN();
+            break;                
+    }
+
+    return result;
+}
+
+/**
+ * Seek a gain which gets the pedal value within a range
+ */
+int ExpressionPedal::gainSeek(float lower, float upper)
+{
+    float newVal;
+    int gain = 63, gainStep = 64, result = -1;
+
+    do 
+    {    
+        setGain(gain);
+        newVal = getStableValue(10,10);
+        if (UNSTABLE == newVal)
+        {
+            gain = -1;
+            break;
+        }
+        if (newVal > lower && newVal < upper)
+        {
+            result = gain;
+            break;
+        }
+        gainStep /= 2;
+        gain += newVal > (upper + lower) / 2
+                        ?gainStep
+                        :-gainStep;
+    } while (gainStep > 1);
+
+    return result;
+}
+
+/**
+ * Auto-detect pedal type.
+ * This should be called, after a suitable delay, when a pedal has been plugged in.
+ */
+ExpressionPedal::eType ExpressionPedal::autoDetect(void)
+{
+    eType result = eType::none;
+
+    do 
+    {
+        if (!isPresent())
+            break;
+
+        setExprMode(true); // probe using Expression mode
+
+        // try to get it well inside the analogue range
+        if (gainSeek(EXPR_MIN, EXPR_MAX) >= 0)
+            result = eType::expression;
+        setGain(63); // back to mid-range for now
+
+        // if in range, it's an expression pedal
+        if (eType::none != result)
+            break;
+
+        // not expression, must be a switch
+        setExprMode(false);
+        vTaskDelay(20);
+
+        if (isPressed(2)) // does switch 2 appear to be pressed?
+            result = eType::singleSwitch; // shorted - it's a single switch
+        else
+            result = eType::dualSwitch;            
+
+    } while (0);
+
+    type = result; // save for later
+    return result;
+}
+
+/**
+ * Seek a gain level that achieves the target reading.
+ * Should be called when an expression pedal is plugged in and
+ * set to maximum.
+ * 
+ * The MCP6001 can reach within about 25mV of the rail, which is
+ * 4096 * 0.025 / 3.3 = 31 counts, or ±0.984 on our standard ±1.0
+ * analogue range. Thus a target of 0.980 or so is probably sensible!
+ */
+int ExpressionPedal::autoCalibrate(float target, float range)
+{
+    int result = gainSeek(target - range, target + range);
+    if (result < 0) setGain(63); // failed - set safe gain
+
+    return result;
 }
 
 //=========================================================================
@@ -171,7 +320,7 @@ void TouchADCtask::run(void)
     vTaskDelay(1500);
     initTouch();
     bool pedalPresent{false};
-    elapsedMillis em;
+    elapsedMillis em, detectEm;
 
     // set up analogue to suit our purposes
     analogReadRes(12);        // 12-bit, 0..4095
@@ -183,7 +332,7 @@ void TouchADCtask::run(void)
 
     // start the expression pedal
     expressionPedal.begin();
-    /*
+    //*
     expressionPedal.setExprMode(true); // set to Expression mode (rather than Switch)
     /*/
     expressionPedal.setExprMode(false); // set to Switch mode (rather than Expression)
@@ -204,13 +353,43 @@ void TouchADCtask::run(void)
         if (expressionPedal.isPresent() != pedalPresent)
         {
             pedalPresent = !pedalPresent;
-            Serial.printf("Pedal is %spresent\n", pedalPresent?"":"not ");
+            if (pedalPresent)
+                detectEm = 0;
+            else 
+                Serial.println("Pedal unplugged");                
+        }
+
+        if (detectEm > 1000 && detectEm < 2000)
+        {
+            const char* pedalType = "No";
+
+            detectEm = 2000;
+            expressionPedal.autoDetect();
+            switch (expressionPedal.type)
+            {
+                default:
+                    pedalType = "None (?)";
+                    break;
+                
+                case ExpressionPedal::eType::expression:
+                    pedalType = "Expression";
+                    break;
+                
+                case ExpressionPedal::eType::singleSwitch:
+                    pedalType = "Single switch";
+                    break;
+                
+                case ExpressionPedal::eType::dualSwitch:
+                    pedalType = "Dual switch";
+                    break;
+            }
+            Serial.printf("%s pedal is present\n", pedalType);
         }
 
         if (expressionPedal)
         {
             static float raw;
-            raw = expressionPedal.getValue();
+            raw = expressionPedal.setValue();
 
             if (em >= 250)    
             {

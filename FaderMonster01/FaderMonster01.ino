@@ -92,11 +92,12 @@ void printTaskStates(void)
               (float) s.ulRunTimeCounter / pct * 100.0f
             );
   }
+  Serial.printf("\nMainLCD timeout count: %d\n", mainLCDtask.timeoutCount);
   Serial.printf("ADC updates take %uµs; DMA channel bits: %08X\n", 
                 ADCupdateMicros,
                 dma_channel_allocated_mask);
   freertos::print_ram_usage();
-}
+  }
 
 //================================================================
 char dbgBuffer[200];
@@ -340,7 +341,6 @@ bool SuperTask::processUI(void)
 //                          888                       
 //
 extern FlexIOSPI SPIflex;
-extern int stallCount;
 static char fileName[30];
 uint8_t bits;
 static bool countBits;
@@ -428,7 +428,7 @@ void SuperTask::loopFn(void)
       case 'g':
         Serial.println();
         mainLCDtask.pauseOutput = false;
-        stallCount++;
+        mainLCDtask.stallCount++;
         break;
 
       case 'z':

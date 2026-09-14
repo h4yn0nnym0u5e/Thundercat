@@ -106,7 +106,6 @@ static void TFTdmaDoneCB(FlexIOSPI* pFlex)
 //    888                                                   
 //
 // Task-level code: block until DMA is complete
-int timeoutCount, stallCount;
 bool MainLCDtask::TFTdmaWait(int pixels)
 {
   bool timedOut = false;
@@ -125,7 +124,7 @@ bool MainLCDtask::TFTdmaWait(int pixels)
 //Serial.print("notified ");
   if (timedOut)
   {
-    Serial.print("********** timeout *********** ");
+    //Serial.print("********** timeout *********** ");
     SPIflex.killTransfer();
     timeoutCount++;
   }
@@ -139,7 +138,7 @@ bool MainLCDtask::TFTdmaWait(int pixels)
 
   if (stalled && !timedOut)
   {
-    Serial.print("********** stalled *********** ");
+    //Serial.print("********** stalled *********** ");
     timedOut |= stalled;
     stallCount++;
   }
@@ -209,7 +208,7 @@ InterTaskRequest::Result MainLCDtask::doUpdateDirty(void* pDisplay)
           updateCount++;
           display.pushImageDMA(x,y,w,h,DMAbuffer);
           pushNeeded = TFTdmaWait(w*h); // suspend until DMA completes, then tidy up
-#if 1          
+#if 0          
           if (pushNeeded)
           {
             // pauseOutput = true;

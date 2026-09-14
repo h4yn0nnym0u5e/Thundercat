@@ -159,9 +159,16 @@ class ExpressionPedal
     bool (*getRS_IN)(void);
     bool (*getSENSE)(void);
 
+    static constexpr float UNSTABLE{42.0f}, THRESHOLD{0.01f},
+                           EXPR_MIN{-0.5f}, EXPR_MAX{0.5f};
+    float getStableValue(int n, int d);
+    int gainSeek(float lower, float upper);
+
     bool isOK{false};
     int  ADCmax2; // half the maximum expected reading
     int gain;
+    float lastValue;
+    float scaleMin, scaleMax;
     
   public:
     ExpressionPedal(TwoWire& _wire, 
@@ -176,7 +183,8 @@ class ExpressionPedal
           ADCread{_ADCread}, setTRCTL{_setTRCTL},
           pullupRS_IN{_pullupRS_IN}, getRS_IN{_getRS_IN},
           getSENSE{_getSENSE},
-          ADCmax2{_ADCmax/2}
+          ADCmax2{_ADCmax/2},
+          scaleMin{-0.7f}, scaleMax{0.7f}
           {}
     
     operator bool() { return isOK && isPresent(); }
@@ -199,9 +207,21 @@ class ExpressionPedal
             vTaskDelay(1);
         (*pullupRS_IN)(!b); 
     }
-    float getValue(void);
+    float getValue(void) {return lastValue; };
+    float setValue(void);
     void setGain(uint8_t g) { mcp4018.setWiperByte(g); gain = g;}
     int getGain(void) { return gain; }
+    bool isPressed(int footSwitch);
+
+    enum class eType {none, expression, singleSwitch, dualSwitch} type;
+    eType autoDetect(void);
+    int autoCalibrate(float target, float range = 0.05f);
+    void setScale(float min, float max) { scaleMin = min; scaleMax = max; }
+    float getScaled(void)
+    {
+        float mapped = map(lastValue, scaleMin, scaleMax, -1.0f, +1.0f);
+        return constrain(mapped, -1.0f, +1.0f);
+    }
 };
 
 //                                             888                    
@@ -689,6 +709,7 @@ class MainLCDtask : public FaderMonsterTask
     bool pauseOutput{false}; // temporary hack...
     bool zapScreen{false}; // as is this
     bool opIsSave;
+    int timeoutCount, stallCount;
    //------------------------------------------------------------------------
     // stuff to allow another task to make async requests:
     InterTaskRequest& updateDirty(InterTaskRequest& req, TFT_eSprite& scribble, TickType_t timeout = 0);

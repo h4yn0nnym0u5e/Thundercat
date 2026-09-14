@@ -74,7 +74,7 @@ class UIclass
 
     // higher-level methods: can tell when item has changed
     bool setArc(float newPot, float& lastPot);
-    bool setText(char* buf, char* lastString, size_t sizeofLastString);
+    bool setText(char* buf, char* lastString, size_t sizeofLastString, bool setFont = true);
     bool setFloat(float potPos, char* lastString, size_t sizeofLastString);
     bool setTouch(TouchStatus* pTouch, TouchStatus::eStatus& lastTouch);
 
@@ -284,10 +284,18 @@ class MainQwerty : public UIclass
 //------------------------------------------------------------------
 class MainExprTune : public UIclass 
 {
-    static constexpr int barX{10}, barY{50}, barW{300}, barH{20};
-    bool drawBarTo(float pos);
+    enum {idle,
+          drawCurrent, drawScaled, 
+          drawMin, drawMax, 
+          drawBar, drawGain} phase;
+    static constexpr int barX{10}, barY{50}, barW{300}, barH{20}, 
+                     textW{60}, textH{25}, textLen{10};
+    UIclass::State drawBarTo(float pos);
+    UIclass::State _setFloat(float f, char* buf, char* stash);
 
-    float min, max, last;
+    float min{0.0f}, max{0.0f}, last{0.0f};
+    char minText[textLen]{0}, maxText[textLen]{0}, 
+         curText[textLen]{0}, scaledText[textLen]{0};
 
   public:
     virtual State begin(TFT_eSprite& sprite, colours_t c);

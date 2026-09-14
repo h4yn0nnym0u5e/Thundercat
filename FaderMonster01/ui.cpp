@@ -141,7 +141,7 @@ bool UIclass::setArc(float newPot, float& lastPot)
 // update sprite with text 
 // assumes viewport has been set appropriately
 // returns true if the text is different from the previous
-bool UIclass::setText(char* buf, char* lastString, size_t sizeofLastString)
+bool UIclass::setText(char* buf, char* lastString, size_t sizeofLastString, bool setFont)
 {
     bool result = strncmp(buf, lastString, sizeofLastString) != 0;
     if (result)
@@ -150,8 +150,11 @@ bool UIclass::setText(char* buf, char* lastString, size_t sizeofLastString)
             h = pSprite->getViewportHeight();
         pSprite->fillRect(0,0,w,h,colours.bg); //fillSprite(bkgnds[i]);
 
-        pSprite->setFreeFont(&FONT_DP);
-        pSprite->setTextColor(colours.txt);
+        if (setFont)
+        {
+            pSprite->setFreeFont(&FONT_DP);
+            pSprite->setTextColor(colours.txt);
+        }
         // when drawing numbers with a leading space or minus sign,
         // ensure the first digit always appears at the same location
         int spaceOffset = buf[0] == ' '
@@ -1131,9 +1134,10 @@ UIclass::State MainQwerty::update(Trigger trigger)
 //                        888                                              
 // 
 
-bool MainExprTune::drawBarTo(float pos)
+UIclass::State MainExprTune::drawBarTo(float pos)
 {
-    int w,x;
+    State result = State::next;
+    int w = 0,x;
 
     if (pos > max)
     {
@@ -1157,8 +1161,12 @@ bool MainExprTune::drawBarTo(float pos)
         }
     }
     if (w > 0)
+    {
         pSprite->fillRect(x,barY,w,barH, colours.fg);
-    return w>0;        
+        //Serial.printf("pos: %.3f, min: %.3f, max: %.3f\n", pos, min, max);
+        result = State::push;
+    }
+    return result;
 }
 
 UIclass::State MainExprTune::begin(TFT_eSprite& sprite, colours_t c)
@@ -1184,9 +1192,27 @@ UIclass::State MainExprTune::begin(TFT_eSprite& sprite, colours_t c)
     return (state = result); // save and return state
 }
 
+/**
+ * Draw a float into a preset viewport (which is reset on exit).
+ */
+UIclass::State MainExprTune::_setFloat(float f, char* buf, char* stash)
+{
+    pSprite->setFreeFont(&FreeSans9pt7b);
+    pSprite->setTextColor(colours.fg, colours.bg, false); // no background fill
+    pSprite->setTextDatum(TL_DATUM);
+    sprintf(buf,"% .3f",f);
+    bool changed = setText(buf, stash, textLen, false);
+    pSprite->resetViewport();
+
+    return changed
+            ?State::push
+            :State::next;
+}
+
 UIclass::State MainExprTune::update(Trigger trigger)
 {
     State result = State::done;
+    char buf[textLen];
 
     switch (trigger.type)
     {
@@ -1203,14 +1229,84 @@ UIclass::State MainExprTune::update(Trigger trigger)
 
                 if (255 == newPt.reserved)
                 {
-                    max = min = last;
+                    // clear existing drawing
                     pSprite->fillRect(barX, barY, barW, barH, colours.bg);
-                    drawBarTo(last + 1.1f / barW);
+                    phase = idle;
                     result = State::push;
+
+                    //Serial.printf("x: %d, y: %d; last: %.3f\n", newPt.x, newPt.y, last);
+                    if (newPt.x > 280 && newPt.y > 200)
+                    {
+                        int gain = touchADCtask.expressionPedal.autoCalibrate(0.97f, 0.01f);
+                        Serial.printf("Autocalibrate: gain=%d, value=%.3f\n", 
+                                gain, touchADCtask.expressionPedal.getValue());
+                        if (gain < 1)
+                        {
+                            gain = touchADCtask.expressionPedal.autoCalibrate(0.95f);
+                            Serial.printf("Autocalibrate: gain=%d, value=%.3f\n", 
+                                    gain, touchADCtask.expressionPedal.getValue());
+                        }
+                        last = touchADCtask.expressionPedal.getValue();
+                    }
+
+                    if (newPt.x < 40 && newPt.y > 200)
+                    {
+                        touchADCtask.expressionPedal.setScale(min, max);
+                    }
+
+                    max = min = last;
                 }
             }
         }
             break;
+
+        //----------------------------------------------------------------------
+        case Trigger::eTriggerType::nextPhase:
+            switch (phase)
+            {
+                default:
+                    break;
+
+                case drawBar:
+                {
+                    float pedal = touchADCtask.expressionPedal.getValue();
+                    result = drawBarTo(pedal);
+                    last = pedal;
+                    //Serial.printf("tune: %.3f\n", last);
+                    phase = drawMin;                        
+                }
+                    break;                    
+
+                case drawMin:
+                    pSprite->setViewport(barX, barY+barH+5, textW, textH);
+                    result = _setFloat(min, buf, minText);
+                    phase = drawMax;
+                    break;
+                                            
+                case drawMax:
+                    pSprite->setViewport(barX+barW-textW, barY+barH+5, textW, textH);
+                    pSprite->setTextDatum(TR_DATUM);
+                    result = _setFloat(max, buf, maxText);
+                    phase = drawCurrent;
+                    break;
+                                            
+                case drawCurrent:
+                    pSprite->setViewport(barX+(barW-textW)/2, barY+barH+5, textW, textH);
+                    pSprite->setTextDatum(TC_DATUM);
+                    result = _setFloat(last, buf, curText);
+                    phase = idle;
+                    break;
+
+                case drawScaled:
+                    pSprite->setViewport(barX+(barW-textW)/2, barY+barH+5*2 + textH, textW, textH);
+                    pSprite->setTextDatum(TC_DATUM);
+                    result = _setFloat(touchADCtask.expressionPedal.getScaled(), buf, scaledText);
+                    phase = idle;
+                    break;
+                                            
+            }
+            break;
+
     }
     return (state = result); // save and return state
 }
@@ -1219,13 +1315,10 @@ uint32_t MainExprTune::poll(void)
 {
     const uint32_t updateEvery{50'000};
     uint32_t result = interval;
-    if (interval >= updateEvery) // every 10ms
+    if (idle == phase && interval >= updateEvery) // every 50ms, unless busy
     {
-        float pedal = touchADCtask.expressionPedal.getValue();
-        //Serial.printf("tune: %.3f\n", pedal);
-        last = pedal;
-        if (drawBarTo(pedal))
-            state = State::push; // update needed
+        phase = drawBar;
+        state = State::next;
         interval -= updateEvery; // try to stay in sync
     }
     return result;
