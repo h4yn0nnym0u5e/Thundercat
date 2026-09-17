@@ -204,12 +204,15 @@ void TouchADCtask::initTouch(void)
  */
 float ExpressionPedal::setValue(void)
 {
+    // get a new value, and scale it
     raw = (*ADCread)();
     float newValue = (float) raw/ADCmax2 - 1.0f;
 
-    rar.update(raw);
-    lastResponsiveValue = (float) rar.getValue()/ADCmax2 - 1.0f;
+    // feed the ResponsiveAnalogRead class, and use it to get a scaled value
+    ResponsiveAnalogRead::update(raw);
+    lastResponsiveValue = (float) ResponsiveAnalogRead::getValue()/ADCmax2 - 1.0f;
 
+    // also do our own smoothing, in case we don't like ResponsiveAnalogRead
     if (fabs(newValue - lastValue) > 0.01f) // big jump, act quickly
         lastValue = newValue;
     else 
@@ -219,6 +222,10 @@ float ExpressionPedal::setValue(void)
     return lastValue;
 }
 
+
+/**
+ * Get a stable pedal value, e.g. after gain has changed
+ */
 float ExpressionPedal::getStableValue(int n, int d)
 {
     float newVal, oldVal = UNSTABLE;
@@ -312,6 +319,7 @@ int ExpressionPedal::gainSeek(float lower, float upper)
 ExpressionPedal::eType ExpressionPedal::autoDetect(void)
 {
     eType result = eType::none;
+    int   oldGain = gain;
     float oldSmooth = smooth;
     smooth = 0.75f; // don't really smooth
 
@@ -343,6 +351,7 @@ ExpressionPedal::eType ExpressionPedal::autoDetect(void)
     } while (0);
 
     type = result; // save for later
+    setGain(oldGain);
     smooth = oldSmooth;
 
     return result;

@@ -164,7 +164,7 @@ class RequestQueue
         return result;
     }
 
-    char xChar{0};
+    char xChar{0}; // debug only - set to character to monitor when execution occurs
     //! De-queue a request and execute it.
     //! Polled in task's loop; does nothing if no requests are pending
     InterTaskRequest::Result executeRequest(T& instance, int timeout)

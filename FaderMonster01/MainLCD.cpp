@@ -124,7 +124,7 @@ bool MainLCDtask::TFTdmaWait(int pixels)
 //Serial.print("notified ");
   if (timedOut)
   {
-    Serial.print("********** timeout *********** ");
+    //Serial.print("********** timeout *********** ");
     SPIflex.killTransfer();
     timeoutCount++;
   }
@@ -138,7 +138,7 @@ bool MainLCDtask::TFTdmaWait(int pixels)
 
   if (stalled && !timedOut)
   {
-    Serial.print("********** stalled *********** ");
+    //Serial.print("********** stalled *********** ");
     timedOut |= stalled;
     stallCount++;
   }
@@ -156,7 +156,6 @@ bool MainLCDtask::TFTdmaWait(int pixels)
 int updateCount;
 InterTaskRequest::Result MainLCDtask::doUpdateDirty(void* pDisplay)
 {
-  Serial.print('u');
     TFT_eSprite& display = *((TFT_eSprite*) pDisplay);
 
     InterTaskRequest::Result result = InterTaskRequest::Result::done;
@@ -209,8 +208,8 @@ InterTaskRequest::Result MainLCDtask::doUpdateDirty(void* pDisplay)
           updateCount++;
           display.pushImageDMA(x,y,w,h,DMAbuffer);
           pushNeeded = TFTdmaWait(w*h); // suspend until DMA completes, then tidy up
+#if 0          
           Serial.print('q');
-#if 1          
           if (pushNeeded)
           {
             // pauseOutput = true;
@@ -222,8 +221,6 @@ InterTaskRequest::Result MainLCDtask::doUpdateDirty(void* pDisplay)
 #endif // including debug code          
         } 
     }
-    else 
-      Serial.print('@');
 
     return result;
 }
@@ -352,7 +349,6 @@ InterTaskRequest& MainLCDtask::updateDirty(InterTaskRequest& req,  // request to
 {
     requestPayload payload{&MainLCDtask::doUpdateDirty, &display};
     RequestQueue<MainLCDtask, requestPayload>::queueEntry entry{&req,payload};
-    char c = 'Q';
 
     if (display.isDirty())
     {
@@ -360,17 +356,6 @@ InterTaskRequest& MainLCDtask::updateDirty(InterTaskRequest& req,  // request to
     }
     else 
       req.status = InterTaskRequest::Result::done; // nothing to do, so it's done!
-
-      //*
-    if (req.isFailed())
-      c = '!';
-    else if (req.isInactive())
-    {
-      c = '.';
-    }
-    //Serial.print(' ');
-    Serial.print(c);
-        //*/  
 
     return req;
 }
@@ -616,7 +601,7 @@ taskEXIT_CRITICAL();
 
   //int colour = 0;
   //elapsedMillis em = 0;
-  reqQueue.xChar = 'x';
+  //reqQueue.xChar = 'x'; // enable to print character when request gets executed
   while (1)
   {
       reqQueue.executeRequest(*this, 10);

@@ -150,26 +150,28 @@ class ButtonLED
 //
 // Support an expression / dual footswitch pedal on the 
 // Premium Pro Pedal Board v1.34 (at the time of writing...)
-class ExpressionPedal
+class ExpressionPedal : public ResponsiveAnalogRead
 {
     MCP4018 mcp4018;
-    ResponsiveAnalogRead rar{-1, true};
     int  (*ADCread)(void);
     void (*setTRCTL)(bool);
     void (*pullupRS_IN)(bool);
     bool (*getRS_IN)(void);
     bool (*getSENSE)(void);
 
-    AnalogBufferDMA& abdma;
-
     static constexpr float UNSTABLE{42.0f}, THRESHOLD{0.01f},
                            EXPR_MIN{-0.5f}, EXPR_MAX{0.5f};
     float getStableValue(int n, int d);
-    int gainSeek(float lower, float upper);
+    int   gainSeek(float lower, float upper);
+    float scaleValue(float val)
+    {
+        float mapped = map(val, scaleMin, scaleMax, -1.0f, +1.0f);
+        return constrain(mapped, -1.0f, +1.0f);
+    }
 
-    bool isOK{false};
-    int  ADCmax2; // half the maximum expected reading
-    int gain;
+    bool  isOK{false};
+    int   ADCmax2; // half the maximum expected reading
+    int   gain;
     float raw, lastValue, lastResponsiveValue, smooth;
     float scaleMin, scaleMax;
     
@@ -183,11 +185,11 @@ class ExpressionPedal
                     bool (*_getSENSE)(void),
                     AnalogBufferDMA& _abdma
                     )
-        : mcp4018{_wire, _mcpResistance},
+        : ResponsiveAnalogRead{-1, true}, // no assigned pin; sleep enabled
+          mcp4018{_wire, _mcpResistance},
           ADCread{_ADCread}, setTRCTL{_setTRCTL},
           pullupRS_IN{_pullupRS_IN}, getRS_IN{_getRS_IN},
           getSENSE{_getSENSE},
-          abdma{_abdma},
           ADCmax2{_ADCmax/2},
 
           smooth{0.03125f}, scaleMin{-0.7f}, scaleMax{0.7f}
@@ -203,8 +205,9 @@ class ExpressionPedal
             setGain(55); // middle-ish gain
             isOK = true;
 
-            rar.setAnalogResolution(ADCmax2*2);
-            rar.setActivityThreshold((float) ADCmax2/4000.0f);
+            // ResponsiveAnalogRead settings
+            setAnalogResolution(ADCmax2*2);
+            setActivityThreshold((float) ADCmax2/2000.0f);
         }
         return result;
     }
@@ -219,16 +222,16 @@ class ExpressionPedal
     float getValue(void) {return lastValue; };
     float getResponsiveValue(void) { return lastResponsiveValue; }
     float getRaw(void)   {return raw; };
-    void setSmooth(float s) { smooth = s; }
+    void  setSmooth(float s) { smooth = s; }
     float setValue(void);
-    void setGain(uint8_t g) { mcp4018.setWiperByte(g); gain = g;}
-    int getGain(void) { return gain; }
-    bool isPressed(int footSwitch);
+    void  setGain(uint8_t g) { mcp4018.setWiperByte(g); gain = g;}
+    int   getGain(void) { return gain; }
+    bool  isPressed(int footSwitch);
 
     enum class eType {none, expression, singleSwitch, dualSwitch} type;
     eType autoDetect(void);
-    int autoCalibrate(float target, float range = 0.05f);
-    void setScale(float min, float max) 
+    int   autoCalibrate(float target, float range = 0.05f);
+    void  setScale(float min, float max) 
     { 
         if (max - min > 0.1f)
         {
@@ -236,11 +239,8 @@ class ExpressionPedal
             Serial.printf("Scaling set: %.3f - %.3f\n", scaleMin, scaleMax);
         }
     }
-    float getScaled(void)
-    {
-        float mapped = map(lastValue, scaleMin, scaleMax, -1.0f, +1.0f);
-        return constrain(mapped, -1.0f, +1.0f);
-    }
+    float getScaled(void) { return scaleValue(lastValue); }
+    float getResponsiveScaled(void) { return scaleValue(lastResponsiveValue); }
 };
 
 //                                             888                    

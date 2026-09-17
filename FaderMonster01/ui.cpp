@@ -199,6 +199,17 @@ bool UIclass::setTouch(TouchStatus* pTouch, TouchStatus::eStatus& lastTouch)
 }
 
 
+void UIclass::debugPrint(void)
+{
+    const char* us[]{"done","idle","push","busy"};
+    const char* rs[] = {"inactive", "pending", "running", "done", "failed", "qfull"};
+    Serial.printf("\nPhase %c; state %s; request %s; waiting %d ", 
+                    ('0' + (int) phase),
+                    us[(int) state],
+                rs[(int) updateReq.status],
+                mainLCDtask.messagesWaiting() );
+}
+
 //==========================================================================
 // Send request to screen task to update display
 // Note the updateDirty() methods check for the sprite being dirty, so we
@@ -215,16 +226,15 @@ bool UIclass::setTouch(TouchStatus* pTouch, TouchStatus::eStatus& lastTouch)
 InterTaskRequest& UIclass::writeToScribble(void)
 {
     InterTaskRequest* result = &autoFail;
+
     if (updateReq.isInactive())
     {
         result = &updateReq;
-        char before = '0' + (int) result->status;
         scribbleTask.updateDirty(updateReq, *pSprite, 0);
-        char after = '0' + (int) result->status;
 
         if (result->isFailed())  // main LCD queue full: will re-try
         {
-            Serial.printf("scribble write failed (%c -> %c)\n", before, after);
+            //Serial.printf("scribble write failed (%c -> %c)\n", before, after);
             vTaskDelay(1);
         }
         else
@@ -241,26 +251,16 @@ InterTaskRequest& UIclass::writeToScribble(void)
 
 InterTaskRequest& UIclass::writeToMainLCD(void)
 {
-    static int wCount = 0;
-
     InterTaskRequest* result = &autoFail;
-    wCount++;
-    if (wCount > 19)
-    {
-        wCount = 0;
-        Serial.println();
-    }
+
     if (updateReq.isInactive())
     {
-        Serial.print(" w");
         result = &updateReq;
-        char before = '0' + (int) result->status;
         mainLCDtask.updateDirty(updateReq, *pSprite, 0);
-        char after = '0' + (int) result->status;
 
         if (result->isFailed())  // main LCD queue full: will re-try
         {
-            Serial.printf("mainLCD write failed (%c -> %c)\n", before, after);
+            //Serial.printf("mainLCD write failed (%c -> %c)\n", before, after);
             vTaskDelay(1);
         }
         else
@@ -271,8 +271,6 @@ InterTaskRequest& UIclass::writeToMainLCD(void)
                 state = UIclass::State::busy;
         }
     }
-    else 
-        Serial.print(" b");
 
     return *result;
 }
@@ -1406,7 +1404,7 @@ UIclass::State MainExprTune::update(Trigger trigger)
                 case drawScaled:
                     pSprite->setViewport(barX+(barW-textW)/2, barY+barH+5*2 + textH, textW, textH);
                     pSprite->setTextDatum(TC_DATUM);
-                    result = _setFloat(touchADCtask.expressionPedal.getScaled(), buf, scaledText);
+                    result = _setFloat(touchADCtask.expressionPedal.getResponsiveScaled(), buf, scaledText);
                     phase = idle;
                     break;
             }
@@ -1426,16 +1424,6 @@ uint32_t MainExprTune::poll(void)
         {
             phase = drawBar;
             state = State::next;
-        }
-        else
-        {
-            const char* us[]{"done","idle","push","busy"};
-            const char* rs[] = {"inactive", "pending", "running", "done", "failed", "qfull"};
-            Serial.printf("\nPhase %c; state %s; request %s; waiting %d ", 
-                            ('0' + (int) phase),
-                            us[(int) state],
-                        rs[(int) updateReq.status],
-                        mainLCDtask.messagesWaiting() );
         }
     }
     return result;

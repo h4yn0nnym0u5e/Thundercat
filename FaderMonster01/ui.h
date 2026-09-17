@@ -129,6 +129,7 @@ class UIclass
 
     bool writeFinished(void);
     bool isDirty(void) { return pSprite->isDirty(); }
+    void debugPrint(void);
 
     static constexpr float POT_NOT_SET{-999.0f};
     static constexpr float sa{2*18.0f}, ea{360.0f - 2*18.0f}; // TFT_eSPI has zero at 6 o'clock
