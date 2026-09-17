@@ -10,6 +10,9 @@
 #include <LittleFS.h>
 #include <PacketSerial.h>
 #include <DS_MCP4018.h>
+#include <ResponsiveAnalogRead.h>
+#include <ADC.h>
+#include <AnalogBufferDMA.h>
 
 
 #define CONCAT(a,b,c) a##b##c
@@ -58,6 +61,7 @@ extern bool countBits;
 extern char dbgBuffer[200];
 extern bool dbgWritten;
 extern uint32_t ADCupdateMicros;
+extern int ADCcount;
 namespace freertos
 {
     extern TaskHandle_t g_yield_task;

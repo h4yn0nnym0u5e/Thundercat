@@ -8,16 +8,57 @@ TouchStatus TouchADCtask::keyStatuses[NUM_POTS];
 
 static void isrTouch(void);
 
+static ADC* adc = new ADC();
+const uint32_t buffer_size = 64;
+DMAMEM static volatile uint16_t __attribute__((aligned(32))) dma_adc_buff1[buffer_size];
+AnalogBufferDMA abdma1(dma_adc_buff1, buffer_size);
+
+static int _readADCsum(AnalogBufferDMA& abdma)
+{
+    int result = INT32_MIN;
+
+    if (abdma.interrupted())
+    {
+        volatile uint16_t *pbuffer = abdma.bufferLastISRFilled();
+        int samples = abdma.bufferCountLastISRFilled(); // expect 64 here!
+
+        // THIS IS IMPORTANT!
+        if ((uint32_t)pbuffer >= 0x20200000u)  
+            arm_dcache_delete((void*)pbuffer, samples * sizeof *pbuffer);
+
+        int sum = 0;
+        for (int i=0;i<samples;i++)
+            sum += pbuffer[i];
+        
+        result = sum;
+
+        // run again
+        abdma.clearInterrupt();
+        abdma.clearCompletion(); 
+    }
+
+    return result;
+}   
+
+static int readADCsum(void)
+{
+    return _readADCsum(abdma1);
+}
+
+
+
 /**
  * ExpressionPedal instance to inject into touchTask
  */
 static ExpressionPedal exprPedal{
     EXPR_PED_I2C, EXPR_PED_MCP4018_RES,
-    [](void){ return analogRead(EXPR_PED_ADC);}, 4095,
+    //[](void){ return analogRead(EXPR_PED_ADC)*256;}, 4095*256,
+    [](void){ return readADCsum(); }, 4095*buffer_size,
     [](bool trctl) { SET_BIT(PEDAL_TRCTRL, trctl); },
     [](bool pull_up_rs_in) { SET_PULLUP(PEDAL_RSIN, pull_up_rs_in); },
     [](void){ return GET_BIT(PEDAL_RSIN);},
     [](void){ return GET_BIT(PEDAL_DET);},
+    abdma1
 };
 
 //**************************************************************************
@@ -164,7 +205,11 @@ void TouchADCtask::initTouch(void)
 float ExpressionPedal::setValue(void)
 {
     raw = (*ADCread)();
-    float newValue = raw/ADCmax2 - 1.0f;
+    float newValue = (float) raw/ADCmax2 - 1.0f;
+
+    rar.update(raw);
+    lastResponsiveValue = (float) rar.getValue()/ADCmax2 - 1.0f;
+
     if (fabs(newValue - lastValue) > 0.01f) // big jump, act quickly
         lastValue = newValue;
     else 
@@ -181,6 +226,13 @@ float ExpressionPedal::getStableValue(int n, int d)
     while (n--)
     {
         newVal = setValue();
+        if (raw < 0) // no new reading
+        {
+            vTaskDelay(1);
+            continue;
+        }
+
+        newVal = raw / ADCmax2 - 1.0f; // use raw value for this, scaled one my be sluggish
         if (fabs(newVal - oldVal) <= THRESHOLD)
         {
             ok = true;
@@ -233,7 +285,7 @@ int ExpressionPedal::gainSeek(float lower, float upper)
     do 
     {    
         setGain(gain);
-        newVal = getStableValue(10,10);
+        newVal = getStableValue(20,10);
         if (UNSTABLE == newVal)
         {
             gain = -1;
@@ -332,6 +384,7 @@ void TouchADCtask::run(void)
     bool pedalPresent{false};
     elapsedMillis em, detectEm;
 
+    /*
     // set up analogue to suit our purposes
     analogReadRes(12);        // 12-bit, 0..4095
     analogReadAveraging(16);   // do some inbuilt averaging
@@ -339,7 +392,18 @@ void TouchADCtask::run(void)
     // do some dummy reads
     analogRead(EXPR_PED_ADC);
     analogRead(LT_SENS_ADC);
+    //*/
 
+    adc = new ADC();
+    adc->adc0->setAveraging(8); // set number of averages
+    adc->adc0->setResolution(12); // set bits of resolution
+    abdma1.init(adc, ADC_0);
+
+    // Start the dma operation..
+    adc->adc0->startSingleRead(EXPR_PED_ADC); // call this to setup everything before the Timer starts, differential is also possible
+    adc->adc0->startTimer(buffer_size*1000);  // frequency in Hz: try to get a buffer every 1ms
+
+    //*/
     // start the expression pedal
     expressionPedal.begin();
     //*
@@ -396,17 +460,19 @@ void TouchADCtask::run(void)
             Serial.printf("%s pedal is present\n", pedalType);
         }
 
-        if (expressionPedal)
+        if (expressionPedal && abdma1.interrupted())
         {
             static float raw;
+            static int updateCount = 0;
             raw = expressionPedal.setValue();
+            updateCount++;
 
             if (em >= 250)    
             {
                 em = 0;
                 if (enablePedalPrint > 0)
                 {
-                    Serial.printf("Expr: %.3f; gain %d\n", raw, expressionPedal.getGain());
+                    Serial.printf("%d, Expr: %.3f; gain %d\n", updateCount, raw, expressionPedal.getGain());
                     enablePedalPrint--;
                     if (0 == enablePedalPrint)
                         Serial.println("Pedal print stopped");
@@ -433,6 +499,16 @@ void TouchADCtask::run(void)
             {
                 count = 50;
                 bits ^= 2;
+                //*
+                Serial.printf("%d, %.4f, %.4f, %.4f\n", 
+                    ADCcount++,
+                /*/                    
+                Serial.printf("raw:%.5f, smoothed:%.5f, responsive:%.5f\n", 
+                //*/
+                    expressionPedal.getRaw()/2047.0f/64.0f - 1.0f, 
+                    expressionPedal.getValue(),
+                    expressionPedal.getResponsiveValue()
+                );
             }
         }
     }

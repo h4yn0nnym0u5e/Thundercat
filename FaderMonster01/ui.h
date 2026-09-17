@@ -85,6 +85,23 @@ class UIclass
     bool isNewTouch(Trigger trigger);
     void drawHeader(const char* txt);
 
+    // utilities
+    /**
+     * Checks timeout, and resets it if it has been exceeded
+     * \return true if timeout parameter was exceeded
+     */
+    bool intervalElapsed(uint32_t usecs) //!< timeout in microseconds
+    {
+        bool result = interval >= usecs;
+        if (result)
+        {
+            interval -= usecs;
+            if (interval > usecs) interval = 0;
+        }
+
+        return result;
+    }
+
     // display writing methods
     InterTaskRequest& writeToMainLCD(void);
     InterTaskRequest& writeToScribble(void);
@@ -327,11 +344,16 @@ class MainExprTune : public UIclass
     enum {idle,
           drawCurrent, drawScaled, 
           drawMin, drawMax, 
-          drawBar, drawGain} phase;
+          drawBar, drawGain} phase{idle};
     static constexpr int barX{10}, barY{50}, barW{300}, barH{20}, 
                      textW{60}, textH{25}, textLen{10};
     UIclass::State drawBarTo(float pos);
     UIclass::State _setFloat(float f, char* buf, char* stash);
+    void clearBar(void)
+    {
+        pSprite->fillRect(barX, barY, barW, barH, colours.bg);
+        max = min = last;
+    }
 
     UIbutton set    {colours,   20,    180, 80,40, (char*) "Set"};
     UIbutton clear  {colours, 160- 40, 180, 80,40, (char*) "Clear"};

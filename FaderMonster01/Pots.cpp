@@ -303,7 +303,7 @@ void PotsTask::run(void)
 
   bank.setChannelSPD(0b11111111);       // bitwise channel selection 
   bank.setDaisyChainsNmb(NmbOfADC);     // Specify number of ADCs in series
-  bank.setGlobalRange(R6);              // set range for all channels (R1 = +- 1.25 * Vref, R6 = 0 ... 1.25*Vref)
+  bank.setGlobalRange(ADS_RANGE_6);     // set range for all channels (R1 = +- 1.25 * Vref, R6 = 0 ... 1.25*Vref)
   bank.autoRst();                       // reset auto sequence
 
   for (int i=0;i<NUM_POTS;i++)

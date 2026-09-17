@@ -316,7 +316,8 @@ bool SuperTask::processUI(void)
         break;
 
       case UIclass::State::push:
-        if (ui.writeToDisplay().isInactive()) // will change state for us, or not
+        if (ui.writeToDisplay().isInactive()  // will change state for us, or not
+        &&  UIclass::State::push != ui.state) // if not, was already busy
             wait = false; // active - wait for display task to finish
         break;
 
@@ -344,6 +345,7 @@ extern FlexIOSPI SPIflex;
 static char fileName[30];
 uint8_t bits;
 bool countBits;
+int ADCcount;
 
 void SuperTask::loopFn(void)
 {
@@ -520,6 +522,28 @@ void SuperTask::loopFn(void)
         countBits = !countBits;
         if (!countBits) bits = 0;
         break;
+
+      case 'a':
+        {
+          int n = Serial.read();
+          switch (n)
+          {
+            default:
+              break;
+
+            case '0':
+            case '2':
+            case '3':
+            case '4':
+            case '5':
+              n = 1<<(n-'0');
+              analogReadAveraging(n);
+              Serial.printf("Analogue averaging set to %d\n", n);
+              break;
+          }
+        } 
+        ADCcount = 0;
+        break;       
     }
     if (exitWhile)
       break;

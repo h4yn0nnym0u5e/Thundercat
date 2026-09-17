@@ -153,11 +153,14 @@ class ButtonLED
 class ExpressionPedal
 {
     MCP4018 mcp4018;
+    ResponsiveAnalogRead rar{-1, true};
     int  (*ADCread)(void);
     void (*setTRCTL)(bool);
     void (*pullupRS_IN)(bool);
     bool (*getRS_IN)(void);
     bool (*getSENSE)(void);
+
+    AnalogBufferDMA& abdma;
 
     static constexpr float UNSTABLE{42.0f}, THRESHOLD{0.01f},
                            EXPR_MIN{-0.5f}, EXPR_MAX{0.5f};
@@ -167,7 +170,7 @@ class ExpressionPedal
     bool isOK{false};
     int  ADCmax2; // half the maximum expected reading
     int gain;
-    float raw, lastValue, smooth;
+    float raw, lastValue, lastResponsiveValue, smooth;
     float scaleMin, scaleMax;
     
   public:
@@ -177,13 +180,16 @@ class ExpressionPedal
                     void (*_setTRCTL)(bool),
                     void (*_pullupRS_IN)(bool),
                     bool (*_getRS_IN)(void),
-                    bool (*_getSENSE)(void)
+                    bool (*_getSENSE)(void),
+                    AnalogBufferDMA& _abdma
                     )
         : mcp4018{_wire, _mcpResistance},
           ADCread{_ADCread}, setTRCTL{_setTRCTL},
           pullupRS_IN{_pullupRS_IN}, getRS_IN{_getRS_IN},
           getSENSE{_getSENSE},
+          abdma{_abdma},
           ADCmax2{_ADCmax/2},
+
           smooth{0.03125f}, scaleMin{-0.7f}, scaleMax{0.7f}
           {}
     
@@ -196,6 +202,9 @@ class ExpressionPedal
             mcp4018.setDelay(0);
             setGain(55); // middle-ish gain
             isOK = true;
+
+            rar.setAnalogResolution(ADCmax2*2);
+            rar.setActivityThreshold((float) ADCmax2/4000.0f);
         }
         return result;
     }
@@ -208,6 +217,7 @@ class ExpressionPedal
         (*pullupRS_IN)(!b); 
     }
     float getValue(void) {return lastValue; };
+    float getResponsiveValue(void) { return lastResponsiveValue; }
     float getRaw(void)   {return raw; };
     void setSmooth(float s) { smooth = s; }
     float setValue(void);
@@ -719,6 +729,7 @@ class MainLCDtask : public FaderMonsterTask
     bool zapScreen{false}; // as is this
     bool opIsSave;
     int timeoutCount, stallCount;
+    UBaseType_t messagesWaiting(void) { return reqQueue.messagesWaiting(); }
    //------------------------------------------------------------------------
     // stuff to allow another task to make async requests:
     InterTaskRequest& updateDirty(InterTaskRequest& req, TFT_eSprite& scribble, TickType_t timeout = 0);

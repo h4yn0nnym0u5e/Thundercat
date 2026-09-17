@@ -124,7 +124,7 @@ bool MainLCDtask::TFTdmaWait(int pixels)
 //Serial.print("notified ");
   if (timedOut)
   {
-    //Serial.print("********** timeout *********** ");
+    Serial.print("********** timeout *********** ");
     SPIflex.killTransfer();
     timeoutCount++;
   }
@@ -138,7 +138,7 @@ bool MainLCDtask::TFTdmaWait(int pixels)
 
   if (stalled && !timedOut)
   {
-    //Serial.print("********** stalled *********** ");
+    Serial.print("********** stalled *********** ");
     timedOut |= stalled;
     stallCount++;
   }
@@ -156,6 +156,7 @@ bool MainLCDtask::TFTdmaWait(int pixels)
 int updateCount;
 InterTaskRequest::Result MainLCDtask::doUpdateDirty(void* pDisplay)
 {
+  Serial.print('u');
     TFT_eSprite& display = *((TFT_eSprite*) pDisplay);
 
     InterTaskRequest::Result result = InterTaskRequest::Result::done;
@@ -208,7 +209,8 @@ InterTaskRequest::Result MainLCDtask::doUpdateDirty(void* pDisplay)
           updateCount++;
           display.pushImageDMA(x,y,w,h,DMAbuffer);
           pushNeeded = TFTdmaWait(w*h); // suspend until DMA completes, then tidy up
-#if 0          
+          Serial.print('q');
+#if 1          
           if (pushNeeded)
           {
             // pauseOutput = true;
@@ -220,6 +222,8 @@ InterTaskRequest::Result MainLCDtask::doUpdateDirty(void* pDisplay)
 #endif // including debug code          
         } 
     }
+    else 
+      Serial.print('@');
 
     return result;
 }
@@ -348,11 +352,25 @@ InterTaskRequest& MainLCDtask::updateDirty(InterTaskRequest& req,  // request to
 {
     requestPayload payload{&MainLCDtask::doUpdateDirty, &display};
     RequestQueue<MainLCDtask, requestPayload>::queueEntry entry{&req,payload};
+    char c = 'Q';
 
     if (display.isDirty())
+    {
       reqQueue.request(entry, timeout);      // queue the request, if inactive
+    }
     else 
-      req.status = InterTaskRequest::Result::done; // nothing to do, so it's done!      
+      req.status = InterTaskRequest::Result::done; // nothing to do, so it's done!
+
+      //*
+    if (req.isFailed())
+      c = '!';
+    else if (req.isInactive())
+    {
+      c = '.';
+    }
+    //Serial.print(' ');
+    Serial.print(c);
+        //*/  
 
     return req;
 }
@@ -598,6 +616,7 @@ taskEXIT_CRITICAL();
 
   //int colour = 0;
   //elapsedMillis em = 0;
+  reqQueue.xChar = 'x';
   while (1)
   {
       reqQueue.executeRequest(*this, 10);
@@ -619,5 +638,5 @@ taskEXIT_CRITICAL();
 MainLCDtask mainLCDtask{"mainLCD", 768, nullptr, 
                         1,            // display updates are a fairly low priority
                         tft, sprite,  // actual tft and sprite objects
-                        NUM_POTS      // allow for one request per strip
+                        NUM_POTS*4    // allow for 4 requests per strip
                        }; 

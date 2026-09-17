@@ -30,7 +30,7 @@
 #define DPEX_SPI SPI1 // shared with ADCs
 
 // Expression pedal
-#define EXPR_PED_ADC 40
+#define EXPR_PED_ADC 40 // can be ADC1 or ADC2
 
 #define EXPR_PED_I2C         Wire
 #define EXPR_PED_MCP4018_RES 10000.0f
@@ -44,7 +44,7 @@
 #define FADERS_TOUCH_ADDR  0x1C
 
 // Ambient light sensor
-#define LT_SENS_ADC 41
+#define LT_SENS_ADC 41 // can be ADC1 or ADC2
 
 // Main LCD
 #define MAINLCD_BL USB_T_2

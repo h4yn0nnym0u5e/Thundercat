@@ -41,7 +41,8 @@ class InterTaskRequest
                  pending,   //!< request awaiting attention from server task
                  running,   //!< request being executed by server task
                  done,      //!< request completed successfully
-                 failed     //!< request failed 
+                 failed,    //!< request failed 
+                 qfull      //!< queue was full
                 } status;
     // performance measuring                 
     uint32_t requested, //!< timestamp when request was made (microseconds)
@@ -59,13 +60,13 @@ class InterTaskRequest
     bool isBusy(void) { return pending == status || running == status; }
 
     //! \return true if request has completed
-    bool isFinished(void) { return done == status || failed == status; }
+    bool isFinished(void) { return done == status || failed == status || qfull == status; }
 
     //! \return true if request has failed
-    bool isFailed(void) { return failed == status; }
+    bool isFailed(void) { return failed == status || qfull == status; }
 
     //! \return true if request is not busy
-    bool isInactive(void) { return inactive == status || done == status || failed == status; }
+    bool isInactive(void) { return inactive == status || done == status || failed == status || qfull == status; }
 
     // instrumentation: find out how long various things took
     //! \return time taken between request and execution start (microseconds)
@@ -117,17 +118,17 @@ class RequestQueue
     //! fails if request instance is already busy, or can't add it to the queue
     InterTaskRequest::Result request(queueEntry& req, TickType_t timeout = 0) 
     { 
-        InterTaskRequest::Result result = InterTaskRequest::Result::pending;
+        InterTaskRequest::Result result = InterTaskRequest::Result::failed;
         if (req.req->isInactive())
         {
             //char* callerName = pcTaskGetName(nullptr);
             //Serial.printf("[%u]: %s sent req at %08X\n", micros(), callerName, (uint32_t) req.req);
-            req.req->status = result;
+            req.req->status = InterTaskRequest::Result::pending;
             req.req->requested = micros();
             if (pdPASS == xQueueSend(queue, &req, timeout))
                 result = req.req->status; // may execute immediately!
             else
-                result = InterTaskRequest::Result::failed;                
+                result = InterTaskRequest::Result::qfull;                
         }
         return result; 
     }
@@ -163,7 +164,7 @@ class RequestQueue
         return result;
     }
 
-
+    char xChar{0};
     //! De-queue a request and execute it.
     //! Polled in task's loop; does nothing if no requests are pending
     InterTaskRequest::Result executeRequest(T& instance, int timeout)
@@ -172,7 +173,11 @@ class RequestQueue
         queueEntry entry;
         if (pdPASS == getRequest(&entry, timeout))
         {
-            entry.req->executed = micros();
+            if (xChar)
+            {
+                Serial.print(xChar);
+            }
+            entry.req->status = InterTaskRequest::Result::running; 
             //Serial.println("execute");
             result = (instance.*entry.payload.requestExecutor)(entry.payload.context);
             entry.req->finished = micros();
