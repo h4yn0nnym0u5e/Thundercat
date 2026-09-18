@@ -20,17 +20,29 @@ void UIclass::drawHeader(const char* txt)
     pSprite->drawString(txt,2,2);
 } 
 
+/**
+ * Return true if trigger is a touch at a new point, or an un-touch,
+ * or the previous trigger wasn't a touch (but maybe we need to 
+ * account for touches separately, if we want to update due to
+ * multiple simultaneous triggers?)
+ */
 bool UIclass::isNewTouch(Trigger trigger)
 {
     bool result = false;
 
-    if (Trigger::eTriggerType::touchPoint == trigger.type
-     && Trigger::eTriggerType::touchPoint == currentTrigger.type
-     && (trigger.trigger.touchPoint.x !=  currentTrigger.trigger.touchPoint.x
-      || trigger.trigger.touchPoint.y !=  currentTrigger.trigger.touchPoint.y
-      || trigger.trigger.touchPoint.reserved !=  currentTrigger.trigger.touchPoint.reserved)
-        )
-        result = true;
+    if (Trigger::eTriggerType::touchPoint == trigger.type)
+    {
+        if (Trigger::eTriggerType::touchPoint == currentTrigger.type)
+        {
+            if (trigger.trigger.touchPoint.x !=  currentTrigger.trigger.touchPoint.x
+             || trigger.trigger.touchPoint.y !=  currentTrigger.trigger.touchPoint.y
+             || trigger.trigger.touchPoint.reserved !=  currentTrigger.trigger.touchPoint.reserved
+               )
+                result = true;
+        }
+        else
+            result = true;
+    }
 
     return result;
 }
@@ -38,7 +50,7 @@ bool UIclass::isNewTouch(Trigger trigger)
 uint16_t* UIclass::makeCmap(uint16_t* cmap, uint16_t fg, uint16_t bg)
 {
     for (int i=0;i<16;i++)
-        cmap[i] = pSprite->alphaBlend(i*16,fg,bg);
+        cmap[i] = TFT_eSPI::alphaBlend(i*16,fg,bg); // alphaBlend() is now 'static'!
 
     return cmap;
 }
@@ -300,23 +312,33 @@ InterTaskRequest UIclass::autoFail{InterTaskRequest::Result::failed};
 //    888  888 888  888 888    888   888  888 888  888 
 //    888 d88P Y88b 888 Y88b.  Y88b. Y88..88P 888  888 
 //    88888P"   "Y88888  "Y888  "Y888 "Y88P"  888  888 
-//  
-void UIbutton::draw(TFT_eSprite* pSprite, bool hit)
+//
+/**
+ * Draw button with rounded rectangular outline
+ * \return true if it was changed
+ */  
+bool UIbutton::draw(TFT_eSprite* pSprite, bool hit, bool force)
 {
-    int bg = colours.bg, txt = colours.txt;
-    if (hit)
+    bool result = false;
+    if (hit != isHit || force)
     {
-        bg = colours.txt;
-        txt = colours.bg;
-    }
-    pSprite->fillRoundRect(x,y,w,h,5,colours.fg);
-    pSprite->fillRoundRect(x+2,y+2,w-4,h-4,4,bg);
-    pSprite->setFreeFont(font);
-    pSprite->setTextDatum(CC_DATUM); 
-    pSprite->setTextColor(txt, bg);
-    pSprite->drawString(label,x+w/2+labXoff,y+h/2+labYoff);
+        int bg = colours.bg, txt = colours.txt;
+        if (hit)
+        {
+            bg = colours.txt;
+            txt = colours.bg;
+        }
+        pSprite->fillRoundRect(x,y,w,h,5,colours.fg);
+        pSprite->fillRoundRect(x+2,y+2,w-4,h-4,4,bg);
+        pSprite->setFreeFont(font);
+        pSprite->setTextDatum(CC_DATUM); 
+        pSprite->setTextColor(txt, bg);
+        pSprite->drawString(label,x+w/2+labXoff,y+h/2+labYoff);
 
-    isHit = hit;
+        isHit = hit;
+        result = true;
+    }
+    return result;
 }
 
 bool UIbutton::isIn(GTPoint& pt)
@@ -327,6 +349,64 @@ bool UIbutton::isIn(GTPoint& pt)
     */
     return pt.x >= x && pt.x <= x+w
         && pt.y >= y && pt.y <= y+h;
+}
+
+/**
+ * Draw button with graphic background
+ * \return true if it was changed
+ */  
+bool UIgraphicButton::draw(TFT_eSprite* pSprite, bool hit, bool force)
+{
+    bool result = false;
+    if (hit != isHit || force)
+    {
+        int fg = colours.fg, txt = colours.txt;
+        if (hit)
+        {
+            fg = colours.txt;
+            txt = colours.fg;
+        }
+
+        // graphic
+        uint16_t cmap[16];
+        UIclass::makeCmap(cmap,fg,colours.bg);
+        pSprite->pushImage(x,y, pGraphic->width,pGraphic->height, (uint8_t*) pGraphic->data, 0,false, (uint16_t*) cmap);
+
+        if (nullptr != label) // graphic-only buttons are permitted
+        {
+            pSprite->setFreeFont(font);
+            pSprite->setTextDatum(CC_DATUM); 
+            pSprite->setTextColor(txt, cmap[15]);
+            pSprite->drawString(label,
+                                x + pGraphic->width/2  + labXoff,
+                                y + pGraphic->height/2 + labYoff);
+        }
+
+        isHit = hit;
+        result = true;
+    }
+    return result;
+}
+
+/**
+ * Is touch point in visible area of image?
+ * \return true if point is at or above threshold, usually 1 (zero being transparent)
+ */
+bool UIgraphicButton::isIn(GTPoint& p, int threshold)
+{
+    bool result = false;
+    int xrel = p.x - x, yrel = p.y - y;
+    const image_4bit_info& img = *pGraphic;
+
+    if (xrel >= 0 && xrel < img.width 
+     && yrel >= 0 && yrel < img.height) // must be inside the graphic!
+    {
+        int offset = xrel+yrel*img.width; // how far into the image the pixel is...
+        int pixel = img.data[offset / 2]; // ...it's a 4-bit image
+        pixel = (offset & 1)?(pixel&0x0F):(pixel>>4);
+        result = pixel >= threshold;
+    }
+    return result;
 }
 //==================================================================
 //
@@ -524,8 +604,6 @@ void MainTestRects::randomRect(void)
 // Return hue based on angle: 0=red, 60=yellow etc
 uint16_t MainColourPicker::angleToHue(int a)
 {
-  TFT_eSprite& tft = *pSprite;
-
   uint16_t result = TFT_BLACK;
   if (a < 0) a += 720; // deal with reasonable negative angles
   a %= 360;
@@ -535,12 +613,12 @@ uint16_t MainColourPicker::angleToHue(int a)
 
   switch (s)
   {
-    case 0: result = tft.alphaBlend(a,TFT_RED,    TFT_YELLOW ); break;
-    case 1: result = tft.alphaBlend(a,TFT_YELLOW, TFT_GREEN  ); break;
-    case 2: result = tft.alphaBlend(a,TFT_GREEN,  TFT_CYAN   ); break;
-    case 3: result = tft.alphaBlend(a,TFT_CYAN,   TFT_BLUE   ); break;
-    case 4: result = tft.alphaBlend(a,TFT_BLUE,   TFT_MAGENTA); break;
-    case 5: result = tft.alphaBlend(a,TFT_MAGENTA,TFT_RED    ); break;
+    case 0: result = TFT_eSPI::alphaBlend(a,TFT_RED,    TFT_YELLOW ); break;
+    case 1: result = TFT_eSPI::alphaBlend(a,TFT_YELLOW, TFT_GREEN  ); break;
+    case 2: result = TFT_eSPI::alphaBlend(a,TFT_GREEN,  TFT_CYAN   ); break;
+    case 3: result = TFT_eSPI::alphaBlend(a,TFT_CYAN,   TFT_BLUE   ); break;
+    case 4: result = TFT_eSPI::alphaBlend(a,TFT_BLUE,   TFT_MAGENTA); break;
+    case 5: result = TFT_eSPI::alphaBlend(a,TFT_MAGENTA,TFT_RED    ); break;
     default:
       break;
   }
@@ -657,7 +735,7 @@ void MainColourPicker::drawFatRect(int x, int y, int w, int h, int t, int colour
 
 uint16_t MainColourPicker::getBlend(float l, uint16_t top, uint16_t hue)
 {
-  return pSprite->alphaBlend(l*255+0.5f, top, hue);
+  return TFT_eSPI::alphaBlend(l*255+0.5f, top, hue);
 }
 
 
@@ -714,6 +792,7 @@ void MainColourPicker::drawSettingsExample(void)
   tft.fillRect(65,    yp+60-25, 10,   15   , bgColour);
   tft.fillRect(65+105,yp+60-25, 10,   15   , bgColour);
   //tft.setCursor(70,95);
+  tft.setTextDatum(TL_DATUM); 
   tft.setTextColor(textColour);
   tft.drawString("Text", 75, yp+5, 4);
   tft.fillRect(75,yp+60-10-15,95,15, hue);
@@ -723,6 +802,8 @@ void MainColourPicker::drawSettingsExample(void)
 void MainColourPicker::showColours(void)
 {
   TFT_eSprite& tft = *pSprite; 
+
+  tft.setTextDatum(TL_DATUM); 
 
   char buffer[20];
   tft.setTextColor(TFT_WHITE);
@@ -757,19 +838,8 @@ UIclass::State MainColourPicker::begin(TFT_eSprite& sprite, colours_t c)
     drawSettingsExample();  // text + foreground + background
     showColours();          // hex values for the current colours
 
-    //*
-    // button image
-    uint16_t colour = TFT_LIGHTGREY;
-    uint16_t cmap[16];
-    makeCmap(cmap,colour,TFT_BLACK);
-
-    pSprite->setFreeFont(&FreeSans9pt7b);
-    pSprite->setTextColor(pSprite->alphaBlend(64, TFT_WHITE, TFT_BLACK), cmap[15]);
-
-    drawButton(0,0, tl_button_info, cmap, "TFT", 10,15);
-    drawButton(0,239-bl_button_info.height, bl_button_info, cmap, "Ring", 10,60);
-
-    //*/
+    buttonTFT.draw(pSprite);
+    buttonRing.draw(pSprite);
     return (state = State::push); // need to update display
 }
 
@@ -785,44 +855,15 @@ UIclass::State MainColourPicker::update(Trigger trigger)
         //----------------------------------------------------------------------
         case Trigger::eTriggerType::touchPoint:
         {
-            currentTrigger = trigger; // keep the trigger and value(s)
             // assume the touch point is not interesting
             phase = idle;
             result = State::done;
-            gradientOnly = true; // assume user touched text or background gradient
+            if (!isNewTouch(trigger))
+                break; // ...it's not!
+
             GTPoint lastTouch = trigger.trigger.touchPoint;
-
-            // change a strip's colour scheme?
-            if (lastTouch.x < 50 && lastTouch.y < 50 && lastTouch.reserved == 255) // hacky hack!
-            {
-                colours = {hue,bgColour,textColour}; 
-                for (int i=0;i<NUM_POTS;i++)
-                {
-                    TouchStatus& stripTouch = StripTask::getStripPotTouch(i);
-                    if (TouchStatus::eStatus::LONG == stripTouch.getExtendedStatus())
-                    {
-                        faderMonsterSettings.stripsConfig.colours[i].scribble = colours;
-                        StripTask::getStripTask(i).tftColourChanged();
-                    }
-                }
-                break; // nothing else needed
-            }
-
-            // change a ring LED's colour?
-            if (lastTouch.x < 50 && lastTouch.y > (240 - 50) && lastTouch.reserved == 255) // hacky hack!
-            {
-                uint32_t LEDcolour = pSprite->color16to24(bgColour); // allow brightness control
-                for (int i=0;i<NUM_POTS;i++)
-                {
-                    TouchStatus& stripTouch = StripTask::getStripPotTouch(i);
-                    if (TouchStatus::eStatus::LONG == stripTouch.getExtendedStatus())
-                    {
-                        faderMonsterSettings.stripsConfig.colours[i].ringLEDs.colour = LEDcolour;
-                        StripTask::getStripTask(i).tftColourChanged();
-                    }
-                }
-                break; // nothing else needed
-            }
+            currentTrigger = trigger; // keep the trigger and value(s)
+            gradientOnly = true; // assume user touched text or background gradient
 
             // Are we in the colour circle - if so select hue
             dx = lastTouch.x - hueX; dy = lastTouch.y - hueY;
@@ -833,33 +874,105 @@ UIclass::State MainColourPicker::update(Trigger trigger)
                 gradientOnly = false; // change hue and both gradients
                 phase = doUnMarkHue;
                 result = State::next;
+                break; // done, and don't want to hit corner buttons
+            }
+
+
+            // see if we're in the text or background sliders
+            if (lastTouch.x>=230 && lastTouch.y>=18 && lastTouch.y<=222)
+            {
+                newLevel = (220 - lastTouch.y)/200.0f;
+                newLevel = constrain<float>(newLevel,0.0f,1.0f);
+
+                if (lastTouch.x<270)
+                {
+                    if (!isSameLevel(newLevel,textLevel, hue,TFT_WHITE))
+                    {
+                        phase = doMarkText;
+                        result = State::next; // gonna draw something!
+                    }
+                }
+                else            
+                {
+                    if (!isSameLevel(newLevel,bgLevel, hue,TFT_BLACK))
+                    {
+                        phase = doMarkBg;
+                        result = State::next; // gonna draw something!
+                    }
+                }
+                break; // done, and don't want to hit corner buttons
+            }
+            
+
+            // change a strip's colour scheme?
+            //if (lastTouch.x < 50 && lastTouch.y < 50 && lastTouch.reserved == 255) // hacky hack!
+            if (buttonTFT.isIn(lastTouch, 1))
+            {
+                if (255 == lastTouch.reserved) // released - do the action
+                {
+                    if (buttonTFT.draw(pSprite, false)) // not a duplicate
+                    {
+                        colours = {hue,bgColour,textColour}; 
+                        for (int i=0;i<NUM_POTS;i++)
+                        {
+                            TouchStatus& stripTouch = StripTask::getStripPotTouch(i);
+                            if (TouchStatus::eStatus::LONG == stripTouch.getExtendedStatus())
+                            {
+                                faderMonsterSettings.stripsConfig.colours[i].scribble = colours;
+                                StripTask::getStripTask(i).tftColourChanged();
+                            }
+                        }
+                        result = State::push;
+                    }
+                }
+                else
+                {
+                    if (buttonTFT.draw(pSprite, true)) // not a duplicate
+                        result = State::push;
+                }
+                break; // nothing else needed
             }
             else
             {
-                // see if we're in the text or background sliders
-                if (lastTouch.x>=230 && lastTouch.y>=18 && lastTouch.y<=222)
-                {
-                    newLevel = (220 - lastTouch.y)/200.0f;
-                    newLevel = constrain<float>(newLevel,0.0f,1.0f);
+                if (buttonTFT.unHit(pSprite)) // not in, but was hit?
+                    result = State::push;
+            }
 
-                    if (lastTouch.x<270)
+            // change a ring LED's colour?
+            //if (lastTouch.x < 50 && lastTouch.y > (240 - 50) && lastTouch.reserved == 255) // hacky hack!
+            if (buttonRing.isIn(lastTouch, 1))
+            {
+                if (255 == lastTouch.reserved) // released - do the action
+                {
+                    if (buttonRing.draw(pSprite, false)) // not a duplicate
                     {
-                        if (!isSameLevel(newLevel,textLevel, hue,TFT_WHITE))
+                        uint32_t LEDcolour = pSprite->color16to24(bgColour); // allow brightness control
+                        for (int i=0;i<NUM_POTS;i++)
                         {
-                            phase = doMarkText;
-                            result = State::next; // gonna draw something!
+                            TouchStatus& stripTouch = StripTask::getStripPotTouch(i);
+                            if (TouchStatus::eStatus::LONG == stripTouch.getExtendedStatus())
+                            {
+                                faderMonsterSettings.stripsConfig.colours[i].ringLEDs.colour = LEDcolour;
+                                StripTask::getStripTask(i).tftColourChanged();
+                            }
                         }
-                    }
-                    else            
-                    {
-                        if (!isSameLevel(newLevel,bgLevel, hue,TFT_BLACK))
-                        {
-                            phase = doMarkBg;
-                            result = State::next; // gonna draw something!
-                        }
+                        result = State::push;
                     }
                 }
+                else
+                {
+                    if (buttonRing.draw(pSprite, true)) // not a duplicate
+                        result = State::push;
+                }
+
+                break; // nothing else needed
             }
+            else
+            {
+                if (buttonRing.unHit(pSprite)) // not in, but was hit?
+                    result = State::push;
+            }
+
         }
             break;
         
@@ -916,6 +1029,12 @@ UIclass::State MainColourPicker::update(Trigger trigger)
                 }
                     break;
 
+                // already drawn by trigger - just push to screen
+                case doDrawButtonRing:
+                case doDrawButtonTFT:
+                    result = State::push;
+                    phase = idle;
+                    break;
             }
             break;
     }

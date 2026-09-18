@@ -111,8 +111,8 @@ void StripTask::run(void)
   ring.setPattern(cfg.ringLEDs.pattern.getPointer()); // null pointer is OK here
 
   // for now, make background and text colours out of foreground:
-  cfg.scribble.bg  = scribble.alphaBlend( 70, cfg.scribble.fg, TFT_BLACK);
-  cfg.scribble.txt = scribble.alphaBlend( 80, cfg.scribble.fg, TFT_WHITE);
+  cfg.scribble.bg  = TFT_eSPI::alphaBlend( 70, cfg.scribble.fg, TFT_BLACK);
+  cfg.scribble.txt = TFT_eSPI::alphaBlend( 80, cfg.scribble.fg, TFT_WHITE);
                                             /* / 255 */
   
   // wait for display init to be finished

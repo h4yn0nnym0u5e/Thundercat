@@ -6,6 +6,7 @@
 #include <TFT_eSPI.h>
 
 #define MAX_TEXT_LEN 30
+#define TFT_DARKERGREY 0x39E7
 //==================================================================
 //
 //    888            d8b                                    
@@ -59,6 +60,9 @@ struct Trigger
 //  
 class UIclass
 {
+    friend class UIbutton;
+    friend class UIgraphicButton;
+
     static InterTaskRequest autoFail;
   protected:
     TFT_eSprite* pSprite;
@@ -78,7 +82,7 @@ class UIclass
     bool setFloat(float potPos, char* lastString, size_t sizeofLastString);
     bool setTouch(TouchStatus* pTouch, TouchStatus::eStatus& lastTouch);
 
-    uint16_t* makeCmap(uint16_t* cmap, uint16_t fg, uint16_t bg);
+    static uint16_t* makeCmap(uint16_t* cmap, uint16_t fg, uint16_t bg);
     void drawButton(int x, int y,
                     const image_4bit_info& img, const uint16_t* cmap,
                     const char* txt, int xoff, int yoff);
@@ -150,12 +154,14 @@ class UIclass
 //  
 class UIbutton
 {
+  protected:
     TFTcolours& colours;
     int x,y,w,h;
     char* label; 
     const GFXfont *font;
     int labXoff, labYoff;
-    bool isHit{false};
+    bool isHit{true}; // pretend it's hit on construction, so first draw() works
+
   public:
     UIbutton(TFTcolours& c,
              int _x, int _y, int _w, int _h,
@@ -166,7 +172,7 @@ class UIbutton
         label{_label}, 
         font{_f}, labXoff{_labXoff}, labYoff{_labYoff}
         {}       
-    virtual void draw(TFT_eSprite* pSprite, bool hit = false);
+    virtual bool draw(TFT_eSprite* pSprite, bool hit = false, bool force = false);
     virtual bool isIn(GTPoint&);
     virtual bool unHit(TFT_eSprite* pSprite) 
     { 
@@ -175,6 +181,24 @@ class UIbutton
             draw(pSprite); 
         return wasHit;            
     }
+};
+
+class UIgraphicButton : public UIbutton
+{
+  protected:
+    const image_4bit_info* pGraphic; // pointer: might want to change it
+  public:    
+    UIgraphicButton(TFTcolours& c,
+             int _x, int _y, 
+             char* _label, const image_4bit_info& _graphic,
+             const GFXfont *_f = &FONT_BUTTON, 
+             int _labXoff = 0, int _labYoff = 0)
+        : UIbutton{c,_x,_y, _graphic.width, _graphic.height, _label,_f,_labXoff,_labYoff},
+          pGraphic{&_graphic}
+        {}
+    virtual bool draw(TFT_eSprite* pSprite, bool hit = false, bool force = false);
+    virtual bool isIn(GTPoint& p) { return UIbutton::isIn(p); }
+    virtual bool isIn(GTPoint& p, int threshold);
 };
 
 
@@ -262,7 +286,8 @@ class MainColourPicker : public UIclass
                 doGradients,
                 doUnMarkText, doMarkText,
                 doUnMarkBg, doMarkBg,  doDrawColours, doDrawExample,
-            doDrawPoint};
+                doDrawButtonTFT, doDrawButtonRing,
+                doDrawPoint};
     //GTPoint lastTouch;
 
     // working variables
@@ -277,7 +302,7 @@ class MainColourPicker : public UIclass
     uint16_t hue, textColour, bgColour;
     TFTcolours colours; // for export
 
-    uint16_t angleToHue(int a);
+    static uint16_t angleToHue(int a);
     void hueCircle(int x, int y, int r, int ir, uint16_t bgcolour);
     void gradients(int x, int x2, int y, int w, int h, uint16_t c);
     int rad2TFT(float rad);
@@ -309,6 +334,9 @@ class MainColourPicker : public UIclass
     bool isSameLevel(float level, float oldLevel, uint16_t hue, uint16_t top);                      
     void drawSettingsExample(void);
     void showColours(void);
+    TFTcolours coloursButtons{TFT_DARKERGREY, TFT_BLACK, TFT_LIGHTGREY};
+    UIgraphicButton buttonTFT{coloursButtons, 0,0, (char*) "TFT", tl_button_info, &FreeSans9pt7b, -15,-25};
+    UIgraphicButton buttonRing{coloursButtons, 0,239-bl_button_info.height, (char*)"Ring", bl_button_info, &FreeSans9pt7b, -15,20};
 
   public:
     virtual State begin(TFT_eSprite& sprite, colours_t c);
