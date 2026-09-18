@@ -173,6 +173,7 @@ class RequestQueue
         queueEntry entry;
         if (pdPASS == getRequest(&entry, timeout))
         {
+            entry.req->executed = micros();
             if (xChar)
             {
                 Serial.print(xChar);

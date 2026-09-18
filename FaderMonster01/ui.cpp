@@ -317,17 +317,21 @@ InterTaskRequest UIclass::autoFail{InterTaskRequest::Result::failed};
  * Draw button with rounded rectangular outline
  * \return true if it was changed
  */  
-bool UIbutton::draw(TFT_eSprite* pSprite, bool hit, bool force)
+bool UIbutton::draw(TFT_eSprite* pSprite)
 {
     bool result = false;
-    if (hit != isHit || force)
+    if (needsDrawing())
     {
         int bg = colours.bg, txt = colours.txt;
-        if (hit)
+        if (setHit == state)
         {
             bg = colours.txt;
             txt = colours.bg;
+            state = drawnHit;
         }
+        else
+            state = drawnNormal;
+
         pSprite->fillRoundRect(x,y,w,h,5,colours.fg);
         pSprite->fillRoundRect(x+2,y+2,w-4,h-4,4,bg);
         pSprite->setFreeFont(font);
@@ -335,7 +339,6 @@ bool UIbutton::draw(TFT_eSprite* pSprite, bool hit, bool force)
         pSprite->setTextColor(txt, bg);
         pSprite->drawString(label,x+w/2+labXoff,y+h/2+labYoff);
 
-        isHit = hit;
         result = true;
     }
     return result;
@@ -343,29 +346,32 @@ bool UIbutton::draw(TFT_eSprite* pSprite, bool hit, bool force)
 
 bool UIbutton::isIn(GTPoint& pt)
 {
-    /*
-    Serial.printf("x: %d, xl: %d, xu: %d; y: %d, yl: %d, yu: %d\n",
-                    pt.x,x,x+w, pt.y,y,y+h);
-    */
-    return pt.x >= x && pt.x <= x+w
-        && pt.y >= y && pt.y <= y+h;
+    bool result = pt.x >= x && pt.x <= x+w
+               && pt.y >= y && pt.y <= y+h;
+
+    result = setLifted(result, pt);
+
+    return result;
 }
 
 /**
  * Draw button with graphic background
  * \return true if it was changed
  */  
-bool UIgraphicButton::draw(TFT_eSprite* pSprite, bool hit, bool force)
+bool UIgraphicButton::draw(TFT_eSprite* pSprite)
 {
     bool result = false;
-    if (hit != isHit || force)
+    if (needsDrawing())
     {
         int fg = colours.fg, txt = colours.txt;
-        if (hit)
+        if (setHit == state)
         {
             fg = colours.txt;
             txt = colours.fg;
+            state = drawnHit;
         }
+        else
+            state = drawnNormal;
 
         // graphic
         uint16_t cmap[16];
@@ -382,7 +388,6 @@ bool UIgraphicButton::draw(TFT_eSprite* pSprite, bool hit, bool force)
                                 y + pGraphic->height/2 + labYoff);
         }
 
-        isHit = hit;
         result = true;
     }
     return result;
@@ -406,6 +411,9 @@ bool UIgraphicButton::isIn(GTPoint& p, int threshold)
         pixel = (offset & 1)?(pixel&0x0F):(pixel>>4);
         result = pixel >= threshold;
     }
+
+    result = setLifted(result, p);
+
     return result;
 }
 //==================================================================
@@ -905,74 +913,44 @@ UIclass::State MainColourPicker::update(Trigger trigger)
             
 
             // change a strip's colour scheme?
-            //if (lastTouch.x < 50 && lastTouch.y < 50 && lastTouch.reserved == 255) // hacky hack!
-            if (buttonTFT.isIn(lastTouch, 1))
+            if (buttonTFT.isIn(lastTouch, 1)) // will change drawing request state
             {
-                if (255 == lastTouch.reserved) // released - do the action
+                if (buttonTFT.isLifted()) // not a duplicate, not slid out
                 {
-                    if (buttonTFT.draw(pSprite, false)) // not a duplicate
+                    colours = {hue,bgColour,textColour}; 
+                    for (int i=0;i<NUM_POTS;i++)
                     {
-                        colours = {hue,bgColour,textColour}; 
-                        for (int i=0;i<NUM_POTS;i++)
+                        TouchStatus& stripTouch = StripTask::getStripPotTouch(i);
+                        if (TouchStatus::eStatus::LONG == stripTouch.getExtendedStatus())
                         {
-                            TouchStatus& stripTouch = StripTask::getStripPotTouch(i);
-                            if (TouchStatus::eStatus::LONG == stripTouch.getExtendedStatus())
-                            {
-                                faderMonsterSettings.stripsConfig.colours[i].scribble = colours;
-                                StripTask::getStripTask(i).tftColourChanged();
-                            }
+                            faderMonsterSettings.stripsConfig.colours[i].scribble = colours;
+                            StripTask::getStripTask(i).tftColourChanged();
                         }
-                        result = State::push;
                     }
                 }
-                else
-                {
-                    if (buttonTFT.draw(pSprite, true)) // not a duplicate
-                        result = State::push;
-                }
-                break; // nothing else needed
-            }
-            else
-            {
-                if (buttonTFT.unHit(pSprite)) // not in, but was hit?
-                    result = State::push;
+                phase = pollButtons;
+                result = State::next;
             }
 
             // change a ring LED's colour?
-            //if (lastTouch.x < 50 && lastTouch.y > (240 - 50) && lastTouch.reserved == 255) // hacky hack!
             if (buttonRing.isIn(lastTouch, 1))
             {
-                if (255 == lastTouch.reserved) // released - do the action
+                if (buttonRing.isLifted()) // not a duplicate
                 {
-                    if (buttonRing.draw(pSprite, false)) // not a duplicate
+                    uint32_t LEDcolour = pSprite->color16to24(bgColour); // allow brightness control
+                    for (int i=0;i<NUM_POTS;i++)
                     {
-                        uint32_t LEDcolour = pSprite->color16to24(bgColour); // allow brightness control
-                        for (int i=0;i<NUM_POTS;i++)
+                        TouchStatus& stripTouch = StripTask::getStripPotTouch(i);
+                        if (TouchStatus::eStatus::LONG == stripTouch.getExtendedStatus())
                         {
-                            TouchStatus& stripTouch = StripTask::getStripPotTouch(i);
-                            if (TouchStatus::eStatus::LONG == stripTouch.getExtendedStatus())
-                            {
-                                faderMonsterSettings.stripsConfig.colours[i].ringLEDs.colour = LEDcolour;
-                                StripTask::getStripTask(i).tftColourChanged();
-                            }
+                            faderMonsterSettings.stripsConfig.colours[i].ringLEDs.colour = LEDcolour;
+                            StripTask::getStripTask(i).tftColourChanged();
                         }
-                        result = State::push;
                     }
                 }
-                else
-                {
-                    if (buttonRing.draw(pSprite, true)) // not a duplicate
-                        result = State::push;
-                }
-
-                break; // nothing else needed
+                phase = pollButtons;
+                result = State::next;
             }
-            else
-            {
-                if (buttonRing.unHit(pSprite)) // not in, but was hit?
-                    result = State::push;
-            }
-
         }
             break;
         
@@ -980,6 +958,11 @@ UIclass::State MainColourPicker::update(Trigger trigger)
         case Trigger::eTriggerType::nextPhase:
             switch (phase)
             {
+                case pollButtons:
+                    if (buttonTFT.draw(pSprite)) { result = State::push; break; }
+                    if (buttonRing.draw(pSprite)) { result = State::push; break; }
+                    phase = idle;
+
                 default:    // nothing pending
                     result = State::done;
                     break;
@@ -1027,13 +1010,6 @@ UIclass::State MainColourPicker::update(Trigger trigger)
                     pSprite->fillRect(lastTouch.x, lastTouch.y, 2,2, TFT_RED);
                     phase = idle;
                 }
-                    break;
-
-                // already drawn by trigger - just push to screen
-                case doDrawButtonRing:
-                case doDrawButtonTFT:
-                    result = State::push;
-                    phase = idle;
                     break;
             }
             break;
@@ -1405,7 +1381,6 @@ UIclass::State MainExprTune::update(Trigger trigger)
     switch (trigger.type)
     {
         default: // we don't react to that trigger type
-            result = State::done;
             break;
         //----------------------------------------------------------------------
         case Trigger::eTriggerType::touchPoint:
@@ -1413,30 +1388,24 @@ UIclass::State MainExprTune::update(Trigger trigger)
             GTPoint& newPt = trigger.trigger.touchPoint;
             if (isNewTouch(trigger))
             {
+                // Serial.printf("x: %d, y: %d; last: %.3f; ", newPt.x, newPt.y, last);
+
                 currentTrigger = trigger; // keep the trigger and value(s)
-                bool lifted = 255 == newPt.reserved;
+                result = State::next;
 
                 if (clear.isIn(newPt)) // clear existing limits bar
                 {
-                    if (lifted)
+                    if (clear.isLifted())
                     {
-                        clearBar();
-                        phase = idle;
-                        clear.unHit(pSprite);
+                        clearBar(); // needs pushing now
+                        result = State::push;
                     }
-                    else
-                    {
-                        clear.draw(pSprite, true);
-                    }
-                    result = State::push;
+                    phase = pollButtons;
                 }
-                else
-                    result = clear.unHit(pSprite) ? State::push : result;
 
-                //Serial.printf("x: %d, y: %d; last: %.3f\n", newPt.x, newPt.y, last);
                 if (autocal.isIn(newPt))
                 {
-                    if (lifted)
+                    if (autocal.isLifted())
                     {
                         int gain = touchADCtask.expressionPedal.autoCalibrate(0.97f, 0.01f);
                         Serial.printf("Autocalibrate: gain=%d, value=%.3f\n", 
@@ -1449,35 +1418,19 @@ UIclass::State MainExprTune::update(Trigger trigger)
                         }
                         last = touchADCtask.expressionPedal.getValue();
                         clearBar();
-
-                        autocal.unHit(pSprite);
+                        result = State::push;
                     }
-                    else
-                    {
-                        autocal.draw(pSprite, true);
-                    }
-                    result = State::push;
+                    phase = pollButtons;
                 }
-                else
-                    result = autocal.unHit(pSprite) ? State::push : result;
 
                 if (set.isIn(newPt))
                 {
-                    if (lifted)
+                    if (set.isLifted())
                     {
                         touchADCtask.expressionPedal.setScale(min+0.003f, max-0.003f);
-                        set.unHit(pSprite);
                     }
-                    else
-                    {
-                        set.draw(pSprite, true);
-                    }
-                    result = State::push;
-                }
-                else
-                    result = set.unHit(pSprite) ? State::push : result;
-
-                
+                    phase = pollButtons;
+                }  
             }
             //interval = 0;
         } 
@@ -1487,7 +1440,15 @@ UIclass::State MainExprTune::update(Trigger trigger)
         case Trigger::eTriggerType::nextPhase:
             switch (phase)
             {
+                // at least one button has changed: poll until we've done them all
+                case pollButtons:
+                    if (set.draw(pSprite)) { result = State::push; break; }
+                    if (clear.draw(pSprite)) { result = State::push; break; }
+                    if (autocal.draw(pSprite)) { result = State::push; break; }
+                    // none left - back to idle and fall through
+                    phase = idle;                    
                 default:
+                    result = State::done;
                     break;
 
                 case drawBar:

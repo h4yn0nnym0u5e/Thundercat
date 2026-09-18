@@ -419,12 +419,14 @@ void SuperTask::loopFn(void)
         break;
 
       case 'd':
+      /*
         {
-          DMAChannel& dma = SPIflex.getDMArx();
+          DMAChannel& dma = SPIflex.getDMArx(); // only with debug change...
           Serial.printf("CSR: %08X\n", dma.TCD->CSR);
           Serial.printf("CR:  %08X\n", DMA_CR);
           Serial.printf("ES:  %08X\n", DMA_ES);
         }
+          */
         break;
 
       case 'g':

@@ -37,6 +37,8 @@ Many changes!
  - fix issue with ESP32-S3, used for SmartKnob
  - add "dirty area" support to TFT_eSprite
  - add async push of sprite to display
+ - add 4-bit image push with transparency to sprite
+ - make colour conversions `static`
 
 
 # cores #
@@ -59,6 +61,7 @@ https://github.com/h4yn0nnym0u5e/ADS8688_ADC_ARDUINO/tree/dev/use-FlexIOSPI
 May not be needed long-term.
 
 - enable use of FlexIOSPI
+- remove `Rn` macros which clash with other libraries
 
 
 # LittleFS #
@@ -80,4 +83,19 @@ https://github.com/h4yn0nnym0u5e/initGT911/tree/dev/teensy-01-async
 https://github.com/h4yn0nnym0u5e/teensy4_i2c/tree/dev/no-restart
 
 - allow option to continue read or write without sending a restart 
-- add callbacks to allow non-polled usage with RTOS 
+- add callbacks to allow non-polled usage with RTOS
+- co-exist with standard TwoWire libraries
+- prevent `begin()` from executing more than once
+
+
+# DS_MCP4018 #
+https://github.com/h4yn0nnym0u5e/DS_MCP4018_Library/tree/dev/ctor-Wire
+
+- can use any TwoWire instance (future-proofing here...)
+- made pointless 10ms delays optional
+
+# ResponsiveAnalogRead #
+Teensyduino version is about 10 years out of date. We may not be using the 
+fixes, but better safe than sorry...
+
+https://github.com/h4yn0nnym0u5e/ResponsiveAnalogRead

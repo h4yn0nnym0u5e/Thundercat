@@ -155,12 +155,35 @@ class UIclass
 class UIbutton
 {
   protected:
+    enum {notDrawn, drawnNormal, drawnHit, setNormal, setHit} state{notDrawn};
     TFTcolours& colours;
     int x,y,w,h;
     char* label; 
     const GFXfont *font;
     int labXoff, labYoff;
-    bool isHit{true}; // pretend it's hit on construction, so first draw() works
+    bool lifted{true};  // touch was lifted rather than being slid out
+    bool setLifted(bool in, GTPoint& pt)
+    {
+        lifted = in && 255 == pt.reserved; // "in" the button, but actually touch has ended
+
+        // work out if a re-draw is indicated
+        if (in)
+        {
+            if (drawnHit != state)
+                state = setHit;
+        }
+
+        if (!in || lifted) // out, sideways or upwards!
+        {
+            if (drawnNormal != state)
+            {
+                state = setNormal;
+                in = true; // say we're "in", as re-draw is needed
+            }
+        } 
+
+        return in;
+    }
 
   public:
     UIbutton(TFTcolours& c,
@@ -172,14 +195,12 @@ class UIbutton
         label{_label}, 
         font{_f}, labXoff{_labXoff}, labYoff{_labYoff}
         {}       
-    virtual bool draw(TFT_eSprite* pSprite, bool hit = false, bool force = false);
+    virtual bool draw(TFT_eSprite* pSprite);
     virtual bool isIn(GTPoint&);
-    virtual bool unHit(TFT_eSprite* pSprite) 
+    virtual bool isLifted(void) { bool result = lifted; lifted = false; return result; }
+    virtual bool needsDrawing(void) 
     { 
-        bool wasHit = isHit;
-        if (isHit) 
-            draw(pSprite); 
-        return wasHit;            
+        return setNormal == state || setHit == state || notDrawn == state; 
     }
 };
 
@@ -196,7 +217,7 @@ class UIgraphicButton : public UIbutton
         : UIbutton{c,_x,_y, _graphic.width, _graphic.height, _label,_f,_labXoff,_labYoff},
           pGraphic{&_graphic}
         {}
-    virtual bool draw(TFT_eSprite* pSprite, bool hit = false, bool force = false);
+    virtual bool draw(TFT_eSprite* pSprite);
     virtual bool isIn(GTPoint& p) { return UIbutton::isIn(p); }
     virtual bool isIn(GTPoint& p, int threshold);
 };
@@ -286,7 +307,7 @@ class MainColourPicker : public UIclass
                 doGradients,
                 doUnMarkText, doMarkText,
                 doUnMarkBg, doMarkBg,  doDrawColours, doDrawExample,
-                doDrawButtonTFT, doDrawButtonRing,
+                pollButtons,
                 doDrawPoint};
     //GTPoint lastTouch;
 
@@ -335,8 +356,8 @@ class MainColourPicker : public UIclass
     void drawSettingsExample(void);
     void showColours(void);
     TFTcolours coloursButtons{TFT_DARKERGREY, TFT_BLACK, TFT_LIGHTGREY};
-    UIgraphicButton buttonTFT{coloursButtons, 0,0, (char*) "TFT", tl_button_info, &FreeSans9pt7b, -15,-25};
-    UIgraphicButton buttonRing{coloursButtons, 0,239-bl_button_info.height, (char*)"Ring", bl_button_info, &FreeSans9pt7b, -15,20};
+    UIgraphicButton buttonRing{coloursButtons, 0,0, (char*) "Ring", tl_button_info, &FreeSans9pt7b, -15,-25};
+    UIgraphicButton buttonTFT{coloursButtons, 0,239-bl_button_info.height, (char*)"TFT", bl_button_info, &FreeSans9pt7b, -15,20};
 
   public:
     virtual State begin(TFT_eSprite& sprite, colours_t c);
@@ -373,7 +394,8 @@ class MainExprTune : public UIclass
     enum {idle,
           drawCurrent, drawScaled, 
           drawMin, drawMax, 
-          drawBar, drawGain} phase{idle};
+          drawBar, drawGain,
+          pollButtons} phase{idle};
     static constexpr int barX{10}, barY{50}, barW{300}, barH{20}, 
                      textW{60}, textH{25}, textLen{10};
     UIclass::State drawBarTo(float pos);
