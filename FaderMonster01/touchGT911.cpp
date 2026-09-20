@@ -1,4 +1,3 @@
-#if 1
 #include "header.h"
 
 // I2C pins/frequency (adjust for your board)
@@ -111,6 +110,12 @@ void TouchTask::startGT911(TaskHandle_t owner)
 
   // Init GT911 (interrupts are handled INSIDE the library)
   GT911reset(); // special reset, chooses the I2C address
+  touchIsReset = true;
+
+  // allow low-priority tasks to start: principally the
+  // LCD tasks, which can start their phased initialisation
+  vTaskDelay(51); 
+
   for (int i=0;i<10;i++)
   {
     if (Touchscreen.begin(INT_PIN, RST_PIN, I2C_FREQ)) 
@@ -163,43 +168,3 @@ void TouchTask::processGT911(int n)
   lastTouchTime = millis();
 }
 
-
-
-
-#if 0
-TaskHandle_t handleGT911touch;
-static void taskGT911touch(void* params)
-{
-  startGT911touch();
-
-  while (1)
-  {
-    ulTaskNotifyTake(pdTRUE, portMAX_DELAY); // wait for notification from touch screen ISR
-    if (0 == updateGT911touch())
-    {
-      /*
-      if ((millis() - lastTouchTime) > 15)
-      {
-        if (1 == lastTouch.reserved)
-        {
-          buttonReleased = whichButton(lastTouch);
-          lastTouch.reserved = 0; // dealt with
-        }
-        buttonTouch = -1;
-      }
-      */
-      vTaskDelay(2);
-    }
-    else 
-    {
-      processGT911(0);
-      xTaskNotifyGive(handleMainLCD); // wake up Main LCD task to deal with touch
-      vTaskDelay(2);
-      //buttonTouch = whichButton(lastTouch);
-    }
-  }
-}
-#endif // 0
-
-
-#endif // 0

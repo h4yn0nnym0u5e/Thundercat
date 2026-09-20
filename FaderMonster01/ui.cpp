@@ -1,5 +1,6 @@
 #include "header.h"
 
+#define WHICHMEM FLASHMEM
 //==========================================================================
 //
 //    888     888 8888888         888                            
@@ -11,6 +12,7 @@
 //    Y88b. .d88P   888  Y88b.    888 888  888      X88      X88 
 //     "Y88888P"  8888888 "Y8888P 888 "Y888888  88888P'  88888P' 
 // 
+WHICHMEM
 void UIclass::drawHeader(const char* txt)
 {
     // draw heading 
@@ -26,6 +28,7 @@ void UIclass::drawHeader(const char* txt)
  * account for touches separately, if we want to update due to
  * multiple simultaneous triggers?)
  */
+WHICHMEM
 bool UIclass::isNewTouch(Trigger trigger)
 {
     bool result = false;
@@ -47,6 +50,7 @@ bool UIclass::isNewTouch(Trigger trigger)
     return result;
 }
 
+WHICHMEM
 uint16_t* UIclass::makeCmap(uint16_t* cmap, uint16_t fg, uint16_t bg)
 {
     for (int i=0;i<16;i++)
@@ -61,6 +65,7 @@ uint16_t* UIclass::makeCmap(uint16_t* cmap, uint16_t fg, uint16_t bg)
  * pushImage seems to have issues with a Viewport,
  * so for now we have to use absolute screen co-ordinates.
  */
+WHICHMEM
 void UIclass::drawButton(int x, int y,
                 const image_4bit_info& img, const uint16_t* cmap,
                 const char* txt, int xoff, int yoff)
@@ -71,11 +76,13 @@ void UIclass::drawButton(int x, int y,
         pSprite->drawString(txt,x+xoff,y+yoff);
 }                
 
+WHICHMEM
 void UIclass::drawArc(float s, float e, uint16_t fg, uint16_t bg)
 {
   pSprite->drawArc(120, 120, 110, 80, s+sa, e+sa, fg, bg);
 }
 
+WHICHMEM
 void UIclass::drawTouchEllipse(int thickness)
 {
   int cx=120,cy=210,rx=24,ry=16;
@@ -99,6 +106,7 @@ void UIclass::drawTouchEllipse(int thickness)
   }
 }
 
+WHICHMEM
 void UIclass::drawTouch(TouchStatus::eStatus estatus)
 {
     switch (estatus)
@@ -120,6 +128,7 @@ void UIclass::drawTouch(TouchStatus::eStatus estatus)
 }
 
 // return true if change was worth drawing
+WHICHMEM
 bool UIclass::setArc(float newPot, float& lastPot)
 {
     bool result = false;
@@ -153,6 +162,7 @@ bool UIclass::setArc(float newPot, float& lastPot)
 // update sprite with text 
 // assumes viewport has been set appropriately
 // returns true if the text is different from the previous
+WHICHMEM
 bool UIclass::setText(char* buf, char* lastString, size_t sizeofLastString, bool setFont)
 {
     bool result = strncmp(buf, lastString, sizeofLastString) != 0;
@@ -184,6 +194,7 @@ bool UIclass::setText(char* buf, char* lastString, size_t sizeofLastString, bool
 
 // update sprite with a float value in the centre of the display
 // returns true if the text is different from the previous
+WHICHMEM
 bool UIclass::setFloat(float potPos, char* lastString, size_t sizeofLastString)
 {
   char buf[BUF_SIZE];
@@ -194,6 +205,7 @@ bool UIclass::setFloat(float potPos, char* lastString, size_t sizeofLastString)
 }
 
 
+WHICHMEM
 bool UIclass::setTouch(TouchStatus* pTouch, TouchStatus::eStatus& lastTouch)
 {
     TouchStatus::eStatus estatus = TouchStatus::eStatus::OFF;
@@ -211,6 +223,7 @@ bool UIclass::setTouch(TouchStatus* pTouch, TouchStatus::eStatus& lastTouch)
 }
 
 
+WHICHMEM
 void UIclass::debugPrint(void)
 {
     const char* us[]{"done","idle","push","busy"};
@@ -235,6 +248,7 @@ void UIclass::debugPrint(void)
 // failed            : there's already a pending write - must call again
 // pending / running : write pending or already in progress
 // done              : nothing to do, or done REALLY fast!
+WHICHMEM
 InterTaskRequest& UIclass::writeToScribble(void)
 {
     InterTaskRequest* result = &autoFail;
@@ -261,6 +275,7 @@ InterTaskRequest& UIclass::writeToScribble(void)
     return *result;
 }
 
+WHICHMEM
 InterTaskRequest& UIclass::writeToMainLCD(void)
 {
     InterTaskRequest* result = &autoFail;
@@ -287,6 +302,7 @@ InterTaskRequest& UIclass::writeToMainLCD(void)
     return *result;
 }
 
+WHICHMEM
 bool UIclass::writeFinished(void)
 {
     bool result = false;
@@ -317,6 +333,7 @@ InterTaskRequest UIclass::autoFail{InterTaskRequest::Result::failed};
  * Draw button with rounded rectangular outline
  * \return true if it was changed
  */  
+WHICHMEM
 bool UIbutton::draw(TFT_eSprite* pSprite)
 {
     bool result = false;
@@ -344,6 +361,7 @@ bool UIbutton::draw(TFT_eSprite* pSprite)
     return result;
 }
 
+WHICHMEM
 bool UIbutton::isIn(GTPoint& pt)
 {
     bool result = pt.x >= x && pt.x <= x+w
@@ -358,6 +376,7 @@ bool UIbutton::isIn(GTPoint& pt)
  * Draw button with graphic background
  * \return true if it was changed
  */  
+WHICHMEM
 bool UIgraphicButton::draw(TFT_eSprite* pSprite)
 {
     bool result = false;
@@ -397,6 +416,7 @@ bool UIgraphicButton::draw(TFT_eSprite* pSprite)
  * Is touch point in visible area of image?
  * \return true if point is at or above threshold, usually 1 (zero being transparent)
  */
+WHICHMEM
 bool UIgraphicButton::isIn(GTPoint& p, int threshold)
 {
     bool result = false;
@@ -427,6 +447,7 @@ bool UIgraphicButton::isIn(GTPoint& p, int threshold)
 //         X88 Y88b.    888     888 888 d88P 888 d88P 888 Y8b.     
 //     88888P'  "Y8888P 888     888 88888P"  88888P"  888  "Y8888  
 // 
+WHICHMEM
 UIclass::State ScribblePotArc::begin(TFT_eSprite& sprite, colours_t c)
 {
     UIclass::begin(sprite, c);
@@ -448,6 +469,7 @@ UIclass::State ScribblePotArc::begin(TFT_eSprite& sprite, colours_t c)
 
 // update the sprite with new pixels
 // \return true if sprite has changed
+WHICHMEM
 UIclass::State ScribblePotArc::update(Trigger trigger)
 {
     State result = State::push; 
@@ -521,6 +543,7 @@ UIclass::State ScribblePotArc::update(Trigger trigger)
 //    Y88b. Y8b.          X88 Y88b.  888  T88b Y8b.     Y88b.    Y88b.       X88 
 //     "Y888 "Y8888   88888P'  "Y888 888   T88b "Y8888   "Y8888P  "Y888  88888P' 
 //
+WHICHMEM
 UIclass::State MainTestRects::begin(TFT_eSprite& sprite, colours_t c)
 {
     UIclass::begin(sprite, c);
@@ -530,6 +553,7 @@ UIclass::State MainTestRects::begin(TFT_eSprite& sprite, colours_t c)
     return State::push; // need to update display
 }
 
+WHICHMEM
 uint32_t MainTestRects::poll(void)
 {
     uint32_t result = interval;
@@ -541,6 +565,7 @@ uint32_t MainTestRects::poll(void)
     return result;
 }
 
+WHICHMEM
 UIclass::State MainTestRects::update(Trigger trigger)
 {
     State result = State::push; 
@@ -573,6 +598,7 @@ UIclass::State MainTestRects::update(Trigger trigger)
     return result;
 }
 
+WHICHMEM
 void MainTestRects::randomRect(void)
 {
   int x,y, w, h;
@@ -610,6 +636,7 @@ void MainTestRects::randomRect(void)
 //
 // 
 // Return hue based on angle: 0=red, 60=yellow etc
+WHICHMEM
 uint16_t MainColourPicker::angleToHue(int a)
 {
   uint16_t result = TFT_BLACK;
@@ -634,6 +661,7 @@ uint16_t MainColourPicker::angleToHue(int a)
 }
 
 // N.B. TFT_eSPI angles for arcs have 0 at the 6 o'clock position
+WHICHMEM
 void MainColourPicker::hueCircle(int x, int y, int r, int ir, uint16_t bgcolour)
 {
   TFT_eSprite& tft = *pSprite;
@@ -652,6 +680,7 @@ void MainColourPicker::hueCircle(int x, int y, int r, int ir, uint16_t bgcolour)
   }
 }
 
+WHICHMEM
 void MainColourPicker::gradients(int x, int x2, int y, int w, int h, uint16_t c)
 {
   TFT_eSprite& tft = *pSprite;
@@ -661,6 +690,7 @@ void MainColourPicker::gradients(int x, int x2, int y, int w, int h, uint16_t c)
 }
 
 // convert angle in radians to TFT_eSPI angle
+WHICHMEM
 int MainColourPicker::rad2TFT(float rad)
 {
   return (int)(-90 + 360 - rad*180.0f/PI) % 360;
@@ -671,6 +701,7 @@ int MainColourPicker::rad2TFT(float rad)
  * Hue angle zero is at 12 o'clock, whereas TFT_eSPI zero is 6 o'clock,
  * and conventional at 3 o'clock and runs anticlockwise. Sigh.
  */
+WHICHMEM
 void MainColourPicker::unMarkHue(
              int cx, int cy,  // selection ring centre...
              int cr,          // ...and radius:outer...
@@ -697,6 +728,7 @@ void MainColourPicker::unMarkHue(
   }
 }
 
+WHICHMEM
 uint16_t MainColourPicker::markHue(
              int cx, int cy,  // selection ring centre...
              int cr,          // ...and radius:outer...
@@ -720,11 +752,13 @@ uint16_t MainColourPicker::markHue(
   return hue;
 }
 
+WHICHMEM
 bool MainColourPicker::isOldAngle(float a)
 {
   return fabs(a - oldAngle) < PI/180; // angles differ by less than one degree
 }
 
+WHICHMEM
 void MainColourPicker::drawFatRect(int x, int y, int w, int h, int t, int colour)
 {
   TFT_eSprite& tft = *pSprite;
@@ -741,12 +775,14 @@ void MainColourPicker::drawFatRect(int x, int y, int w, int h, int t, int colour
 }
 
 
+WHICHMEM
 uint16_t MainColourPicker::getBlend(float l, uint16_t top, uint16_t hue)
 {
   return TFT_eSPI::alphaBlend(l*255+0.5f, top, hue);
 }
 
 
+WHICHMEM
 uint16_t MainColourPicker::markGradient(
                       int x, int y, int w, int h, // gradient rectangle
                       uint16_t hue, uint16_t top, // colours
@@ -773,6 +809,7 @@ uint16_t MainColourPicker::markGradient(
   return getBlend(l, top, hue);
 }
 
+WHICHMEM
 bool MainColourPicker::isSameLevel(float level, float oldLevel, uint16_t hue, uint16_t top)
 {
   /*
@@ -787,6 +824,7 @@ bool MainColourPicker::isSameLevel(float level, float oldLevel, uint16_t hue, ui
 
 // render what settings look like inside hue circle
 // Hack hack - it's a 115x60 area
+WHICHMEM
 void MainColourPicker::drawSettingsExample(void)
 {
   TFT_eSprite& tft = *pSprite; 
@@ -807,6 +845,7 @@ void MainColourPicker::drawSettingsExample(void)
 }
 
 
+WHICHMEM
 void MainColourPicker::showColours(void)
 {
   TFT_eSprite& tft = *pSprite; 
@@ -830,6 +869,7 @@ void MainColourPicker::showColours(void)
   tft.drawString(buffer, 90,80);
 }
 
+WHICHMEM
 UIclass::State MainColourPicker::begin(TFT_eSprite& sprite, colours_t c)
 {
     UIclass::begin(sprite, c);
@@ -851,6 +891,7 @@ UIclass::State MainColourPicker::begin(TFT_eSprite& sprite, colours_t c)
     return (state = State::push); // need to update display
 }
 
+WHICHMEM
 UIclass::State MainColourPicker::update(Trigger trigger)
 {
     State result = State::push; 
@@ -1041,6 +1082,7 @@ static constexpr char kbds[][4][15]
     {"!\x22#$%^&*()","1234567890","_+-=[]{}'@", "\x03\x14 \x12\x13"},
 };
 
+WHICHMEM
 const image_4bit_info* MainQwerty::getKeyCap(char c)
 {
     const image_4bit_info* img = &keycap28_info; // assume letter keys  
@@ -1084,6 +1126,7 @@ const image_4bit_info* MainQwerty::getKeyCap(char c)
     return img;
 }
 
+WHICHMEM
 void MainQwerty::drawRow(const char* keys, int row, int off)
 {
     const image_4bit_info* img = &keycap28_info; // assume letter keys
@@ -1102,6 +1145,7 @@ void MainQwerty::drawRow(const char* keys, int row, int off)
     }
 }
 
+WHICHMEM
 void MainQwerty::drawKeyboard(int& n)
 {
     uint16_t cmap[16];
@@ -1121,6 +1165,7 @@ void MainQwerty::drawKeyboard(int& n)
     tempCmap = nullptr;
 }
 
+WHICHMEM
 char MainQwerty::whichKey(int x, int y)
 {
     char result = 0; // Not A Key
@@ -1177,6 +1222,7 @@ char MainQwerty::whichKey(int x, int y)
     return result;
 }
 
+WHICHMEM
 UIclass::State MainQwerty::begin(TFT_eSprite& sprite, colours_t c)
 {
     State result = State::push;
@@ -1200,6 +1246,7 @@ UIclass::State MainQwerty::begin(TFT_eSprite& sprite, colours_t c)
     return (state = result); // save and return state
 }
 
+WHICHMEM
 UIclass::State MainQwerty::update(Trigger trigger)
 {
     State result = State::done;
@@ -1293,6 +1340,7 @@ UIclass::State MainQwerty::update(Trigger trigger)
 //                        888                                              
 // 
 
+WHICHMEM
 UIclass::State MainExprTune::drawBarTo(float pos)
 {
     State result = State::next;
@@ -1328,6 +1376,7 @@ UIclass::State MainExprTune::drawBarTo(float pos)
     return result;
 }
 
+WHICHMEM
 UIclass::State MainExprTune::begin(TFT_eSprite& sprite, colours_t c)
 {
     State result = State::push;
@@ -1359,6 +1408,7 @@ UIclass::State MainExprTune::begin(TFT_eSprite& sprite, colours_t c)
 /**
  * Draw a float into a preset viewport (which is reset on exit).
  */
+WHICHMEM
 UIclass::State MainExprTune::_setFloat(float f, char* buf, char* stash)
 {
     pSprite->setFreeFont(&FreeSans9pt7b);
@@ -1373,6 +1423,7 @@ UIclass::State MainExprTune::_setFloat(float f, char* buf, char* stash)
             :State::next;
 }
 
+WHICHMEM
 UIclass::State MainExprTune::update(Trigger trigger)
 {
     State result = State::done;
@@ -1494,6 +1545,7 @@ UIclass::State MainExprTune::update(Trigger trigger)
     return (state = result); // save and return state
 }
 
+WHICHMEM
 uint32_t MainExprTune::poll(void)
 {
     const uint32_t updateEvery{50'000};

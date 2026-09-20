@@ -1,5 +1,6 @@
 #include "header.h"
 
+#define WHICHMEM FLASHMEM
 /*
  * Use 74LVC138 decoder to provide /CS signal to one of
  * 8 displays, using only 4 Teensy outputs
@@ -118,6 +119,7 @@ InterTaskRequest& ScribbleTask::updateDirty(InterTaskRequest& req,  // request t
     return req;
 }
 //----------------------------------------------------------------------------
+WHICHMEM
 void ScribbleTask::initDisplayPins(void)
 {
   // TFT reset is not on a Teensy pin!
@@ -139,6 +141,7 @@ void ScribbleTask::initDisplayPins(void)
 
 
 // elapsedMicros eu;
+WHICHMEM
 bool ScribbleTask::doAphase(int i, int& phase)
 {
   int newPhase = scribbles[i]->phasedInit(0, phase);
@@ -154,11 +157,13 @@ bool ScribbleTask::doAphase(int i, int& phase)
 #define ALL_TFTS for (int i=0;i<8;i++) (*scribbles[i])
 #define FN_TFTS(fn) for (int i=0;i<8;i++) fn(*scribbles[i],i)
 
+WHICHMEM
 void ScribbleTask::fillUnique(TFT_TYPE& tft, int i)
 {
   tft.fillScreen(faderMonsterSettings.stripsConfig.colours[i].scribble.fg);
 }
 
+WHICHMEM
 void ScribbleTask::phasedInit(void)
 {
   elapsedMillis em = 0;
@@ -179,11 +184,8 @@ void ScribbleTask::phasedInit(void)
   FN_TFTS(fillUnique);
 }
 
-/*
- * This is the one task that's allowed to 
- * access the scribble displays' hardware
- */
-void ScribbleTask::run(void)
+WHICHMEM
+void ScribbleTask::init(void)
 {
     Serial.printf("[%d]: scribble task: init pins ...\n", micros());
     initDisplayPins();
@@ -192,11 +194,7 @@ void ScribbleTask::run(void)
     // specific timings to set the GT911 I²C address. Hence
     // we wait for the touch code to do the reset before we
     // initialise the display.
-    while (!touchTask.touchReady)
-    {
-      //Serial.print('!');
-      vTaskDelay(50);
-    }
+    touchTask.waitForReset(31);
 
     //Serial.print(" phased init ...");
     phasedInit();  // does phased init then initial screen fill
@@ -217,8 +215,17 @@ void ScribbleTask::run(void)
     setDMAbuffer(allocateDMAbuffer(tft1.width(), tft1.height()));
     setDMAcompletionISR(DMAcompletionISR);
 
-    Serial.printf("\n[%d]: ready\n", micros());
+    Serial.printf("[%d] scribble ready\n", micros());
     initComplete = true;
+}
+
+/*
+ * This is the one task that's allowed to 
+ * access the scribble displays' hardware
+ */
+void ScribbleTask::run(void)
+{
+    init();
 
     //int colour = 0;
     //elapsedMillis em = 0;

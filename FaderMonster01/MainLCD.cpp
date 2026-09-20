@@ -1,5 +1,6 @@
 #include "header.h"
 
+#define WHICHMEM FLASHMEM
 //========================================================================
 //
 //             888             888    d8b          
@@ -29,6 +30,7 @@ LittleFS_SPIFram FRAMfs;
 //    888 888 Y88b.  Y88b.  888 Y8b.     888       Y88b  d88P 
 //    888 888  "Y888  "Y888 888  "Y8888  888        "Y8888P"  
 //
+WHICHMEM
 bool MainLCDtask::initFS(void)
 {
   bool ok = false;
@@ -59,7 +61,6 @@ bool MainLCDtask::initFS(void)
     Serial.printf("MRAM mfr ID: %02X %02X; unique ID: ", buffer[3], buffer[4]);
     for (size_t i=5;i<uidsz;i++)
       Serial.printf("%02X ", buffer[i]);
-    Serial.println();      
     Serial.printf("\nStorage list initialized at %ums, %d %s.\n", millis(), tries, tries==1?"try":"tries");
   }//  MTP.addFilesystem(FRAMfs, FRAMfs.name());
   else
@@ -227,6 +228,8 @@ InterTaskRequest::Result MainLCDtask::doUpdateDirty(void* pDisplay)
 
 // record and restore last-used settings
 static const char* settingsRecord = "lastSettings.txt";
+
+WHICHMEM
 bool MainLCDtask::recordLastSetting(const char* fileName)
 {
   bool result = false;
@@ -246,6 +249,7 @@ taskEXIT_CRITICAL();
   return result;
 }
 
+WHICHMEM
 bool MainLCDtask::restoreLastSetting(void)
 {
   bool result = false;
@@ -275,6 +279,7 @@ taskEXIT_CRITICAL();
 }
 
 // save settings to CSV file
+WHICHMEM
 InterTaskRequest::Result MainLCDtask::doSaveSettings(void* _fileName)
 {
   const char* fileName = (char*) _fileName;
@@ -300,6 +305,7 @@ taskEXIT_CRITICAL();
 }
 
 // load settings from CSV file
+WHICHMEM
 InterTaskRequest::Result MainLCDtask::doLoadSettings(void* _fileName)
 {
   const char* fileName = (char*) _fileName;
@@ -361,6 +367,7 @@ InterTaskRequest& MainLCDtask::updateDirty(InterTaskRequest& req,  // request to
 }
 
 
+WHICHMEM
 InterTaskRequest& MainLCDtask::sendPayload(InterTaskRequest& req, requestPayload& payload, TickType_t timeout)
 {
     RequestQueue<MainLCDtask, requestPayload>::queueEntry entry{&req,payload};
@@ -369,6 +376,7 @@ InterTaskRequest& MainLCDtask::sendPayload(InterTaskRequest& req, requestPayload
 }
 
 
+WHICHMEM
 InterTaskRequest& MainLCDtask::saveSettings(InterTaskRequest& req,  // request to be filled in
                                             char* fileName,         // name for file
                                             TickType_t timeout)
@@ -379,6 +387,7 @@ InterTaskRequest& MainLCDtask::saveSettings(InterTaskRequest& req,  // request t
 }
 
 
+WHICHMEM
 InterTaskRequest& MainLCDtask::loadSettings(InterTaskRequest& req,  // request to be filled in
                                             char* fileName,         // name for file
                                             TickType_t timeout)
@@ -401,6 +410,7 @@ InterTaskRequest& MainLCDtask::loadSettings(InterTaskRequest& req,  // request t
 //    888 888  888 888  "Y888 
 //
 //----------------------------------------------------------------------------
+WHICHMEM
 void MainLCDtask::initDisplayPins(void)
 {
   pinMode(MAINLCD_BL,arduino::OUTPUT);
@@ -412,6 +422,7 @@ void MainLCDtask::initDisplayPins(void)
 
 
 // elapsedMicros eu;
+WHICHMEM
 bool MainLCDtask::doAphase(int& phase)
 {
   int newPhase = tft.phasedInit(0, phase);
@@ -425,6 +436,7 @@ bool MainLCDtask::doAphase(int& phase)
 }
 
 
+WHICHMEM
 void MainLCDtask::phasedInit(void)
 {
   elapsedMillis em = 0;
@@ -467,21 +479,18 @@ void MainLCDtask::phasedInit(void)
  * This is the one task that's allowed to 
  * access the main LCD's hardware
  */
-void MainLCDtask::run(void)
+WHICHMEM
+void MainLCDtask::init(void)
 {
-  Serial.printf("[%d]: main display task: init pins ...\n", micros());
+  Serial.printf("[%d] main display task: init pins ...\n", micros());
   initDisplayPins();
 
   // LCD and GT911 share a reset signal, and it requires 
   // specific timings to set the GT911 I²C address. Hence
   // we wait for the touch code to do the reset before we
   // initialise the display.
-  while (!touchTask.touchReady)
-  {
-    //Serial.print('!');
-    vTaskDelay(50);
-  }
-
+  touchTask.waitForReset(29);
+  
   // ---------------------------------------------------------------------
   phasedInit();  // does phased init then initial screen fill
 
@@ -596,9 +605,13 @@ taskEXIT_CRITICAL();
   // ---------------------------------------------------------------------
 
 
-  Serial.printf("\n[%d]: ready\n", micros());
+  Serial.printf("[%d] main LCD ready\n", micros());
   initComplete = true;
+}
 
+void MainLCDtask::run(void)
+{
+  init();
   //int colour = 0;
   //elapsedMillis em = 0;
   //reqQueue.xChar = 'x'; // enable to print character when request gets executed

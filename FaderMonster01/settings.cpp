@@ -257,7 +257,9 @@ void Settings::save(Stream& s)
     char buf[300];
     CSVlineCount = 0;
     testToCSV(s, faderMonsterSettings, buf);
+taskENTER_CRITICAL();
     s.printf("// %d settings lines\n\n", CSVlineCount);
+taskEXIT_CRITICAL();
 }
 
 FLASHMEM 

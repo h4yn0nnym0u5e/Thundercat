@@ -1,6 +1,6 @@
 #include "header.h"
 
-int StripTask::globalBright{39};
+int StripTask::globalBright{18};
 
 void StripTask::setDot(float value, uint32_t colour)
 {

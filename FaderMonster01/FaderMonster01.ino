@@ -347,6 +347,7 @@ uint8_t bits;
 bool countBits;
 int ADCcount;
 
+FLASHMEM
 void SuperTask::loopFn(void)
 {
   { // debug print of ADCs
@@ -436,7 +437,7 @@ void SuperTask::loopFn(void)
         break;
 
       case 'z':
-        mainLCDtask.zapScreen = true;
+        //mainLCDtask.zapScreen = true;
         PotsTask::potsToRaw();
         break;
 
@@ -589,9 +590,9 @@ SuperTask superTask{"Super", 512, nullptr, 2,
 
 void SuperTask::run(void)
 {
-  Serial.printf("\n\n[%d]: started supervisor task\n", micros());
+  Serial.printf("[%d]: started supervisor task\n", micros());
 
-  while (!mainLCDtask.tftInitComplete())
+  for (int i=0;i<200 && !mainLCDtask.tftInitComplete(); i++)
     vTaskDelay(10);
 
     // set the initial UI presentation on the display
@@ -627,6 +628,7 @@ void SuperTask::run(void)
 //                                      888      
 //
 static void getSerialNumber(char* sernum);
+FLASHMEM
 void setup() 
 {
   while (!Serial)
