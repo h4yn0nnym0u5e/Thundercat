@@ -446,7 +446,8 @@ class TouchTask : public FaderMonsterTask
     uint8_t updateGT911(void);
     void processGT911(int n);
 
-
+    bool touchIsReset{false};   // weird reset sequence is completed
+    bool touchReady{false};     // touch is ready
   public:
     static constexpr uint32_t touchFlag = 1;
     static constexpr uint32_t GT911Flag = 2;
@@ -479,7 +480,7 @@ class TouchTask : public FaderMonsterTask
     // CTP touch screen stuff
     GTPoint lastTouch;
     uint32_t lastTouchTime;
-    bool touchReady{false}; // weird reset sequence is completed
+    void waitForReset(TickType_t pollInterval) { while (!touchIsReset) vTaskDelay(pollInterval); }
 
     bool supplyValid{false};
     bool checkChange{true}; // public: set by ISR
@@ -619,6 +620,8 @@ class ScribbleTask : public FaderMonsterTask
             scribbles[i]->dmaAttachCompletionISR(isr);
     }
 
+    void init(void); // task startup; separate so we can put it it FLASHMEM
+
     void initDisplayPins(void);
     bool doAphase(int i, int& phase);
     void phasedInit(void);
@@ -687,6 +690,8 @@ class MainLCDtask : public FaderMonsterTask
     {
         tft.dmaAttachCompletionISR(isr);
     }
+
+    void init(void); // task startup; separate so we can put it it FLASHMEM
 
     void initDisplayPins(void);
     bool doAphase(int& phase);
