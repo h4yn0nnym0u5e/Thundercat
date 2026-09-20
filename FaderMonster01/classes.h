@@ -498,6 +498,47 @@ class TouchTask : public FaderMonsterTask
 //     "Y888 "Y88P"   "Y88888  "Y8888P 888  888 d88P     888 8888888P"   "Y8888P"  
 //
 typedef AT42QT2120<AT42QT2120_Wire> touchChipDriverWire;
+class BacklightControl
+{
+    // update slowly-ish; 2 steps every 5ms is good
+    void _update(void)
+    {
+        if (current != target)
+        {
+            int amount = lastUpdate * 2 / 5000;
+            if (amount >= 1)
+            {
+                lastUpdate -= amount * 5000 / 2;
+                if (current > target)
+                {
+                    amount = -amount;
+                    current += amount;
+                    if (current < target) current = target;
+                }
+                else 
+                {
+                    current += amount;
+                    if (current > target) current = target;
+                }
+                analogWrite(pin, current);
+            }
+        }
+    }
+  public:
+    BacklightControl(int _pin, int _current)
+        : pin{_pin}, current{_current}, target{_current}
+        {
+            pinMode(pin, arduino::OUTPUT);
+            analogWrite(pin, current);
+        }
+    int pin;
+    int current, target;
+    elapsedMicros lastUpdate;
+
+    void set(int t) { target = t; lastUpdate = 0; }
+    void update(void) { _update(); }
+};
+
 class TouchADCtask : public FaderMonsterTask
 {
     //------------------------------------------------------------------------
@@ -548,6 +589,8 @@ class TouchADCtask : public FaderMonsterTask
     //------------------------------------------------------------------------
     
     touchChipDriverWire& touchChip;
+    BacklightControl mainBacklight{MAINLCD_BL, 0};
+    BacklightControl scribbleBacklight{SCRIBBLE_BL, 0};
 
     bool checkChange{true}; // public: set by ISR
     static TouchStatus keyStatuses[NUM_POTS];

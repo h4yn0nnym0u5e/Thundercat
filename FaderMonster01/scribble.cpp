@@ -201,11 +201,14 @@ void ScribbleTask::init(void)
 
     // set backlights to full power (640ms)
     Serial.printf("[%d] scribbles backlight ...\n", micros());
+    touchADCtask.scribbleBacklight.set(255);
+    /*
     for (int i=1;i<256;i+=2)
     {
         analogWrite(TFT_BLK,i);
         vTaskDelay(5);
     }
+    */
     // this will depend on your hardware!
     ALL_TFTS.setRotation(TFT_ROTATION);
     //tft.setSPISpeed(60'000'000);  

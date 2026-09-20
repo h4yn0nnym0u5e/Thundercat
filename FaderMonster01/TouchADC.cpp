@@ -388,20 +388,10 @@ int ExpressionPedal::autoCalibrate(float target, float range)
 void TouchADCtask::run(void)
 {
     uint32_t whichISR = 0;
-    vTaskDelay(1500);
+    vTaskDelay(150);
     initTouch();
     bool pedalPresent{false};
     elapsedMillis em, detectEm;
-
-    /*
-    // set up analogue to suit our purposes
-    analogReadRes(12);        // 12-bit, 0..4095
-    analogReadAveraging(16);   // do some inbuilt averaging
-
-    // do some dummy reads
-    analogRead(EXPR_PED_ADC);
-    analogRead(LT_SENS_ADC);
-    //*/
 
     adc = new ADC();
     adc->adc0->setAveraging(8); // set number of averages
@@ -424,14 +414,16 @@ void TouchADCtask::run(void)
     {
         reqQueue.executeRequest(*this, 0); // execute any pending requests (calibration)
 
+        // Fader touch chip triggered?
         if (pdTRUE == xTaskNotifyWait(0UL, UINT32_MAX, &whichISR, 2)) // wait for notification from touch ISR
         {
-        // Fader touch chip triggered?
-        if (0 != (whichISR & touchFlag))
-            updateTouch(); // only does I²C if ISR fired
+            if (0 != (whichISR & touchFlag))
+                updateTouch(); // only does I²C if ISR fired
         }
 
         pollTouch(); // generate state outputs, e.g. time long presses
+        mainBacklight.update();
+        scribbleBacklight.update();
 
         if (expressionPedal.isPresent() != pedalPresent)
         {

@@ -633,6 +633,8 @@ void setup()
 {
   while (!Serial)
     ;
+  //pinMode(arduino::LED_BUILTIN, arduino::OUTPUT);
+  //digitalWrite(arduino::LED_BUILTIN,1);
 
   Serial.print("\n\n*************************************************************");
   Serial.printf("\n[%lu]\n" __FILE_NAME__ "; Teensyduino %.2f; " __DATE__ " " __TIME__ "\n", micros(), (float) TEENSYDUINO / 100.0f);
@@ -642,18 +644,23 @@ void setup()
     Serial.printf("Teensy serial number is: %s\n", buf);
   }
   // debug pins for scope:
+  /*
   pinMode(DBG1, arduino::OUTPUT);
   pinMode(DBG2, arduino::OUTPUT);
   pinMode(DBG3, arduino::OUTPUT);
-  
+  */
+
+  // some startup things are on the port expanders
+  // do this before 6V, as it seems to power straight off sometimes!
+  initDPEX();
+
   // enable 6V    
   pinMode(EN_6V, arduino::OUTPUT);
   digitalWriteFast(EN_6V, arduino::HIGH);
 
   delay(100); // wait for it to stabilise (?)
 
-  // some startup things are on the port expanders:
-  initDPEX();
+  // more startup things on the port expanders:
   ADCsReset();
 
   // don't do this: the GT911 needs a specific sequence!

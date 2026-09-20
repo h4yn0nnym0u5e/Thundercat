@@ -496,11 +496,14 @@ void MainLCDtask::init(void)
 
   // set backlights to full power (640ms)
   Serial.printf("[%d] main backlight ...\n", micros());
+  touchADCtask.mainBacklight.set(255);
+  /*
   for (int i=1;i<256;i+=2)
   {
       analogWrite(MAINLCD_BL,i);
       vTaskDelay(5);
   }
+  */
   // this will depend on your hardware!
   tft.setRotation(MAIN_TFT_ROTATION);
   tft.invertDisplay(true);
