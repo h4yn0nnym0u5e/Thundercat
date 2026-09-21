@@ -586,7 +586,7 @@ taskEXIT_CRITICAL();
       if (dir)
       {
         File entry;
-        Serial.println("Opened root OK");
+        Serial.println("    Opened root OK");
         while (1)
         {
 taskENTER_CRITICAL();
@@ -596,14 +596,15 @@ taskEXIT_CRITICAL();
             break;
 
           if (!entry.isDirectory() && 0 == strncmp(entry.name(), "scene", 5))
-            Serial.println(entry.name());
+            Serial.printf("      %s\n", entry.name());
 taskENTER_CRITICAL();
           entry.close();
 taskEXIT_CRITICAL();
         }
       }
     }
-    restoreLastSetting();
+    Serial.print("    "); // indent...
+    restoreLastSetting(); // ...this!
   }
   // ---------------------------------------------------------------------
 

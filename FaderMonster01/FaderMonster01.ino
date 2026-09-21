@@ -46,7 +46,7 @@ uint16_t* allocateDMAbuffer(int w, int h)
   uint16_t* result = (uint16_t*) malloc(sz);
   taskEXIT_CRITICAL();
 
-  Serial.printf("Allocate %dx%d @ %08X\n", w, h, (uint32_t) result);
+  Serial.printf("[%u] Allocate %dx%d @ %08X\n", micros(), w, h, (uint32_t) result);
   return result;
 }
 
@@ -230,13 +230,54 @@ void pollPowerButton(void)
           digitalWriteFast(EN_6V, arduino::LOW); // 6V supply off
           vTaskDelay(1);
 
-          Serial.println("shutdown!");
+          Serial.print("shutdown! ");
+
+          {
+            elapsedMillis em = 0;
+            int state = 0;
+            for (int i=0;i<10;i++) // have seen it need 4 tries :(
+            {
+              state = 0;
+              em = 0;
+              while (state>=0)
+              {
+                switch (state)
+                {
+                  case 3:
+                  case 0:
+                    Serial.print('\'');
+                    SET_BIT(TOGGLE_POWER, 1); // shutdown!
+                    state++;
+                    break;
+                  
+                  case 1:
+                    if (em > 30) // still alive ?!
+                    {
+                      Serial.print(" #");
+                      state++;
+                    }
+                    break;
+                    
+                  case 4:
+                    state = -10;
+                  case 2:   
+                    Serial.print('.');
+                    SET_BIT(TOGGLE_POWER, 0); // try again
+                    state++;
+                    break;
+                }
+                vTaskDelay(3);
+              }
+            }
+          }
+/*
           SET_BIT(TOGGLE_POWER, 1); // shutdown!
           for (int i=0;i<100;i++)
           {
             Serial.print('.');
             vTaskDelay(10);
           }
+*/            
         }
 
         break;
@@ -631,8 +672,22 @@ static void getSerialNumber(char* sernum);
 FLASHMEM
 void setup() 
 {
-  while (!Serial)
-    ;
+  // some startup things are on the port expanders
+  // do this before 6V, as it seems to power straight off sometimes!
+  initDPEX();
+
+  // setup() never exits, so add braces to avoid eating stack
+  {
+    bool togl = true;
+    while (!Serial)
+    {
+      SET_BIT(POWER_LED, togl);
+      togl = !togl;
+      delay(100);
+    }
+    SET_BIT(POWER_LED, 0);
+  }
+    
   //pinMode(arduino::LED_BUILTIN, arduino::OUTPUT);
   //digitalWrite(arduino::LED_BUILTIN,1);
 
@@ -649,10 +704,6 @@ void setup()
   pinMode(DBG2, arduino::OUTPUT);
   pinMode(DBG3, arduino::OUTPUT);
   */
-
-  // some startup things are on the port expanders
-  // do this before 6V, as it seems to power straight off sometimes!
-  initDPEX();
 
   // enable 6V    
   pinMode(EN_6V, arduino::OUTPUT);

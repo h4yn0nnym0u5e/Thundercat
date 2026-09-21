@@ -298,8 +298,11 @@ static void CPsetup(ContinuousPot& cp)
  */
 void PotsTask::run(void)
 {
+  /*
   while (!touchTask.supplyValid)
     vTaskDelay(10);
+  */
+ touchTask.waitForReset(13);
 
   bank.setChannelSPD(0b11111111);       // bitwise channel selection 
   bank.setDaisyChainsNmb(NmbOfADC);     // Specify number of ADCs in series

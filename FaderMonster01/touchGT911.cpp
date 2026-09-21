@@ -108,32 +108,44 @@ void TouchTask::startGT911(TaskHandle_t owner)
   TFT_CTP_I2C.begin();
 #endif // defined(IMX_RT1060_I2C_DRIVER_H)
 
-  // Init GT911 (interrupts are handled INSIDE the library)
-  GT911reset(); // special reset, chooses the I2C address
+  for (int j=0;j<5 && !touchReady;j++)
+  {
+    // Init GT911 (interrupts are handled INSIDE the library)
+    GT911reset(); // special reset, chooses the I2C address
+    //touchIsReset = true;
+
+    // allow low-priority tasks to start: principally the
+    // LCD tasks, which can start their phased initialisation
+    // *** TODO: This ought to work, but sometimes doesn't ***
+    //vTaskDelay(51); 
+
+    uint8_t addr = CTP_TOUCH_ADDR;
+    Touchscreen.setAddr(addr);
+    for (int i=0;i<2;i++)
+    {
+      Serial.printf("%d: 0x%02X ... ", i+j*2+1, addr /* Touchscreen.beginError */);
+      if (Touchscreen.begin(INT_PIN, RST_PIN, I2C_FREQ)) 
+      {
+        Serial.printf("\n[%lu] GT911 initialized at address 0x%02X (interrupt mode)", micros(), addr);
+        Touchscreen.setupDisplay(TFT_HOR_RES, TFT_VER_RES, initGT911_ROTATION_0);
+        Touchscreen.getWire().set_callback(touchWireCallback);
+        Touchscreen.getWire().set_context(&touchWireContext);
+        Touchscreen.setInterruptHandler(touchISR);
+        Touchscreen.setAsyncWait(touchAsyncWait);
+        //Touchscreen.setContext(&touchWireContext);
+        Touchscreen.setDelayFn(touchDelay);
+        touchReady = true; // reset has occurred, GT911 is OK
+        break;
+      } else {
+        addr = GT911_I2C_ADDR_28 + GT911_I2C_ADDR_BA - addr; // try other address
+        Touchscreen.setAddr(addr); // try the other address
+        vTaskDelay(5);
+      }
+    }
+    Serial.println();
+  }
   touchIsReset = true;
 
-  // allow low-priority tasks to start: principally the
-  // LCD tasks, which can start their phased initialisation
-  vTaskDelay(51); 
-
-  for (int i=0;i<10;i++)
-  {
-    if (Touchscreen.begin(INT_PIN, RST_PIN, I2C_FREQ)) 
-    {
-      Serial.printf("[%lu] GT911 initialized (interrupt mode)\n", micros());
-      Touchscreen.setupDisplay(TFT_HOR_RES, TFT_VER_RES, initGT911_ROTATION_0);
-      Touchscreen.getWire().set_callback(touchWireCallback);
-      Touchscreen.getWire().set_context(&touchWireContext);
-      Touchscreen.setInterruptHandler(touchISR);
-      Touchscreen.setAsyncWait(touchAsyncWait);
-      //Touchscreen.setContext(&touchWireContext);
-      Touchscreen.setDelayFn(touchDelay);
-      touchReady = true; // reset has occurred, GT911 is OK
-      break;
-    } else {
-      Serial.printf("%d ... ", i /* Touchscreen.beginError */);
-    }
-  }
 }
 
 

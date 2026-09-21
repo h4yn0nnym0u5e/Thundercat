@@ -248,7 +248,7 @@ float ExpressionPedal::getStableValue(int n, int d)
         oldVal = newVal;
         vTaskDelay(d);            
     }
-Serial.printf("Value is %.3f at gain of %d; %d tries left\n", newVal, getGain(), n);
+Serial.printf("[%u] Value is %.3f at gain of %d; %d tries left\n", micros(), newVal, getGain(), n);
     return ok?newVal:UNSTABLE;
 }
 
@@ -292,7 +292,7 @@ int ExpressionPedal::gainSeek(float lower, float upper)
     do 
     {    
         setGain(gain);
-        newVal = getStableValue(20,10);
+        newVal = getStableValue(30,10);
         if (UNSTABLE == newVal)
         {
             gain = -1;
@@ -458,7 +458,7 @@ void TouchADCtask::run(void)
                     pedalType = "Dual switch";
                     break;
             }
-            Serial.printf("%s pedal is present\n", pedalType);
+            Serial.printf("[%u] %s pedal is present\n", micros(), pedalType);
         }
 
         if (expressionPedal && abdma1.interrupted())
@@ -473,7 +473,7 @@ void TouchADCtask::run(void)
                 em = 0;
                 if (enablePedalPrint > 0)
                 {
-                    Serial.printf("%d, Expr: %.3f; gain %d\n", updateCount, raw, expressionPedal.getGain());
+                    Serial.printf("[%u] %d, Expr: %.3f; gain %d\n", micros(), updateCount, raw, expressionPedal.getGain());
                     enablePedalPrint--;
                     if (0 == enablePedalPrint)
                         Serial.println("Pedal print stopped");

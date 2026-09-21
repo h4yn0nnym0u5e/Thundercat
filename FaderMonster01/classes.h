@@ -596,7 +596,7 @@ class TouchADCtask : public FaderMonsterTask
     static TouchStatus keyStatuses[NUM_POTS];
     UBaseType_t messagesWaiting(void) { return reqQueue.messagesWaiting(); }
 
-    uint32_t enablePedalPrint{10};
+    uint32_t enablePedalPrint{0};//{10};
     ExpressionPedal& expressionPedal;
 };
 
