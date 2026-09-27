@@ -70,6 +70,18 @@ extern int rainbow[LEDS_PER_RING], cold2hot[LEDS_PER_RING];
 extern const image_4bit_info
         tl_button_info, tr_button_info, bl_button_info, br_button_info,
         keycap28_info;
+extern "C"
+{
+extern unsigned long _estack;
+extern unsigned long _ebss;
+extern unsigned long _heap_start;
+extern unsigned long _heap_end;
+extern uint8_t* _g_current_heap_end;
+#if defined(configTEENSY_HEAP_ALLOCATION)
+extern uint8_t* _g_heap_start;
+extern uint8_t* _g_heap_max;
+#endif // defined(configTEENSY_HEAP_ALLOCATION)
+}
 
 
 #define COUNT_OF(a) (int)(sizeof a / sizeof a[0])

@@ -1560,3 +1560,109 @@ uint32_t MainExprTune::poll(void)
     }
     return result;
 }
+
+//                                                
+//    .d8888b   .d8888b .d88b.  88888b.   .d88b.  
+//    88K      d88P"   d8P  Y8b 888 "88b d8P  Y8b 
+//    "Y8888b. 888     88888888 888  888 88888888 
+//         X88 Y88b.   Y8b.     888  888 Y8b.     
+//     88888P'  "Y8888P "Y8888  888  888  "Y8888  
+//                                                
+//  
+
+WHICHMEM
+UIclass::State MainSceneLoad::begin(TFT_eSprite& sprite, colours_t c)
+{
+    State result = State::push;
+    UIclass::begin(sprite, c); // do standard setup
+
+    // clear screen
+    pSprite->fillScreen(colours.bg);
+
+    // draw heading 
+    drawHeader("Load scene");
+    
+    // preset text choices
+    pSprite->setFreeFont(&FreeSansBold9pt7b);
+    pSprite->setTextColor(colours.fg, colours.bg, false); // no background fill
+    pSprite->setTextDatum(TC_DATUM);
+
+    // buttons
+    int colsz = numScenes/2;
+    for (int i=0;i<numScenes;i++)
+    {
+        snprintf(sceneNames[i],nameLength, "scene-%d", i);
+        sceneButtons[i].label = sceneNames[i];
+        if (0 != i)
+        {
+            sceneButtons[i].x = sceneButtons[0].x + ((i>=colsz)?barXspc:0);
+            sceneButtons[i].y = sceneButtons[0].y + (i % colsz) * barYspc;
+            sceneButtons[i].w = sceneButtons[0].w;
+            sceneButtons[i].h = sceneButtons[0].h;
+        }
+
+        sceneButtons[i].draw(pSprite);
+    }
+
+    return (state = result); // save and return state
+}
+
+UIclass::State MainSceneLoad::update(Trigger trigger)
+{
+    State result = State::done;
+    char buf[textLen];
+
+    switch (trigger.type)
+    {
+        default: // we don't react to that trigger type
+            break;
+        //----------------------------------------------------------------------
+        case Trigger::eTriggerType::touchPoint:
+        {
+            GTPoint& newPt = trigger.trigger.touchPoint;
+            if (isNewTouch(trigger))
+            {
+                currentTrigger = trigger; // keep the trigger and value(s)
+                result = State::next;
+
+                for (int i=0;i<numScenes;i++)
+                {
+                    if (sceneButtons[i].isIn(newPt)) // 
+                    {
+                        if (sceneButtons[i].isLifted())
+                        {
+                            char buf[30];
+                            sprintf(buf,"%s.csv",sceneButtons[i].label);
+                            Serial.printf("Load %s\n", buf);
+                            superTask.loadSettings(buf);
+                            result = State::push;
+                        }
+                        phase = pollButtons;
+                    }
+                }
+            }
+        }
+        break;
+
+        case Trigger::eTriggerType::nextPhase:
+            switch (phase)
+            {
+                // at least one button has changed: poll until we've done them all
+                case pollButtons:
+                    for (int i=0;i<numScenes && result != State::push;i++)
+                        if (sceneButtons[i].draw(pSprite)) 
+                            result = State::push;
+                    if (result == State::push)
+                        break;
+                    // none left - back to idle and fall through
+                    phase = idle;                    
+                default:
+                    result = State::done;
+                    break;
+            }
+
+
+    }
+
+    return (state = result); // save and return state
+}

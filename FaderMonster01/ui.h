@@ -40,6 +40,7 @@ union UpdateTrigger
 struct Trigger
 {
     enum class eTriggerType {
+        notrigger,
 #define TRIGGER_ITEM(typ,nam) nam,
     TRIGGER_LIST
 #undef TRIGGER_ITEM    
@@ -67,8 +68,8 @@ class UIclass
   protected:
     TFT_eSprite* pSprite;
     colours_t    colours;
-    int          phase;
-    Trigger      currentTrigger;
+    int          phase{0};
+    Trigger      currentTrigger{Trigger::eTriggerType::notrigger,0};
     elapsedMicros interval; // polling interval timer
 
     // standard drawing methods
@@ -156,11 +157,13 @@ class UIbutton
 {
   protected:
     enum {notDrawn, drawnNormal, drawnHit, setNormal, setHit} state{notDrawn};
+  public:
     TFTcolours& colours;
     int x,y,w,h;
     char* label; 
     const GFXfont *font;
     int labXoff, labYoff;
+  protected:    
     bool lifted{true};  // touch was lifted rather than being slid out
     bool setLifted(bool in, GTPoint& pt)
     {
@@ -187,8 +190,8 @@ class UIbutton
 
   public:
     UIbutton(TFTcolours& c,
-             int _x, int _y, int _w, int _h,
-             char* _label, const GFXfont *_f = &FONT_BUTTON, 
+             int _x = 0, int _y = 0, int _w = 4, int _h = 4,
+             char* _label = (char*) "!", const GFXfont *_f = &FONT_BUTTON, 
              int _labXoff = 0, int _labYoff = 0)
       : colours{c},
         x{_x}, y{_y}, w{_w}, h{_h},
@@ -388,6 +391,7 @@ class MainQwerty : public UIclass
     virtual InterTaskRequest& writeToDisplay(void) { return writeToMainLCD(); }
     //virtual uint32_t poll(void);
 };
+
 //------------------------------------------------------------------
 class MainExprTune : public UIclass 
 {
@@ -421,6 +425,37 @@ class MainExprTune : public UIclass
     virtual uint32_t poll(void);
 };
 
+//------------------------------------------------------------------
+class MainSceneLoad : public UIclass 
+{
+    enum {idle,
+          drawCurrent, drawScaled, 
+          drawMin, drawMax, 
+          drawBar, drawGain,
+          pollButtons} phase{idle};
+    static constexpr int barXspc{150}, barYspc{40},
+                     numScenes{10}, nameLength{14},
+                     textW{60}, textH{25}, textLen{10};
+
+    char sceneNames[numScenes][nameLength+1];
+    UIbutton sceneButtons[numScenes] 
+    {
+           {colours,  20,  35, 130, 38}, // top left button
+           {colours}, 
+           {colours}, {colours}, {colours}, {colours}, 
+           {colours}, {colours}, {colours}, {colours}
+        }; 
+
+    float min{0.0f}, max{0.0f}, last{0.0f};
+    char minText[textLen]{0}, maxText[textLen]{0}, 
+         curText[textLen]{0}, scaledText[textLen]{0};
+
+  public:
+    virtual State begin(TFT_eSprite& sprite, colours_t c);
+    virtual State update(Trigger trigger);
+    virtual InterTaskRequest& writeToDisplay(void) { return writeToMainLCD(); }
+};
+
 //==================================================================
 class MainDummy : public UIclass {};
 union MainUI
@@ -430,13 +465,16 @@ union MainUI
     MainColourPicker colourPicker;
     MainQwerty qwerty;
     MainExprTune expr;
+    MainSceneLoad scene;
 };
+#define MAIN_UI_COUNT 5
 
 union MainUIholder
 {
     long long aligner;
     uint8_t space[sizeof(MainUI)];
 };
+
 
 
 

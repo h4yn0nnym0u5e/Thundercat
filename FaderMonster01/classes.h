@@ -387,6 +387,7 @@ class SuperTask : public FaderMonsterTask
     UIclass& ui;
     bool flipui;
     int whichUI;
+    uint32_t doneFlags{UINT32_MAX}; // everything is done
     bool processUI(void);
 
   public:
@@ -404,6 +405,9 @@ class SuperTask : public FaderMonsterTask
     void run(void) override;
     void flipUI(void) { flipui = true; }
 
+    //------------------------------------------------------------------------
+    // stuff for UI to do actions
+    void loadSettings(char* name);
     //------------------------------------------------------------------------
     // stuff to allow another task to make async requests:
     InterTaskRequest& updateMainTouch(InterTaskRequest& req, GTPoint& touchPoint, TickType_t timeout = 0);

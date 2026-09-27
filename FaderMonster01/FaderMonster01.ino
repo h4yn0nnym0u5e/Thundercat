@@ -93,9 +93,11 @@ void printTaskStates(void)
             );
   }
   Serial.printf("\nMainLCD timeout count: %d\n", mainLCDtask.timeoutCount);
-  Serial.printf("ADC updates take %uµs; DMA channel bits: %08X\n", 
+  Serial.printf("ADC updates take %uµs; DMA channel bits: %08X; Wire1 MCFGR1: %08X\n", 
                 ADCupdateMicros,
-                dma_channel_allocated_mask);
+                dma_channel_allocated_mask,
+                LPI2C3_MCFGR1
+              );
   freertos::print_ram_usage();
   }
 
@@ -167,7 +169,7 @@ InterTaskRequest::Result SuperTask::doProcessSmartKnob(void* pSKreport)
     {
       //Serial.printf("[%lu] : Position: %d\n", skReport.ms, skReport.position);
       flipui = true;
-      whichUI = skReport.position % 4; // magic!
+      whichUI = skReport.position % MAIN_UI_COUNT; // less magic!
       whichUI--; // because flipping increments it
     }
   }
@@ -336,6 +338,10 @@ bool SuperTask::processUI(void)
         new(_ui.space) MainExprTune; 
         break;
 
+      case 4:
+        new(_ui.space) MainSceneLoad; 
+        break;
+
     }
     ui.begin(mainLCDtask.getSprite(), faderMonsterSettings.mainColours);
   }
@@ -387,6 +393,19 @@ static char fileName[30];
 uint8_t bits;
 bool countBits;
 int ADCcount;
+
+FLASHMEM
+void SuperTask::loadSettings(char* name)
+{
+    if (name != fileName)
+    {
+        strncpy(fileName, name, sizeof fileName - 1);
+        fileName[sizeof fileName - 1] = 0;
+    }
+    mainLCDtask.loadSettings(saveSettingsRequest, fileName);
+    doneFlags &= ~((1<<(NUM_POTS+1))-1); // clear the bottom 9 "done" flags
+}
+    
 
 FLASHMEM
 void SuperTask::loopFn(void)
@@ -536,7 +555,8 @@ void SuperTask::loopFn(void)
         {
           // request load and wait for it to complete
           sprintf(fileName, "scene-%c.csv", n);
-          mainLCDtask.loadSettings(saveSettingsRequest, fileName);
+          loadSettings(fileName);
+          /*
           while (saveSettingsRequest.isBusy())
             vTaskDelay(5);
 
@@ -554,6 +574,7 @@ void SuperTask::loopFn(void)
             }
           }
           Serial.println();
+          */
         }
       }
         break;
@@ -606,15 +627,37 @@ void SuperTask::loopFn(void)
 
   if (saveSettingsRequest.isFinished())
   {
-    Serial.printf("%s settings to '%s' %s after %uus; execution time was %uus\n",
-            mainLCDtask.opIsSave?"Save":"Load",
-            fileName,
-            InterTaskRequest::Result::failed == saveSettingsRequest.status
-                ?"failed"
-                :"done",
-            saveSettingsRequest.overallTime(),
-            saveSettingsRequest.executionTime());
-    saveSettingsRequest.setInactive();            
+    if (0 == (doneFlags & 0x1FF)) // only just loaded
+    {
+      Serial.printf("%s settings to '%s' %s after %uus; execution time was %uus\n",
+              mainLCDtask.opIsSave?"Save":"Load",
+              fileName,
+              InterTaskRequest::Result::failed == saveSettingsRequest.status
+                  ?"failed"
+                  :"done",
+              saveSettingsRequest.overallTime(),
+              saveSettingsRequest.executionTime());
+      if (mainLCDtask.opIsSave)
+        doneFlags = UINT32_MAX; // all done
+      else        
+        doneFlags |= 0x100; // done the file load
+    }
+    else 
+    {
+      int i = random(NUM_POTS);
+      uint8_t flag = 1<<i;
+      if (0 == (doneFlags & flag))
+      {
+        if (InterTaskRequest::Result::failed != StripTask::getStripTask(i).tftColourChanged())
+          doneFlags |= flag;
+        Serial.printf("%d ... ", i);
+      }      
+      if (UINT32_MAX == doneFlags)
+        Serial.println();
+    }
+
+    if (UINT32_MAX == doneFlags)
+      saveSettingsRequest.setInactive();            
   }
 
   if (generalRequest.isFinished())
@@ -672,6 +715,23 @@ static void getSerialNumber(char* sernum);
 FLASHMEM
 void setup() 
 {
+  /*
+  while (!Serial)
+    ;
+  Serial.println("\n#################################################");
+#define DUMP(x) Serial.printf(#x ": %08X\n", (uint32_t) x)
+  DUMP(&_estack);
+  DUMP(&_ebss);
+  DUMP(&_heap_start);
+  DUMP(&_heap_end);
+  DUMP(_g_current_heap_end);
+#if defined(configTEENSY_HEAP_ALLOCATION)
+  DUMP(_g_heap_start);
+  DUMP(_g_heap_max);
+#endif // defined(configTEENSY_HEAP_ALLOCATION)
+  Serial.flush();
+  Serial.println("#################################################");
+*/
   // some startup things are on the port expanders
   // do this before 6V, as it seems to power straight off sometimes!
   initDPEX();
@@ -699,11 +759,13 @@ void setup()
     Serial.printf("Teensy serial number is: %s\n", buf);
   }
   // debug pins for scope:
-  /*
+  //*
   pinMode(DBG1, arduino::OUTPUT);
   pinMode(DBG2, arduino::OUTPUT);
+  Serial8.begin(2'000'000);
+  pinMode(34,arduino::INPUT);
   pinMode(DBG3, arduino::OUTPUT);
-  */
+  //*/
 
   // enable 6V    
   pinMode(EN_6V, arduino::OUTPUT);

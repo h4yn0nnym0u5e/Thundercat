@@ -115,13 +115,11 @@ bool MainLCDtask::TFTdmaWait(int pixels)
   const float pixelsToMicros = 0.3f * 60'000'000 / SPIclk;
   int ticks = 2 + (int)(pixels * pixelsToMicros / 1000.0f);
   // wait for notification from async TFT_eSPI library
-  digitalWriteFast(DBG1, arduino::HIGH);
   xTaskNotifyStateClear(nullptr);
 //Serial.printf(" wait for %d ticks ", ticks);
   timedOut = pdPASS != xTaskNotifyWait(0, UINT32_MAX, 
                                        &notifiedValue,
                                        ticks /* portMAX_DELAY */);
-  digitalWriteFast(DBG1, arduino::LOW);
 //Serial.print("notified ");
   if (timedOut)
   {

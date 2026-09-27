@@ -30,16 +30,20 @@ static void touchISR(void)
 {
   BaseType_t xHigherPriorityTaskWoken = pdFALSE; 
 
-  Touchscreen.setIRQflag(true);
-  /*
-  vTaskNotifyGiveFromISR(touchWireContext.handle, &xHigherPriorityTaskWoken);
-  /*/
-  xTaskNotifyFromISR(touchWireContext.handle,    // notify touch task ...
-                     TouchTask::GT911Flag, eSetBits, // ...setting the touch flag
-                     &xHigherPriorityTaskWoken);
-  //*/                     
-  portYIELD_FROM_ISR( xHigherPriorityTaskWoken );
+  if (!digitalReadFast(CTP_INT)) // spurious interrupt?
+  {
+    Touchscreen.setIRQflag(true);
+    /*
+    vTaskNotifyGiveFromISR(touchWireContext.handle, &xHigherPriorityTaskWoken);
+    /*/
+    xTaskNotifyFromISR(touchWireContext.handle,    // notify touch task ...
+                      TouchTask::GT911Flag, eSetBits, // ...setting the touch flag
+                      &xHigherPriorityTaskWoken);
+    //*/                     
+    portYIELD_FROM_ISR( xHigherPriorityTaskWoken );
+  }
 }
+
 
 //----------------------------------------------------------------------
 // Wait for async I2C transaction to complete.
