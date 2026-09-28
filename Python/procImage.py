@@ -32,6 +32,7 @@ fnl = [
     "keycap54_del.png",
     "keycap54_larr.png",
     "keycap54_tick.png",
+    "radio_button_20.png",
 ]
 ofn = "images.cpp"
 

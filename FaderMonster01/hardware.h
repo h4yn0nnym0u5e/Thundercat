@@ -105,7 +105,7 @@
 // #define USB_T_1 3
 #define USB_T_2  5 // main LCD backlight
 #define USB_T_3 24
-// #define USB_T_4 25 // 6V enable: active high *** used ***
+#define USB_T_4 25 // 6V enable: active high *** used ***
 
 // spare for debug (for now - caution!)
 #define DBG1  3

@@ -413,6 +413,79 @@ bool UIgraphicButton::draw(TFT_eSprite* pSprite)
 }
 
 /**
+ * Draw button with vertical gradient background
+ * \return true if it was changed
+ */  
+WHICHMEM
+bool UIvGradButton::draw(TFT_eSprite* pSprite)
+{
+    bool result = false;
+    if (needsDrawing())
+    {
+        int bg = colours.bg, fg = colours.fg;
+        if (setHit == state)
+        {
+            bg = colours.fg;
+            fg = colours.bg;
+            state = drawnHit;
+        }
+        else
+            state = drawnNormal;
+
+        pSprite->fillRectVGradient(x,y,w,h,fg,bg);
+
+        pSprite->setFreeFont(font);
+        pSprite->setTextDatum(CC_DATUM); 
+        pSprite->setTextColor(colours.txt);
+        pSprite->drawString(label,x+w/2+labXoff,y+h/2+labYoff);
+
+        result = true;
+    }
+    return result;
+}
+
+/**
+ * Draw button with vertical gradient background
+ * \return true if it was changed
+ */  
+WHICHMEM
+bool UIradioButton::draw(TFT_eSprite* pSprite)
+{
+    bool result = false;
+
+    if (needsDrawing())
+    {
+        int bg = colours.bg, fg = colours.fg;
+        uint16_t cmap[16];
+
+        if (setHit == state)
+        {
+            UIclass::makeCmap(cmap,selectedColour,colours.bg);
+            cmap[15] = colours.fg;
+            cmap[14] = TFT_eSPI::alphaBlend(128, colours.fg, selectedColour);
+            state = drawnHit;
+        }
+        else
+        {
+            UIclass::makeCmap(cmap,colours.fg,colours.bg);
+            state = drawnNormal;
+        }
+
+        pSprite->pushImage(x,y+(h-pGraphic->height)/2, pGraphic->width,pGraphic->height, (uint8_t*) pGraphic->data, 0,false, (uint16_t*) cmap);
+
+        pSprite->setFreeFont(font);
+        pSprite->setTextDatum(CL_DATUM); 
+        pSprite->setTextColor(colours.txt);
+        pSprite->drawString(label,x+labXoff,y+h/2+labYoff);
+
+        //pSprite->drawRect(x,y,w,h,TFT_BLACK); // just for debug
+
+        result = true;
+    }
+    return result;    
+}
+
+/**
  * Is touch point in visible area of image?
  * \return true if point is at or above threshold, usually 1 (zero being transparent)
  */
@@ -1575,7 +1648,7 @@ UIclass::State MainSceneLoad::begin(TFT_eSprite& sprite, colours_t c)
 {
     State result = State::push;
     UIclass::begin(sprite, c); // do standard setup
-
+    
     // clear screen
     pSprite->fillScreen(colours.bg);
 
@@ -1588,6 +1661,11 @@ UIclass::State MainSceneLoad::begin(TFT_eSprite& sprite, colours_t c)
     pSprite->setTextDatum(TC_DATUM);
 
     // buttons
+    colours_t bColours = c;
+    bColours.fg = TFT_eSPI::alphaBlend(128, c.fg,TFT_WHITE);
+    bColours.bg = TFT_eSPI::alphaBlend( 64, c.fg,TFT_BLACK);
+    setButtonColours(bColours);
+
     int colsz = numScenes/2;
     for (int i=0;i<numScenes;i++)
     {
@@ -1610,7 +1688,6 @@ UIclass::State MainSceneLoad::begin(TFT_eSprite& sprite, colours_t c)
 UIclass::State MainSceneLoad::update(Trigger trigger)
 {
     State result = State::done;
-    char buf[textLen];
 
     switch (trigger.type)
     {
@@ -1666,3 +1743,110 @@ UIclass::State MainSceneLoad::update(Trigger trigger)
 
     return (state = result); // save and return state
 }
+
+//    888b     d888 8888888 8888888b. 8888888 
+//    8888b   d8888   888   888  "Y88b  888   
+//    88888b.d88888   888   888    888  888   
+//    888Y88888P888   888   888    888  888   
+//    888 Y888P 888   888   888    888  888   
+//    888  Y8P  888   888   888    888  888   
+//    888   "   888   888   888  .d88P  888   
+//    888       888 8888888 8888888P" 8888888 
+// 
+WHICHMEM
+UIclass::State MainMIDIsettings::begin(TFT_eSprite& sprite, colours_t c)
+{
+    State result = State::push;
+    UIclass::begin(sprite, c); // do standard setup
+    
+    // clear screen
+    pSprite->fillScreen(colours.bg);
+
+    // draw heading 
+    drawHeader("MIDI settings");
+    
+    // preset text choices
+    pSprite->setFreeFont(&FreeSansBold9pt7b);
+    pSprite->setTextColor(colours.fg, colours.bg, false); // no background fill
+    pSprite->setTextDatum(TC_DATUM);
+
+    // buttons
+    colours_t bColours = c;
+    //bColours.fg = TFT_eSPI::alphaBlend(128, c.fg,TFT_WHITE);
+    //bColours.bg = TFT_eSPI::alphaBlend( 64, c.fg,TFT_BLACK);
+    setButtonColours(bColours);
+    setRimColour(TFT_DARKCYAN); // TODO: get this from somewhere (over the rainbow...)
+
+    for (int i=0;i<numCtlTypes;i++)
+    {
+        if (0 != i)
+        {
+            ctlTypeButtons[i].x = ctlTypeButtons[0].x;
+            ctlTypeButtons[i].y = ctlTypeButtons[0].y + i * ccYspc;
+            ctlTypeButtons[i].w = ctlTypeButtons[0].w;
+            ctlTypeButtons[i].h = ctlTypeButtons[0].h;
+        }
+
+        ctlTypeButtons[i].draw(pSprite);
+    }
+
+    return (state = result); // save and return state
+}
+
+
+UIclass::State MainMIDIsettings::update(Trigger trigger)
+{
+    State result = State::done;
+
+    switch (trigger.type)
+    {
+        default: // we don't react to that trigger type
+            break;
+        //----------------------------------------------------------------------
+        case Trigger::eTriggerType::touchPoint:
+        {
+            GTPoint& newPt = trigger.trigger.touchPoint;
+            if (isNewTouch(trigger))
+            {
+                currentTrigger = trigger; // keep the trigger and value(s)
+                result = State::next;
+
+                for (int i=0;i<numCtlTypes;i++)
+                {
+                    if (ctlTypeButtons[i].isIn(newPt)) // 
+                    {
+                        if (ctlTypeButtons[i].isLifted())
+                        {
+                            Serial.printf("Select %s\n", ctlTypeButtons[i].label);
+                            result = State::push;
+                        }
+                        phase = pollButtons;
+                    }
+                }
+            }
+        }
+        break;
+
+        case Trigger::eTriggerType::nextPhase:
+            switch (phase)
+            {
+                // at least one button has changed: poll until we've done them all
+                case pollButtons:
+                    for (int i=0;i<numCtlTypes && result != State::push;i++)
+                        if (ctlTypeButtons[i].draw(pSprite)) 
+                            result = State::push;
+                    if (result == State::push)
+                        break;
+                    // none left - back to idle and fall through
+                    phase = idle;                    
+                default:
+                    result = State::done;
+                    break;
+            }
+
+
+    }
+
+    return (state = result); // save and return state
+}
+

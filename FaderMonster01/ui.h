@@ -83,7 +83,6 @@ class UIclass
     bool setFloat(float potPos, char* lastString, size_t sizeofLastString);
     bool setTouch(TouchStatus* pTouch, TouchStatus::eStatus& lastTouch);
 
-    static uint16_t* makeCmap(uint16_t* cmap, uint16_t fg, uint16_t bg);
     void drawButton(int x, int y,
                     const image_4bit_info& img, const uint16_t* cmap,
                     const char* txt, int xoff, int yoff);
@@ -135,6 +134,7 @@ class UIclass
     bool writeFinished(void);
     bool isDirty(void) { return pSprite->isDirty(); }
     void debugPrint(void);
+    static uint16_t* makeCmap(uint16_t* cmap, uint16_t fg, uint16_t bg);
 
     static constexpr float POT_NOT_SET{-999.0f};
     static constexpr float sa{2*18.0f}, ea{360.0f - 2*18.0f}; // TFT_eSPI has zero at 6 o'clock
@@ -192,7 +192,7 @@ class UIbutton
     UIbutton(TFTcolours& c,
              int _x = 0, int _y = 0, int _w = 4, int _h = 4,
              char* _label = (char*) "!", const GFXfont *_f = &FONT_BUTTON, 
-             int _labXoff = 0, int _labYoff = 0)
+             int _labXoff = 0, int _labYoff = -3)
       : colours{c},
         x{_x}, y{_y}, w{_w}, h{_h},
         label{_label}, 
@@ -225,6 +225,37 @@ class UIgraphicButton : public UIbutton
     virtual bool isIn(GTPoint& p, int threshold);
 };
 
+
+class UIvGradButton : public UIbutton
+{
+  public:    
+    UIvGradButton(TFTcolours& c,
+             int _x = 0, int _y = 0, int _w = 4, int _h = 4,
+             char* _label = (char*) "#",
+             const GFXfont *_f = &FONT_BUTTON, 
+             int _labXoff = 0, int _labYoff = 0)
+        : UIbutton{c,_x,_y,_w,_h, _label,_f,_labXoff,_labYoff}
+        {}
+    virtual bool draw(TFT_eSprite* pSprite);
+};
+
+class UIradioButton : public UIgraphicButton
+{
+    uint16_t& selectedColour;
+    int group;
+  public:
+    UIradioButton(TFTcolours& c,
+             uint16_t& _selectedColour,
+             int _x = 0, int _y = 0, int _w = 4, int _h = 4,
+             char* _label = (char*) "#", 
+             const image_4bit_info& _graphic = radio_button_20_info, 
+             int _group = 1,
+             const GFXfont *_f = &FONT_BUTTON)
+        : UIgraphicButton(c, _x,_y, _label, _graphic, _f, _graphic.width+3),
+          selectedColour{_selectedColour}, group{_group}
+        { w = _w; h = _h; }
+    virtual bool draw(TFT_eSprite* pSprite);
+};
 
 
 //==================================================================
@@ -438,12 +469,13 @@ class MainSceneLoad : public UIclass
                      textW{60}, textH{25}, textLen{10};
 
     char sceneNames[numScenes][nameLength+1];
-    UIbutton sceneButtons[numScenes] 
+    colours_t buttonColours;
+    UIvGradButton sceneButtons[numScenes] 
     {
-           {colours,  20,  35, 130, 38}, // top left button
-           {colours}, 
-           {colours}, {colours}, {colours}, {colours}, 
-           {colours}, {colours}, {colours}, {colours}
+           {buttonColours,  20,35, 130, 24, }, // top left button
+           {buttonColours}, 
+           {buttonColours}, {buttonColours}, {buttonColours}, {buttonColours}, 
+           {buttonColours}, {buttonColours}, {buttonColours}, {buttonColours}
         }; 
 
     float min{0.0f}, max{0.0f}, last{0.0f};
@@ -452,6 +484,42 @@ class MainSceneLoad : public UIclass
 
   public:
     virtual State begin(TFT_eSprite& sprite, colours_t c);
+    void setButtonColours(colours_t bc) { buttonColours = bc; }
+    virtual State update(Trigger trigger);
+    virtual InterTaskRequest& writeToDisplay(void) { return writeToMainLCD(); }
+};
+
+//------------------------------------------------------------------
+class MainMIDIsettings : public UIclass 
+{
+    enum {idle,
+          pollButtons} phase{idle};
+    static constexpr int barXspc{150}, ccYspc{28},
+                     nameLength{14},
+                     textW{60}, textH{25}, textLen{10},
+                     numCtlTypes{7}; // should pick this up somehow...
+
+    colours_t buttonColours;
+    uint16_t  rimColour;
+    UIradioButton ctlTypeButtons[numCtlTypes]  
+    {
+           {buttonColours, rimColour,  15,  35, 80, 24, (char*) "CC"}, // top left button
+           {buttonColours, rimColour, 0,0,0,0, (char*) "RPN"}, 
+           {buttonColours, rimColour, 0,0,0,0, (char*) "NRPN"}, 
+           {buttonColours, rimColour, 0,0,0,0, (char*) "Bend"}, 
+           {buttonColours, rimColour, 0,0,0,0, (char*) "Prog"}, 
+           {buttonColours, rimColour, 0,0,0,0, (char*) "AfTch"}, 
+           {buttonColours, rimColour, 0,0,0,0, (char*) "Note"}
+        }; 
+
+    float min{0.0f}, max{0.0f}, last{0.0f};
+    char minText[textLen]{0}, maxText[textLen]{0}, 
+         curText[textLen]{0}, scaledText[textLen]{0};
+
+  public:
+    virtual State begin(TFT_eSprite& sprite, colours_t c);
+    void setButtonColours(colours_t bc) { buttonColours = bc; }
+    void setRimColour(uint16_t rc) { rimColour = rc; }
     virtual State update(Trigger trigger);
     virtual InterTaskRequest& writeToDisplay(void) { return writeToMainLCD(); }
 };
@@ -466,8 +534,9 @@ union MainUI
     MainQwerty qwerty;
     MainExprTune expr;
     MainSceneLoad scene;
+    MainMIDIsettings midiSet;
 };
-#define MAIN_UI_COUNT 5
+#define MAIN_UI_COUNT 6
 
 union MainUIholder
 {

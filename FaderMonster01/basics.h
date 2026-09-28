@@ -264,7 +264,6 @@ class CfgBaseOffset
     virtual int getMemberCount(void) = 0;
 };
 
-//! structure to 
 
 //! Possible MIDI control types
 enum class MIDIcontrolType : int 

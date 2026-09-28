@@ -16,7 +16,7 @@
 //                                                  "Y88P"           
 //
 // some default settings
-static TFTcolours mainColours{TFT_LIGHTGREY, TFT_DARKGREY, TFT_WHITE};
+static TFTcolours mainColours{TFT_LIGHTGREY, TFT_DARKERGREY, TFT_WHITE};
 static StripColours stripColours[8] =
 {
     { {xRED,    {0}}, {0}, {{ TFT_RED }}},
@@ -342,6 +342,9 @@ bool SuperTask::processUI(void)
         new(_ui.space) MainSceneLoad; 
         break;
 
+      case 5:
+        new(_ui.space) MainMIDIsettings; 
+        break;
     }
     ui.begin(mainLCDtask.getSprite(), faderMonsterSettings.mainColours);
   }
