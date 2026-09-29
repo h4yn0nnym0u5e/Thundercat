@@ -178,7 +178,7 @@ void TouchTask::processGT911(int n)
   int x = p.y/3, y = 240-p.x/4;
   p.x = x; p.y = y;
   p.reserved = 1; // say it's valid
-  //Serial.printf("Touch: X=%u, Y=%u, stuff: %d; \n", p.x, p.y, touchWireContext.stuff);
+  //Serial.printf("Touch: X=%u, Y=%u; reserved=%u; stuff: %d; \n", p.x, p.y, p.reserved, touchWireContext.stuff);
 
   lastTouch = p;
   lastTouchTime = millis();

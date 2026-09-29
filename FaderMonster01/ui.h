@@ -156,7 +156,10 @@ class UIclass
 class UIbutton
 {
   protected:
-    enum {notDrawn, drawnNormal, drawnHit, setNormal, setHit} state{notDrawn};
+    enum buttonState_e {notDrawn, 
+          drawnNormal, drawnHit, drawnLatched,
+          setNormal,   setHit,   setLatched} 
+            state{notDrawn};
   public:
     TFTcolours& colours;
     int x,y,w,h;
@@ -164,21 +167,27 @@ class UIbutton
     const GFXfont *font;
     int labXoff, labYoff;
   protected:    
-    bool lifted{true};  // touch was lifted rather than being slid out
-    bool setLifted(bool in, GTPoint& pt)
+    bool lifted{true};  //!< touch was lifted rather than being slid out
+    /**
+     * Set lifted and state values depending on whether touch is inside button.
+     * \result true if touch is in, OR if just exited and re-draw is needed
+     */
+    bool setLifted(bool in,     //!< touch is in button's active area
+                   GTPoint& pt) //!< touch point - used to see if touch just ended
     {
         lifted = in && 255 == pt.reserved; // "in" the button, but actually touch has ended
 
         // work out if a re-draw is indicated
         if (in)
         {
-            if (drawnHit != state)
+            if (drawnHit != state && drawnLatched != state)
                 state = setHit;
         }
 
         if (!in || lifted) // out, sideways or upwards!
         {
-            if (drawnNormal != state)
+            if (drawnNormal != state    // isn't already drawn in "out" state...
+             && drawnLatched != state)  // ...and isn't supposed to stay latched
             {
                 state = setNormal;
                 in = true; // say we're "in", as re-draw is needed
@@ -203,7 +212,38 @@ class UIbutton
     virtual bool isLifted(void) { bool result = lifted; lifted = false; return result; }
     virtual bool needsDrawing(void) 
     { 
-        return setNormal == state || setHit == state || notDrawn == state; 
+        return setNormal == state || setHit == state || setLatched == state || notDrawn == state; 
+    }
+
+    /**
+     * Force current drawing state towards normal, if it isn't already
+     */ 
+    void forceNormal(void) { if (drawnNormal != state) state = setNormal; } 
+
+    /**
+     * Change button from normal to latched state.
+     * Does nothing if the state is not (about to be) hit.
+     * \return true if state was changed
+     */
+    bool latch(void) 
+    { 
+        bool result = false; 
+        switch (state)
+        {
+            case setHit:
+                state = setLatched;
+                result = true;
+                break;
+                
+            case drawnHit:
+                state = drawnLatched;
+                result = true;
+                break;
+
+            default:
+                break;                                
+        }
+        return result;
     }
 };
 
@@ -242,19 +282,30 @@ class UIvGradButton : public UIbutton
 class UIradioButton : public UIgraphicButton
 {
     uint16_t& selectedColour;
-    int group;
+    uint32_t& groupFlags;
+    int buttonNum;
   public:
     UIradioButton(TFTcolours& c,
              uint16_t& _selectedColour,
+             uint32_t& _groupFlags,
+             int _buttonNum,
              int _x = 0, int _y = 0, int _w = 4, int _h = 4,
              char* _label = (char*) "#", 
              const image_4bit_info& _graphic = radio_button_20_info, 
-             int _group = 1,
              const GFXfont *_f = &FONT_BUTTON)
         : UIgraphicButton(c, _x,_y, _label, _graphic, _f, _graphic.width+3),
-          selectedColour{_selectedColour}, group{_group}
-        { w = _w; h = _h; }
+          selectedColour{_selectedColour}, groupFlags{_groupFlags}, buttonNum{_buttonNum}
+        { 
+            w = _w; h = _h; 
+            if (0 == groupFlags) 
+            { 
+                groupFlags = 1<<buttonNum; 
+                state = setLatched;
+            }
+        }
     virtual bool draw(TFT_eSprite* pSprite);
+    bool isActive(void) { return 0 != (groupFlags & (1<<buttonNum));}
+    void setActive(void) { groupFlags = 1<<buttonNum; }
 };
 
 
@@ -501,15 +552,17 @@ class MainMIDIsettings : public UIclass
 
     colours_t buttonColours;
     uint16_t  rimColour;
+
+    uint32_t groupFlags{0};
     UIradioButton ctlTypeButtons[numCtlTypes]  
     {
-           {buttonColours, rimColour,  15,  35, 80, 24, (char*) "CC"}, // top left button
-           {buttonColours, rimColour, 0,0,0,0, (char*) "RPN"}, 
-           {buttonColours, rimColour, 0,0,0,0, (char*) "NRPN"}, 
-           {buttonColours, rimColour, 0,0,0,0, (char*) "Bend"}, 
-           {buttonColours, rimColour, 0,0,0,0, (char*) "Prog"}, 
-           {buttonColours, rimColour, 0,0,0,0, (char*) "AfTch"}, 
-           {buttonColours, rimColour, 0,0,0,0, (char*) "Note"}
+           {buttonColours, rimColour, groupFlags, 1, 15,  35, 80, 24, (char*) "CC"}, // top left button
+           {buttonColours, rimColour, groupFlags, 2, 0,0,0,0, (char*) "RPN"}, 
+           {buttonColours, rimColour, groupFlags, 3, 0,0,0,0, (char*) "NRPN"}, 
+           {buttonColours, rimColour, groupFlags, 4, 0,0,0,0, (char*) "Bend"}, 
+           {buttonColours, rimColour, groupFlags, 5, 0,0,0,0, (char*) "Prog"}, 
+           {buttonColours, rimColour, groupFlags, 6, 0,0,0,0, (char*) "AfTch"}, 
+           {buttonColours, rimColour, groupFlags, 7, 0,0,0,0, (char*) "Note"}
         }; 
 
     float min{0.0f}, max{0.0f}, last{0.0f};

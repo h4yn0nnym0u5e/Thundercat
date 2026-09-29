@@ -458,19 +458,22 @@ bool UIradioButton::draw(TFT_eSprite* pSprite)
         int bg = colours.bg, fg = colours.fg;
         uint16_t cmap[16];
 
-        if (setHit == state)
+        switch (state)
         {
-            UIclass::makeCmap(cmap,selectedColour,colours.bg);
-            cmap[15] = colours.fg;
-            cmap[14] = TFT_eSPI::alphaBlend(128, colours.fg, selectedColour);
-            state = drawnHit;
-        }
-        else
-        {
-            UIclass::makeCmap(cmap,colours.fg,colours.bg);
-            state = drawnNormal;
-        }
+            case setHit:
+            case setLatched:
+                UIclass::makeCmap(cmap,selectedColour,colours.bg);
+                cmap[15] = colours.fg;
+                cmap[14] = TFT_eSPI::alphaBlend(128, colours.fg, selectedColour);
+                state = drawnLatched; // radio buttons can only be latched
+                break;
 
+            default:                
+                UIclass::makeCmap(cmap,colours.fg,colours.bg);
+                state = drawnNormal;
+                break;
+        }
+// Serial.printf("Draw '%s' in %s state\n", label, drawnNormal == state?"normal":(drawnHit == state?"hit":"latched"));
         pSprite->pushImage(x,y+(h-pGraphic->height)/2, pGraphic->width,pGraphic->height, (uint8_t*) pGraphic->data, 0,false, (uint16_t*) cmap);
 
         pSprite->setFreeFont(font);
@@ -1806,22 +1809,35 @@ UIclass::State MainMIDIsettings::update(Trigger trigger)
         case Trigger::eTriggerType::touchPoint:
         {
             GTPoint& newPt = trigger.trigger.touchPoint;
+//            Serial.printf("Trigger (MIDIsettings): X=%u, Y=%u; reserved=%u\n", 
+//                          newPt.x, newPt.y, newPt.reserved);
+
             if (isNewTouch(trigger))
             {
                 currentTrigger = trigger; // keep the trigger and value(s)
                 result = State::next;
+                int setActive = -1;
 
-                for (int i=0;i<numCtlTypes;i++)
+                for (int i=0;i<numCtlTypes && setActive < 0;i++)
                 {
-                    if (ctlTypeButtons[i].isIn(newPt)) // 
+                    if (ctlTypeButtons[i].isIn(newPt) // in...
+                    && !ctlTypeButtons[i].isActive()) // ...but not the current one
+                            setActive = i;
+                }
+
+                if (setActive >= 0) // new active button
+                {
+                    // should be just one active, but lets be defensive
+                    // set all active buttons to normal
+                    for (int j=0;j<numCtlTypes;j++)
                     {
-                        if (ctlTypeButtons[i].isLifted())
-                        {
-                            Serial.printf("Select %s\n", ctlTypeButtons[i].label);
-                            result = State::push;
-                        }
-                        phase = pollButtons;
+                        if (j != setActive && ctlTypeButtons[j].isActive())
+                            ctlTypeButtons[j].forceNormal();
                     }
+                    ctlTypeButtons[setActive].setActive();
+// Serial.printf("Select %s\n", ctlTypeButtons[setActive].label);
+                    result = State::push;
+                    phase = pollButtons;
                 }
             }
         }
@@ -1834,7 +1850,10 @@ UIclass::State MainMIDIsettings::update(Trigger trigger)
                 case pollButtons:
                     for (int i=0;i<numCtlTypes && result != State::push;i++)
                         if (ctlTypeButtons[i].draw(pSprite)) 
+                        {
+                            ctlTypeButtons[i].latch();
                             result = State::push;
+                        }
                     if (result == State::push)
                         break;
                     // none left - back to idle and fall through
