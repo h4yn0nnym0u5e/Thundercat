@@ -71,6 +71,8 @@ class UIclass
     int          phase{0};
     Trigger      currentTrigger{Trigger::eTriggerType::notrigger,0};
     elapsedMicros interval; // polling interval timer
+    static constexpr const char* bks{""};
+#define BKS (char*) bks    
 
     // standard drawing methods
     void drawArc(float s, float e, uint16_t fg, uint16_t bg);
@@ -161,7 +163,7 @@ class UIbutton
           setNormal,   setHit,   setLatched} 
             state{notDrawn};
   public:
-    TFTcolours& colours;
+    TFTcolours colours;
     int x,y,w,h;
     char* label; 
     const GFXfont *font;
@@ -202,11 +204,11 @@ class UIbutton
              int _x = 0, int _y = 0, int _w = 4, int _h = 4,
              char* _label = (char*) "!", const GFXfont *_f = &FONT_BUTTON, 
              int _labXoff = 0, int _labYoff = -3)
-      : colours{c},
+      : // colours{c},
         x{_x}, y{_y}, w{_w}, h{_h},
         label{_label}, 
         font{_f}, labXoff{_labXoff}, labYoff{_labYoff}
-        {}       
+        { colours = c; }       
     virtual bool draw(TFT_eSprite* pSprite);
     virtual bool isIn(GTPoint&);
     virtual bool isLifted(void) { bool result = lifted; lifted = false; return result; }
@@ -306,6 +308,8 @@ class UIradioButton : public UIgraphicButton
     virtual bool draw(TFT_eSprite* pSprite);
     bool isActive(void) { return 0 != (groupFlags & (1<<buttonNum));}
     void setActive(void) { groupFlags = 1<<buttonNum; }
+    static bool processTouch(UIradioButton* buttons, int count, GTPoint& touch);
+    static UIclass::State processDraw(TFT_eSprite* pSprite, UIradioButton* buttons, int count);
 };
 
 
@@ -510,14 +514,9 @@ class MainExprTune : public UIclass
 //------------------------------------------------------------------
 class MainSceneLoad : public UIclass 
 {
-    enum {idle,
-          drawCurrent, drawScaled, 
-          drawMin, drawMax, 
-          drawBar, drawGain,
-          pollButtons} phase{idle};
+    enum {idle, pollButtons} phase{idle};
     static constexpr int barXspc{150}, barYspc{40},
-                     numScenes{10}, nameLength{14},
-                     textW{60}, textH{25}, textLen{10};
+                     numScenes{10}, nameLength{14};
 
     char sceneNames[numScenes][nameLength+1];
     colours_t buttonColours;
@@ -528,10 +527,6 @@ class MainSceneLoad : public UIclass
            {buttonColours}, {buttonColours}, {buttonColours}, {buttonColours}, 
            {buttonColours}, {buttonColours}, {buttonColours}, {buttonColours}
         }; 
-
-    float min{0.0f}, max{0.0f}, last{0.0f};
-    char minText[textLen]{0}, maxText[textLen]{0}, 
-         curText[textLen]{0}, scaledText[textLen]{0};
 
   public:
     virtual State begin(TFT_eSprite& sprite, colours_t c);
@@ -544,31 +539,48 @@ class MainSceneLoad : public UIclass
 class MainMIDIsettings : public UIclass 
 {
     enum {idle,
-          pollButtons} phase{idle};
-    static constexpr int barXspc{150}, ccYspc{28},
-                     nameLength{14},
-                     textW{60}, textH{25}, textLen{10},
+          pollCtls, pollStrips} phase{idle};
+    static constexpr int stripXspc{25}, ccYspc{24},
+                     //nameLength{14},
+                     //textW{60}, textH{25}, textLen{10},
                      numCtlTypes{7}; // should pick this up somehow...
 
+    // strip select
+#define FMS_SC(n) faderMonsterSettings.stripsConfig.colours[n].scribble, \
+                  faderMonsterSettings.stripsConfig.colours[n].scribble.fg
+    uint32_t stripFlags{0};
+    UIradioButton stripSelectButtons[NUM_POTS]  
+    {
+        {FMS_SC(0), stripFlags, 1, 5, 35, 22, 22, BKS}, // top left button
+        {FMS_SC(1), stripFlags, 2, 0,0,0,0, BKS}, 
+        {FMS_SC(2), stripFlags, 3, 0,0,0,0, BKS}, 
+        {FMS_SC(3), stripFlags, 4, 0,0,0,0, BKS}, 
+        {FMS_SC(4), stripFlags, 5, 0,0,0,0, BKS}, 
+        {FMS_SC(5), stripFlags, 6, 0,0,0,0, BKS}, 
+        {FMS_SC(6), stripFlags, 7, 0,0,0,0, BKS},
+        {FMS_SC(7), stripFlags, 8, 0,0,0,0, BKS}
+    }; 
+#undef FMS_SC
+
+    // MIDI control type selection
     colours_t buttonColours;
     uint16_t  rimColour;
-
     uint32_t groupFlags{0};
     UIradioButton ctlTypeButtons[numCtlTypes]  
     {
-           {buttonColours, rimColour, groupFlags, 1, 15,  35, 80, 24, (char*) "CC"}, // top left button
-           {buttonColours, rimColour, groupFlags, 2, 0,0,0,0, (char*) "RPN"}, 
-           {buttonColours, rimColour, groupFlags, 3, 0,0,0,0, (char*) "NRPN"}, 
-           {buttonColours, rimColour, groupFlags, 4, 0,0,0,0, (char*) "Bend"}, 
-           {buttonColours, rimColour, groupFlags, 5, 0,0,0,0, (char*) "Prog"}, 
-           {buttonColours, rimColour, groupFlags, 6, 0,0,0,0, (char*) "AfTch"}, 
-           {buttonColours, rimColour, groupFlags, 7, 0,0,0,0, (char*) "Note"}
-        }; 
-
+        {buttonColours, rimColour, groupFlags, 1, 15, 70, 80, 22, (char*) "CC"}, // top left button
+        {buttonColours, rimColour, groupFlags, 2, 0,0,0,0, (char*) "RPN"}, 
+        {buttonColours, rimColour, groupFlags, 3, 0,0,0,0, (char*) "NRPN"}, 
+        {buttonColours, rimColour, groupFlags, 4, 0,0,0,0, (char*) "Bend"}, 
+        {buttonColours, rimColour, groupFlags, 5, 0,0,0,0, (char*) "Prog"}, 
+        {buttonColours, rimColour, groupFlags, 6, 0,0,0,0, (char*) "AfTch"}, 
+        {buttonColours, rimColour, groupFlags, 7, 0,0,0,0, (char*) "Note"}
+    }; 
+/*
     float min{0.0f}, max{0.0f}, last{0.0f};
     char minText[textLen]{0}, maxText[textLen]{0}, 
          curText[textLen]{0}, scaledText[textLen]{0};
-
+*/
   public:
     virtual State begin(TFT_eSprite& sprite, colours_t c);
     void setButtonColours(colours_t bc) { buttonColours = bc; }
@@ -598,7 +610,7 @@ union MainUIholder
 };
 
 
-
+#undef BKS
 
 #endif // 0
 

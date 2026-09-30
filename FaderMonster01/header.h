@@ -29,6 +29,7 @@
 #include "contPot.h"
 #include "Touches.h"
 #include "basics.h"
+extern FaderMonsterSettings faderMonsterSettings; // needed for UI
 #include "ui.h"
 #include "classes.h"
 
@@ -52,7 +53,6 @@ extern ContinuousPot allPots[NUM_POTS];
 //typedef RingLEDs<NUM_POTS> FaderMonsterRingLEDs; 
 extern  RingLEDs<NUM_POTS> rings;
 
-extern FaderMonsterSettings faderMonsterSettings;
 
 // hacky things to be got rid of later. Probably.
 extern WS2812Serial leds;

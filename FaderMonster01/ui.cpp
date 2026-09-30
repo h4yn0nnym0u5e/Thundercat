@@ -351,10 +351,13 @@ bool UIbutton::draw(TFT_eSprite* pSprite)
 
         pSprite->fillRoundRect(x,y,w,h,5,colours.fg);
         pSprite->fillRoundRect(x+2,y+2,w-4,h-4,4,bg);
-        pSprite->setFreeFont(font);
-        pSprite->setTextDatum(CC_DATUM); 
-        pSprite->setTextColor(txt, bg);
-        pSprite->drawString(label,x+w/2+labXoff,y+h/2+labYoff);
+        if (nullptr != label)
+        {
+            pSprite->setFreeFont(font);
+            pSprite->setTextDatum(CC_DATUM); 
+            pSprite->setTextColor(txt, bg);
+            pSprite->drawString(label,x+w/2+labXoff,y+h/2+labYoff);
+        }
 
         result = true;
     }
@@ -434,10 +437,13 @@ bool UIvGradButton::draw(TFT_eSprite* pSprite)
 
         pSprite->fillRectVGradient(x,y,w,h,fg,bg);
 
-        pSprite->setFreeFont(font);
-        pSprite->setTextDatum(CC_DATUM); 
-        pSprite->setTextColor(colours.txt);
-        pSprite->drawString(label,x+w/2+labXoff,y+h/2+labYoff);
+        if (nullptr != label)
+        {
+            pSprite->setFreeFont(font);
+            pSprite->setTextDatum(CC_DATUM); 
+            pSprite->setTextColor(colours.txt);
+            pSprite->drawString(label,x+w/2+labXoff,y+h/2+labYoff);
+        }
 
         result = true;
     }
@@ -455,7 +461,6 @@ bool UIradioButton::draw(TFT_eSprite* pSprite)
 
     if (needsDrawing())
     {
-        int bg = colours.bg, fg = colours.fg;
         uint16_t cmap[16];
 
         switch (state)
@@ -486,6 +491,52 @@ bool UIradioButton::draw(TFT_eSprite* pSprite)
         result = true;
     }
     return result;    
+}
+
+/**
+ * Process a touch to see if it's selected a different radio button in a set.
+ * If so, the button states will be set reay for the re-draw.
+ * \return true if radio button set has changed
+ */
+bool UIradioButton::processTouch(UIradioButton* buttons, int count, GTPoint& touch)
+{
+    bool result = false;
+    int setActive = -1;
+
+    for (int i=0;i<count && setActive < 0;i++)
+    {
+        if (buttons[i].isIn(touch) // in...
+        && !buttons[i].isActive()) // ...but not the current one
+                setActive = i;
+    }
+
+    if (setActive >= 0) // new active button
+    {
+        // should be just one active, but lets be defensive
+        // set all active buttons to normal
+        for (int j=0;j<count;j++)
+        {
+            if (j != setActive && buttons[j].isActive())
+                buttons[j].forceNormal();
+        }
+        buttons[setActive].setActive();
+        result = true;
+    }
+    return result;
+}
+
+UIclass::State UIradioButton::processDraw(TFT_eSprite* pSprite, UIradioButton* buttons, int count)
+{
+    UIclass::State result = UIclass::State::done; // assume nothing to do
+
+    for (int i=0;i<count && result != UIclass::State::push;i++)
+        if (buttons[i].draw(pSprite)) 
+        {
+            buttons[i].latch();
+            result = UIclass::State::push;
+        }
+
+    return result;        
 }
 
 /**
@@ -1775,11 +1826,10 @@ UIclass::State MainMIDIsettings::begin(TFT_eSprite& sprite, colours_t c)
 
     // buttons
     colours_t bColours = c;
-    //bColours.fg = TFT_eSPI::alphaBlend(128, c.fg,TFT_WHITE);
-    //bColours.bg = TFT_eSPI::alphaBlend( 64, c.fg,TFT_BLACK);
     setButtonColours(bColours);
     setRimColour(TFT_DARKCYAN); // TODO: get this from somewhere (over the rainbow...)
 
+    // MIDI control types: radio button set
     for (int i=0;i<numCtlTypes;i++)
     {
         if (0 != i)
@@ -1791,6 +1841,22 @@ UIclass::State MainMIDIsettings::begin(TFT_eSprite& sprite, colours_t c)
         }
 
         ctlTypeButtons[i].draw(pSprite);
+    }
+
+    // Strips: radio button set
+    for (int i=0;i<NUM_POTS;i++)
+    {
+        if (0 != i)
+        {
+            stripSelectButtons[i].x = stripSelectButtons[0].x + i * stripXspc;
+            stripSelectButtons[i].y = stripSelectButtons[0].y;
+            stripSelectButtons[i].w = stripSelectButtons[0].w;
+            stripSelectButtons[i].h = stripSelectButtons[0].h;
+        }
+        stripSelectButtons[i].colours.fg = stripSelectButtons[i].colours.bg;
+        stripSelectButtons[i].colours.bg = colours.bg;
+
+        stripSelectButtons[i].draw(pSprite);
     }
 
     return (state = result); // save and return state
@@ -1816,28 +1882,16 @@ UIclass::State MainMIDIsettings::update(Trigger trigger)
             {
                 currentTrigger = trigger; // keep the trigger and value(s)
                 result = State::next;
-                int setActive = -1;
 
-                for (int i=0;i<numCtlTypes && setActive < 0;i++)
+                if (UIradioButton::processTouch(ctlTypeButtons, numCtlTypes, newPt))
                 {
-                    if (ctlTypeButtons[i].isIn(newPt) // in...
-                    && !ctlTypeButtons[i].isActive()) // ...but not the current one
-                            setActive = i;
-                }
-
-                if (setActive >= 0) // new active button
-                {
-                    // should be just one active, but lets be defensive
-                    // set all active buttons to normal
-                    for (int j=0;j<numCtlTypes;j++)
-                    {
-                        if (j != setActive && ctlTypeButtons[j].isActive())
-                            ctlTypeButtons[j].forceNormal();
-                    }
-                    ctlTypeButtons[setActive].setActive();
-// Serial.printf("Select %s\n", ctlTypeButtons[setActive].label);
                     result = State::push;
-                    phase = pollButtons;
+                    phase = pollCtls;
+                }
+                else if (UIradioButton::processTouch(stripSelectButtons, NUM_POTS, newPt))
+                {
+                    result = State::push;
+                    phase = pollStrips;
                 }
             }
         }
@@ -1847,21 +1901,23 @@ UIclass::State MainMIDIsettings::update(Trigger trigger)
             switch (phase)
             {
                 // at least one button has changed: poll until we've done them all
-                case pollButtons:
-                    for (int i=0;i<numCtlTypes && result != State::push;i++)
-                        if (ctlTypeButtons[i].draw(pSprite)) 
-                        {
-                            ctlTypeButtons[i].latch();
-                            result = State::push;
-                        }
-                    if (result == State::push)
-                        break;
-                    // none left - back to idle and fall through
-                    phase = idle;                    
+                case pollStrips:
+                    result = UIradioButton::processDraw(pSprite, stripSelectButtons, NUM_POTS);
+                    break;
+
+                case pollCtls:
+                    result = UIradioButton::processDraw(pSprite, ctlTypeButtons, numCtlTypes);
+                    break;
+
+                // nothing (more) to do
                 default:
-                    result = State::done;
                     break;
             }
+
+            if (State::done == result)
+                phase = idle;
+
+            break;
 
 
     }
