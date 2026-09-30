@@ -307,9 +307,11 @@ class UIradioButton : public UIgraphicButton
         }
     virtual bool draw(TFT_eSprite* pSprite);
     bool isActive(void) { return 0 != (groupFlags & (1<<buttonNum));}
-    void setActive(void) { groupFlags = 1<<buttonNum; }
+    void setActive(void) { state = setLatched; groupFlags = 1<<buttonNum; }
     static bool processTouch(UIradioButton* buttons, int count, GTPoint& touch);
     static UIclass::State processDraw(TFT_eSprite* pSprite, UIradioButton* buttons, int count);
+    static bool setActive(UIradioButton* buttons, int count, int which);
+    int getActive(void) { return 31 - __builtin_clz(groupFlags); }
 };
 
 
@@ -475,7 +477,6 @@ class MainQwerty : public UIclass
     virtual State begin(TFT_eSprite& sprite, colours_t c);
     virtual State update(Trigger trigger);
     virtual InterTaskRequest& writeToDisplay(void) { return writeToMainLCD(); }
-    //virtual uint32_t poll(void);
 };
 
 //------------------------------------------------------------------
@@ -541,8 +542,6 @@ class MainMIDIsettings : public UIclass
     enum {idle,
           pollCtls, pollStrips} phase{idle};
     static constexpr int stripXspc{25}, ccYspc{24},
-                     //nameLength{14},
-                     //textW{60}, textH{25}, textLen{10},
                      numCtlTypes{7}; // should pick this up somehow...
 
     // strip select
@@ -551,14 +550,14 @@ class MainMIDIsettings : public UIclass
     uint32_t stripFlags{0};
     UIradioButton stripSelectButtons[NUM_POTS]  
     {
-        {FMS_SC(0), stripFlags, 1, 5, 35, 22, 22, BKS}, // top left button
-        {FMS_SC(1), stripFlags, 2, 0,0,0,0, BKS}, 
-        {FMS_SC(2), stripFlags, 3, 0,0,0,0, BKS}, 
-        {FMS_SC(3), stripFlags, 4, 0,0,0,0, BKS}, 
-        {FMS_SC(4), stripFlags, 5, 0,0,0,0, BKS}, 
-        {FMS_SC(5), stripFlags, 6, 0,0,0,0, BKS}, 
-        {FMS_SC(6), stripFlags, 7, 0,0,0,0, BKS},
-        {FMS_SC(7), stripFlags, 8, 0,0,0,0, BKS}
+        {FMS_SC(0), stripFlags, 0, 5, 35, 22, 22, BKS}, // top left button
+        {FMS_SC(1), stripFlags, 1, 0,0,0,0, BKS}, 
+        {FMS_SC(2), stripFlags, 2, 0,0,0,0, BKS}, 
+        {FMS_SC(3), stripFlags, 3, 0,0,0,0, BKS}, 
+        {FMS_SC(4), stripFlags, 4, 0,0,0,0, BKS}, 
+        {FMS_SC(5), stripFlags, 5, 0,0,0,0, BKS}, 
+        {FMS_SC(6), stripFlags, 6, 0,0,0,0, BKS},
+        {FMS_SC(7), stripFlags, 7, 0,0,0,0, BKS}
     }; 
 #undef FMS_SC
 
@@ -568,25 +567,30 @@ class MainMIDIsettings : public UIclass
     uint32_t groupFlags{0};
     UIradioButton ctlTypeButtons[numCtlTypes]  
     {
-        {buttonColours, rimColour, groupFlags, 1, 15, 70, 80, 22, (char*) "CC"}, // top left button
-        {buttonColours, rimColour, groupFlags, 2, 0,0,0,0, (char*) "RPN"}, 
-        {buttonColours, rimColour, groupFlags, 3, 0,0,0,0, (char*) "NRPN"}, 
-        {buttonColours, rimColour, groupFlags, 4, 0,0,0,0, (char*) "Bend"}, 
-        {buttonColours, rimColour, groupFlags, 5, 0,0,0,0, (char*) "Prog"}, 
-        {buttonColours, rimColour, groupFlags, 6, 0,0,0,0, (char*) "AfTch"}, 
-        {buttonColours, rimColour, groupFlags, 7, 0,0,0,0, (char*) "Note"}
+        {buttonColours, rimColour, groupFlags, 0, 15, 70, 80, 22, (char*) "CC"}, // top left button
+        {buttonColours, rimColour, groupFlags, 1, 0,0,0,0, (char*) "RPN"}, 
+        {buttonColours, rimColour, groupFlags, 2, 0,0,0,0, (char*) "NRPN"}, 
+        {buttonColours, rimColour, groupFlags, 3, 0,0,0,0, (char*) "Bend"}, 
+        {buttonColours, rimColour, groupFlags, 4, 0,0,0,0, (char*) "Prog"}, 
+        {buttonColours, rimColour, groupFlags, 5, 0,0,0,0, (char*) "AfTch"}, 
+        {buttonColours, rimColour, groupFlags, 6, 0,0,0,0, (char*) "Note"}
     }; 
-/*
-    float min{0.0f}, max{0.0f}, last{0.0f};
-    char minText[textLen]{0}, maxText[textLen]{0}, 
-         curText[textLen]{0}, scaledText[textLen]{0};
-*/
+
+    MIDIcontrolSetting* pControl;
+
   public:
     virtual State begin(TFT_eSprite& sprite, colours_t c);
     void setButtonColours(colours_t bc) { buttonColours = bc; }
     void setRimColour(uint16_t rc) { rimColour = rc; }
     virtual State update(Trigger trigger);
     virtual InterTaskRequest& writeToDisplay(void) { return writeToMainLCD(); }
+    void selectStrip(int n) 
+    { 
+        UIradioButton::setActive(stripSelectButtons, NUM_POTS, n);
+        pControl = &faderMonsterSettings.stripsConfig.controls[n].pot; 
+        UIradioButton::setActive(ctlTypeButtons, numCtlTypes, 
+                                 (int) pControl->controlType - 1);
+    }
 };
 
 //==================================================================

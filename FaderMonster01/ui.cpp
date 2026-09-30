@@ -501,29 +501,43 @@ bool UIradioButton::draw(TFT_eSprite* pSprite)
 bool UIradioButton::processTouch(UIradioButton* buttons, int count, GTPoint& touch)
 {
     bool result = false;
-    int setActive = -1;
+    int which = -1;
 
-    for (int i=0;i<count && setActive < 0;i++)
+    for (int i=0;i<count && which < 0;i++)
     {
         if (buttons[i].isIn(touch) // in...
         && !buttons[i].isActive()) // ...but not the current one
-                setActive = i;
+                which = i;
     }
 
-    if (setActive >= 0) // new active button
+    if (which >= 0) // active button has changed
+        result = UIradioButton::setActive(buttons, count, which);
+    return result;
+}
+
+/**
+ * Set a specific entry in a set of radio buttons to active
+ * \return true if it wasn't active before
+ */
+bool UIradioButton::setActive(UIradioButton* buttons, int count, int which)
+{
+    bool result = false;
+
+    if (which >= 0 && !buttons[which].isActive()) // new active button
     {
-        // should be just one active, but lets be defensive
+        // should be just one active, but let's be defensive
         // set all active buttons to normal
         for (int j=0;j<count;j++)
         {
-            if (j != setActive && buttons[j].isActive())
+            if (j != which && buttons[j].isActive())
                 buttons[j].forceNormal();
         }
-        buttons[setActive].setActive();
+        buttons[which].setActive();
         result = true;
     }
     return result;
 }
+
 
 UIclass::State UIradioButton::processDraw(TFT_eSprite* pSprite, UIradioButton* buttons, int count)
 {
@@ -1859,6 +1873,8 @@ UIclass::State MainMIDIsettings::begin(TFT_eSprite& sprite, colours_t c)
         stripSelectButtons[i].draw(pSprite);
     }
 
+    selectStrip(1);
+
     return (state = result); // save and return state
 }
 
@@ -1885,11 +1901,19 @@ UIclass::State MainMIDIsettings::update(Trigger trigger)
 
                 if (UIradioButton::processTouch(ctlTypeButtons, numCtlTypes, newPt))
                 {
+                    pControl->controlType
+                        = (MIDIcontrolType) (ctlTypeButtons[0].getActive() + 1);
                     result = State::push;
                     phase = pollCtls;
                 }
                 else if (UIradioButton::processTouch(stripSelectButtons, NUM_POTS, newPt))
                 {
+                    int strip = stripSelectButtons[0].getActive();
+                    selectStrip(strip); // point to controls we're editing
+//Serial.printf("Strip %d; pot type is %d; active control is %d\n", 
+//              strip, (int) pControl->controlType,
+              ctlTypeButtons[0].getActive()
+            );
                     result = State::push;
                     phase = pollStrips;
                 }
@@ -1903,7 +1927,10 @@ UIclass::State MainMIDIsettings::update(Trigger trigger)
                 // at least one button has changed: poll until we've done them all
                 case pollStrips:
                     result = UIradioButton::processDraw(pSprite, stripSelectButtons, NUM_POTS);
-                    break;
+                    if (State::done == result)  // done strip button changes...
+                        phase = pollCtls;       // ...they may have resulted in control button changes
+                    else                        
+                        break;
 
                 case pollCtls:
                     result = UIradioButton::processDraw(pSprite, ctlTypeButtons, numCtlTypes);
