@@ -1716,6 +1716,7 @@ UIclass::State MainSceneLoad::begin(TFT_eSprite& sprite, colours_t c)
 {
     State result = State::push;
     UIclass::begin(sprite, c); // do standard setup
+    setColours<UIvGradButton>(sceneButtons, numScenes, c);
     
     // clear screen
     pSprite->fillScreen(colours.bg);
@@ -1826,6 +1827,9 @@ UIclass::State MainMIDIsettings::begin(TFT_eSprite& sprite, colours_t c)
 {
     State result = State::push;
     UIclass::begin(sprite, c); // do standard setup
+    setColours<UIradioButton>(ctlTypeButtons, numCtlTypes, c);
+    setColours<UIradioButton>(ctlSelectButtons, ctlsPerStrip, c);
+    selectStrip(2,1); // initialises pControl
     
     // clear screen
     pSprite->fillScreen(colours.bg);
@@ -1873,7 +1877,9 @@ UIclass::State MainMIDIsettings::begin(TFT_eSprite& sprite, colours_t c)
         stripSelectButtons[i].draw(pSprite);
     }
 
-    selectStrip(1);
+    for (int i=0;i<ctlsPerStrip;i++) ctlSelectButtons[i].draw(pSprite);
+
+//    selectStrip(2,1); // initialises pControl
 
     return (state = result); // save and return state
 }
@@ -1909,13 +1915,19 @@ UIclass::State MainMIDIsettings::update(Trigger trigger)
                 else if (UIradioButton::processTouch(stripSelectButtons, NUM_POTS, newPt))
                 {
                     int strip = stripSelectButtons[0].getActive();
-                    selectStrip(strip); // point to controls we're editing
+                    selectStrip(strip, ctlSelectButtons[0].getActive()); // point to controls we're editing
 //Serial.printf("Strip %d; pot type is %d; active control is %d\n", 
 //              strip, (int) pControl->controlType,
-              ctlTypeButtons[0].getActive()
-            );
+//              ctlTypeButtons[0].getActive()
+//            );
                     result = State::push;
                     phase = pollStrips;
+                }
+                else if (UIradioButton::processTouch(ctlSelectButtons, ctlsPerStrip, newPt))
+                {
+                    selectStrip(stripSelectButtons[0].getActive(), ctlSelectButtons[0].getActive());
+                    result = State::push;
+                    phase = pollSelect;
                 }
             }
         }
@@ -1927,6 +1939,13 @@ UIclass::State MainMIDIsettings::update(Trigger trigger)
                 // at least one button has changed: poll until we've done them all
                 case pollStrips:
                     result = UIradioButton::processDraw(pSprite, stripSelectButtons, NUM_POTS);
+                    if (State::done == result)  // done strip button changes...
+                        phase = pollCtls;       // ...they may have resulted in control button changes
+                    else                        
+                        break;
+
+                case pollSelect:
+                    result = UIradioButton::processDraw(pSprite, ctlSelectButtons, ctlsPerStrip);
                     if (State::done == result)  // done strip button changes...
                         phase = pollCtls;       // ...they may have resulted in control button changes
                     else                        

@@ -160,10 +160,10 @@ class UIbutton
   protected:
     enum buttonState_e {notDrawn, 
           drawnNormal, drawnHit, drawnLatched,
-          setNormal,   setHit,   setLatched} 
+           setNormal,   setHit,   setLatched} 
             state{notDrawn};
   public:
-    TFTcolours colours;
+    TFTcolours colours; // copied from reference at construction time
     int x,y,w,h;
     char* label; 
     const GFXfont *font;
@@ -204,14 +204,16 @@ class UIbutton
              int _x = 0, int _y = 0, int _w = 4, int _h = 4,
              char* _label = (char*) "!", const GFXfont *_f = &FONT_BUTTON, 
              int _labXoff = 0, int _labYoff = -3)
-      : // colours{c},
+      : colours{c},
         x{_x}, y{_y}, w{_w}, h{_h},
         label{_label}, 
         font{_f}, labXoff{_labXoff}, labYoff{_labYoff}
-        { colours = c; }       
+        { }       
     virtual bool draw(TFT_eSprite* pSprite);
     virtual bool isIn(GTPoint&);
-    virtual bool isLifted(void) { bool result = lifted; lifted = false; return result; }
+    virtual bool isLifted(void) { bool result = lifted; lifted = false; return result; }    
+    
+    virtual void setColours(TFTcolours c) {colours = c;}
     virtual bool needsDrawing(void) 
     { 
         return setNormal == state || setHit == state || setLatched == state || notDrawn == state; 
@@ -283,6 +285,7 @@ class UIvGradButton : public UIbutton
 
 class UIradioButton : public UIgraphicButton
 {
+public:    
     uint16_t& selectedColour;
     uint32_t& groupFlags;
     int buttonNum;
@@ -314,6 +317,15 @@ class UIradioButton : public UIgraphicButton
     int getActive(void) { return 31 - __builtin_clz(groupFlags); }
 };
 
+/**
+ * Set the colours for an array of buttons.
+ * Has to be a template, since the various derived classes are different sizes.
+ */
+template<class B>
+void setColours(B* buttons, int count, TFTcolours c)
+{
+    for (int i=0;i<count;i++) buttons[i].setColours(c);
+}
 
 //==================================================================
 //
@@ -540,8 +552,9 @@ class MainSceneLoad : public UIclass
 class MainMIDIsettings : public UIclass 
 {
     enum {idle,
-          pollCtls, pollStrips} phase{idle};
+          pollCtls, pollStrips, pollSelect} phase{idle};
     static constexpr int stripXspc{25}, ccYspc{24},
+                     ctlsPerStrip{3}, ctlX{230},
                      numCtlTypes{7}; // should pick this up somehow...
 
     // strip select
@@ -576,6 +589,15 @@ class MainMIDIsettings : public UIclass
         {buttonColours, rimColour, groupFlags, 6, 0,0,0,0, (char*) "Note"}
     }; 
 
+    uint32_t midiCtlFlags{0};
+    UIradioButton ctlSelectButtons[ctlsPerStrip]  
+    {
+        {buttonColours, rimColour, midiCtlFlags, 0, ctlX + 00, 35, 22, 22, BKS, },
+        {buttonColours, rimColour, midiCtlFlags, 1, ctlX + 25, 35, 22, 22, BKS, fader_button_info},
+        {buttonColours, rimColour, midiCtlFlags, 2, ctlX + 50, 35, 22, 22, BKS, button_button_info},
+    };
+
+
     MIDIcontrolSetting* pControl;
 
   public:
@@ -584,10 +606,18 @@ class MainMIDIsettings : public UIclass
     void setRimColour(uint16_t rc) { rimColour = rc; }
     virtual State update(Trigger trigger);
     virtual InterTaskRequest& writeToDisplay(void) { return writeToMainLCD(); }
-    void selectStrip(int n) 
+    void selectStrip(int n, int which = 0) 
     { 
+        StripControls& ctls = faderMonsterSettings.stripsConfig.controls[n];
+
         UIradioButton::setActive(stripSelectButtons, NUM_POTS, n);
-        pControl = &faderMonsterSettings.stripsConfig.controls[n].pot; 
+        UIradioButton::setActive(ctlSelectButtons, ctlsPerStrip, which);
+        switch (which)
+        {
+            case 0: pControl = &ctls.pot; break;
+            case 1: pControl = &ctls.fader; break;
+            case 2: pControl = &ctls.button; break;
+        }
         UIradioButton::setActive(ctlTypeButtons, numCtlTypes, 
                                  (int) pControl->controlType - 1);
     }

@@ -33,8 +33,12 @@ fnl = [
     "keycap54_larr.png",
     "keycap54_tick.png",
     "radio_button_20.png",
+    "fader_button.png",
+    "button_button.png"
 ]
-ofn = "images.cpp"
+
+# ofn = "images.cpp"
+ofn = "../FaderMonster01/images.cpp"
 
 def dumpHeader(hdr):
     print(hdr["width"], hdr["height"])
