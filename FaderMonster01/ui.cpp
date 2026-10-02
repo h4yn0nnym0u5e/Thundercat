@@ -17,7 +17,7 @@ void UIclass::drawHeader(const char* txt)
 {
     // draw heading 
     pSprite->fillRect(0,0,pSprite->width(), 30, TFT_BLACK);
-    pSprite->setFreeFont(&FreeSans12pt7b);
+    FontSetter::loadFont(*pSprite, FontSetter::TITLE_BAR);
     pSprite->setTextColor(colours.fg, TFT_BLACK);
     pSprite->drawString(txt,2,2);
 } 
@@ -174,7 +174,7 @@ bool UIclass::setText(char* buf, char* lastString, size_t sizeofLastString, bool
 
         if (setFont)
         {
-            pSprite->setFreeFont(&FONT_DP);
+            FontSetter::setFreeFont(*pSprite,&FONT_DP);
             pSprite->setTextColor(colours.txt);
         }
         // when drawing numbers with a leading space or minus sign,
@@ -353,7 +353,7 @@ bool UIbutton::draw(TFT_eSprite* pSprite)
         pSprite->fillRoundRect(x+2,y+2,w-4,h-4,4,bg);
         if (nullptr != label)
         {
-            pSprite->setFreeFont(font);
+            FontSetter::setFreeFont(*pSprite,font);
             pSprite->setTextDatum(CC_DATUM); 
             pSprite->setTextColor(txt, bg);
             pSprite->drawString(label,x+w/2+labXoff,y+h/2+labYoff);
@@ -400,15 +400,10 @@ bool UIgraphicButton::draw(TFT_eSprite* pSprite)
         UIclass::makeCmap(cmap,fg,colours.bg);
         pSprite->pushImage(x,y, pGraphic->width,pGraphic->height, (uint8_t*) pGraphic->data, 0,false, (uint16_t*) cmap);
 
-        if (nullptr != label) // graphic-only buttons are permitted
-        {
-            pSprite->setFreeFont(font);
-            pSprite->setTextDatum(CC_DATUM); 
-            pSprite->setTextColor(txt, cmap[15]);
-            pSprite->drawString(label,
-                                x + pGraphic->width/2  + labXoff,
-                                y + pGraphic->height/2 + labYoff);
-        }
+        drawLabel(pSprite, CC_DATUM,  
+                  x + pGraphic->width/2  + labXoff,
+                  y + pGraphic->height/2 + labYoff, 
+                  txt, cmap[15]);
 
         result = true;
     }
@@ -437,13 +432,7 @@ bool UIvGradButton::draw(TFT_eSprite* pSprite)
 
         pSprite->fillRectVGradient(x,y,w,h,fg,bg);
 
-        if (nullptr != label)
-        {
-            pSprite->setFreeFont(font);
-            pSprite->setTextDatum(CC_DATUM); 
-            pSprite->setTextColor(colours.txt);
-            pSprite->drawString(label,x+w/2+labXoff,y+h/2+labYoff);
-        }
+        drawLabel(pSprite, CC_DATUM, x+w/2+labXoff,y+h/2+labYoff, colours.txt);
 
         result = true;
     }
@@ -481,10 +470,7 @@ bool UIradioButton::draw(TFT_eSprite* pSprite)
 // Serial.printf("Draw '%s' in %s state\n", label, drawnNormal == state?"normal":(drawnHit == state?"hit":"latched"));
         pSprite->pushImage(x,y+(h-pGraphic->height)/2, pGraphic->width,pGraphic->height, (uint8_t*) pGraphic->data, 0,false, (uint16_t*) cmap);
 
-        pSprite->setFreeFont(font);
-        pSprite->setTextDatum(CL_DATUM); 
-        pSprite->setTextColor(colours.txt);
-        pSprite->drawString(label,x+labXoff,y+h/2+labYoff);
+        drawLabel(pSprite, CL_DATUM, x+labXoff,y+h/2+labYoff, colours.txt);
 
         //pSprite->drawRect(x,y,w,h,TFT_BLACK); // just for debug
 
@@ -498,6 +484,7 @@ bool UIradioButton::draw(TFT_eSprite* pSprite)
  * If so, the button states will be set reay for the re-draw.
  * \return true if radio button set has changed
  */
+WHICHMEM
 bool UIradioButton::processTouch(UIradioButton* buttons, int count, GTPoint& touch)
 {
     bool result = false;
@@ -519,6 +506,7 @@ bool UIradioButton::processTouch(UIradioButton* buttons, int count, GTPoint& tou
  * Set a specific entry in a set of radio buttons to active
  * \return true if it wasn't active before
  */
+WHICHMEM
 bool UIradioButton::setActive(UIradioButton* buttons, int count, int which)
 {
     bool result = false;
@@ -539,6 +527,7 @@ bool UIradioButton::setActive(UIradioButton* buttons, int count, int which)
 }
 
 
+WHICHMEM
 UIclass::State UIradioButton::processDraw(TFT_eSprite* pSprite, UIradioButton* buttons, int count)
 {
     UIclass::State result = UIclass::State::done; // assume nothing to do
@@ -1290,7 +1279,7 @@ WHICHMEM
 void MainQwerty::drawKeyboard(int& n)
 {
     uint16_t cmap[16];
-    pSprite->setFreeFont(&FreeSansBold9pt7b);
+    FontSetter::setFreeFont(*pSprite,&FreeSansBold9pt7b);
 
     tempCmap = makeCmap(cmap, TFT_BLACK, colours.bg);
     pSprite->setTextColor(colours.fg, cmap[15], false); // no background fill
@@ -1377,7 +1366,7 @@ UIclass::State MainQwerty::begin(TFT_eSprite& sprite, colours_t c)
     drawHeader(mainLCDtask.headerText);
     
     // preset text choices
-    pSprite->setFreeFont(&FreeSansBold9pt7b);
+    FontSetter::setFreeFont(*pSprite,&FreeSansBold9pt7b);
     pSprite->setTextColor(colours.fg, colours.bg, false); // no background fill
     pSprite->setTextDatum(TC_DATUM);
 
@@ -1416,7 +1405,7 @@ UIclass::State MainQwerty::update(Trigger trigger)
                             currentKey = theKey;
                             if (theKey > ' ') // can't draw a newline!
                             {
-                                pSprite->setFreeFont(&FreeSansBold18pt7b);
+                                FontSetter::setFreeFont(*pSprite,&FreeSansBold18pt7b);
                                 pSprite->setTextColor(colours.fg, colours.bg, true); // no background fill
                                 pSprite->setTextDatum(TC_DATUM);
                                 *buf = theKey;
@@ -1530,7 +1519,7 @@ UIclass::State MainExprTune::begin(TFT_eSprite& sprite, colours_t c)
     drawHeader("Tune pedal");
     
     // preset text choices
-    pSprite->setFreeFont(&FreeSansBold9pt7b);
+    FontSetter::setFreeFont(*pSprite,&FreeSansBold9pt7b);
     pSprite->setTextColor(colours.fg, colours.bg, false); // no background fill
     pSprite->setTextDatum(TC_DATUM);
 
@@ -1539,9 +1528,9 @@ UIclass::State MainExprTune::begin(TFT_eSprite& sprite, colours_t c)
     pSprite->fillRect(barX,barY,barW, barH, colours.bg);
 
     // buttons
-    set.draw(pSprite);
-    clear.draw(pSprite);
-    autocal.draw(pSprite);
+    set.setColours(c); set.draw(pSprite);
+    clear.setColours(c); clear.draw(pSprite);
+    autocal.setColours(c); autocal.draw(pSprite);
 
     return (state = result); // save and return state
 }
@@ -1552,7 +1541,7 @@ UIclass::State MainExprTune::begin(TFT_eSprite& sprite, colours_t c)
 WHICHMEM
 UIclass::State MainExprTune::_setFloat(float f, char* buf, char* stash)
 {
-    pSprite->setFreeFont(&FreeSans9pt7b);
+    FontSetter::setFreeFont(*pSprite,&FreeSans9pt7b);
     pSprite->setTextColor(colours.fg, colours.bg, false); // no background fill
     pSprite->setTextDatum(TL_DATUM);
     sprintf(buf,"% .3f",f);
@@ -1725,7 +1714,7 @@ UIclass::State MainSceneLoad::begin(TFT_eSprite& sprite, colours_t c)
     drawHeader("Load scene");
     
     // preset text choices
-    pSprite->setFreeFont(&FreeSansBold9pt7b);
+    FontSetter::setFreeFont(*pSprite,&FreeSansBold9pt7b);
     pSprite->setTextColor(colours.fg, colours.bg, false); // no background fill
     pSprite->setTextDatum(TC_DATUM);
 
@@ -1735,21 +1724,13 @@ UIclass::State MainSceneLoad::begin(TFT_eSprite& sprite, colours_t c)
     bColours.bg = TFT_eSPI::alphaBlend( 64, c.fg,TFT_BLACK);
     setButtonColours(bColours);
 
-    int colsz = numScenes/2;
     for (int i=0;i<numScenes;i++)
     {
         snprintf(sceneNames[i],nameLength, "scene-%d", i);
         sceneButtons[i].label = sceneNames[i];
-        if (0 != i)
-        {
-            sceneButtons[i].x = sceneButtons[0].x + ((i>=colsz)?barXspc:0);
-            sceneButtons[i].y = sceneButtons[0].y + (i % colsz) * barYspc;
-            sceneButtons[i].w = sceneButtons[0].w;
-            sceneButtons[i].h = sceneButtons[0].h;
-        }
-
-        sceneButtons[i].draw(pSprite);
     }
+    makeGrid(sceneButtons, numScenes, 2, barXspc, barYspc); // grid
+    drawAll(pSprite, sceneButtons, numScenes);
 
     return (state = result); // save and return state
 }
@@ -1837,54 +1818,35 @@ UIclass::State MainMIDIsettings::begin(TFT_eSprite& sprite, colours_t c)
     // draw heading 
     drawHeader("MIDI settings");
     
-    // preset text choices
-    pSprite->setFreeFont(&FreeSansBold9pt7b);
-    pSprite->setTextColor(colours.fg, colours.bg, false); // no background fill
-    pSprite->setTextDatum(TC_DATUM);
-
     // buttons
     colours_t bColours = c;
     setButtonColours(bColours);
     setRimColour(TFT_DARKCYAN); // TODO: get this from somewhere (over the rainbow...)
 
-    // MIDI control types: radio button set
-    for (int i=0;i<numCtlTypes;i++)
-    {
-        if (0 != i)
-        {
-            ctlTypeButtons[i].x = ctlTypeButtons[0].x;
-            ctlTypeButtons[i].y = ctlTypeButtons[0].y + i * ccYspc;
-            ctlTypeButtons[i].w = ctlTypeButtons[0].w;
-            ctlTypeButtons[i].h = ctlTypeButtons[0].h;
-        }
+    // MIDI control types: radio button set ---------------------------------
+    makeGrid<UIradioButton>(ctlTypeButtons, numCtlTypes, 1, 0, ccYspc); // vertical
+    drawAll(pSprite, ctlTypeButtons, numCtlTypes);
 
-        ctlTypeButtons[i].draw(pSprite);
-    }
-
-    // Strips: radio button set
+    // Strips: radio button set ---------------------------------
+    // shuffle the scribble colours around to use as button colours
     for (int i=0;i<NUM_POTS;i++)
     {
-        if (0 != i)
-        {
-            stripSelectButtons[i].x = stripSelectButtons[0].x + i * stripXspc;
-            stripSelectButtons[i].y = stripSelectButtons[0].y;
-            stripSelectButtons[i].w = stripSelectButtons[0].w;
-            stripSelectButtons[i].h = stripSelectButtons[0].h;
-        }
         stripSelectButtons[i].colours.fg = stripSelectButtons[i].colours.bg;
         stripSelectButtons[i].colours.bg = colours.bg;
-
-        stripSelectButtons[i].draw(pSprite);
     }
 
-    for (int i=0;i<ctlsPerStrip;i++) ctlSelectButtons[i].draw(pSprite);
+    // can actually infer template type from first parameter:
+    makeGrid(stripSelectButtons, NUM_POTS, NUM_POTS, stripXspc); // horizontal
+    drawAll(pSprite, stripSelectButtons, NUM_POTS);
 
-//    selectStrip(2,1); // initialises pControl
+    // Strip control selection ---------------------------------
+    drawAll(pSprite, ctlSelectButtons, ctlsPerStrip);
 
     return (state = result); // save and return state
 }
 
 
+WHICHMEM
 UIclass::State MainMIDIsettings::update(Trigger trigger)
 {
     State result = State::done;

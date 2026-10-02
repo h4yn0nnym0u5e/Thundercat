@@ -13,6 +13,7 @@
 #include <ResponsiveAnalogRead.h>
 #include <ADC.h>
 #include <AnalogBufferDMA.h>
+#include <ThunderFonts.h>
 
 
 #define CONCAT(a,b,c) a##b##c

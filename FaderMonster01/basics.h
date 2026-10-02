@@ -210,6 +210,39 @@ struct SmartKnobReport
     int32_t min, max; // min and max values
 };
 
+
+//     .d888                  888             
+//    d88P"                   888             
+//    888                     888             
+//    888888 .d88b.  88888b.  888888 .d8888b  
+//    888   d88""88b 888 "88b 888    88K      
+//    888   888  888 888  888 888    "Y8888b. 
+//    888   Y88..88P 888  888 Y88b.       X88 
+//    888    "Y88P"  888  888  "Y888  88888P' 
+//
+class FontSetter
+{
+  public:    
+    static void setFreeFont(TFT_eSprite& spr, const GFXfont *f = NULL)
+    {
+        spr.unloadFont(); // this masks the free font, so unload it
+        spr.setFreeFont(f);
+    }
+
+    static void loadFont(TFT_eSprite& spr, const uint8_t array[])
+    {
+        spr.loadFont(array); // masks free font; unload should restore it
+    }
+
+    static void unloadFont(TFT_eSprite& spr)
+    {
+        spr.unloadFont(); // this masks the free font, so unload it
+    }
+
+    static constexpr const uint8_t* RADIO_LABEL{NotoSansRegular16};
+    static constexpr const uint8_t* TITLE_BAR{NotoSansRegular24};
+};
+
 //                      888    888    d8b                            
 //                      888    888    Y8P                            
 //                      888    888                                   

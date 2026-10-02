@@ -166,9 +166,29 @@ class UIbutton
     TFTcolours colours; // copied from reference at construction time
     int x,y,w,h;
     char* label; 
-    const GFXfont *font;
+    const GFXfont* font{nullptr};
+    const uint8_t* smoothFont{nullptr};
     int labXoff, labYoff;
-  protected:    
+  protected: 
+    bool drawLabel(TFT_eSprite* pSprite, int datum, int x, int y, uint16_t txt, int bg = -1)
+    {
+        bool result = false;
+
+        if (nullptr != label)
+        {
+            setFont(pSprite);
+            pSprite->setTextDatum(datum);
+            if (bg < 0) 
+                pSprite->setTextColor(txt);
+            else                
+                pSprite->setTextColor(txt, bg);
+            pSprite->drawString(label,x,y);
+
+            result = true;
+        }
+        return result;
+    }
+
     bool lifted{true};  //!< touch was lifted rather than being slid out
     /**
      * Set lifted and state values depending on whether touch is inside button.
@@ -208,12 +228,23 @@ class UIbutton
         x{_x}, y{_y}, w{_w}, h{_h},
         label{_label}, 
         font{_f}, labXoff{_labXoff}, labYoff{_labYoff}
-        { }       
+        { }
     virtual bool draw(TFT_eSprite* pSprite);
     virtual bool isIn(GTPoint&);
     virtual bool isLifted(void) { bool result = lifted; lifted = false; return result; }    
     
     virtual void setColours(TFTcolours c) {colours = c;}
+    virtual void setFont(const GFXfont* f) { font = f; }
+    virtual void setFont(const uint8_t* f) { smoothFont = f; }
+    virtual void setFont(TFT_eSprite* pSprite)
+    {
+        if (nullptr != smoothFont)
+            FontSetter::loadFont(*pSprite, smoothFont);
+        else
+            FontSetter::setFreeFont(*pSprite, font);
+
+    }
+
     virtual bool needsDrawing(void) 
     { 
         return setNormal == state || setHit == state || setLatched == state || notDrawn == state; 
@@ -325,6 +356,48 @@ template<class B>
 void setColours(B* buttons, int count, TFTcolours c)
 {
     for (int i=0;i<count;i++) buttons[i].setColours(c);
+}
+
+/**
+ * Make a button array into a grid or horizontal / vertical line.
+ * The first button has the correct size and top left position,
+ * subsequent buttons have the same size and fill top to bottom,
+ * left to right.
+ */
+template<class B>
+void makeGrid(B* buttons, int count, int columns, int spcX, int spcY = 0)
+{
+    int x = buttons[0].x, y = buttons[0].y,
+        w = buttons[0].w, h = buttons[0].h;
+    int rows = count / columns;
+    int n = 0; // copies first button's size and position to itself, but easier!
+
+    while (count > 0)
+    {
+        int yy = y;
+        for (int i=0;i<rows && count > 0;i++)
+        {
+            buttons[n].x = x;
+            buttons[n].y = yy;
+            buttons[n].w = w;
+            buttons[n].h = h;
+
+            yy += spcY;
+            n++;
+            count--;
+        }
+        x += spcX;
+    }
+}
+
+
+/**
+ * Draw an array of buttons
+ */
+template<class B>
+void drawAll(TFT_eSprite* pSprite, B* buttons, int count)
+{
+    for (int i=0;i<count;i++) buttons[i].draw(pSprite);
 }
 
 //==================================================================
@@ -563,14 +636,14 @@ class MainMIDIsettings : public UIclass
     uint32_t stripFlags{0};
     UIradioButton stripSelectButtons[NUM_POTS]  
     {
-        {FMS_SC(0), stripFlags, 0, 5, 35, 22, 22, BKS}, // top left button
-        {FMS_SC(1), stripFlags, 1, 0,0,0,0, BKS}, 
-        {FMS_SC(2), stripFlags, 2, 0,0,0,0, BKS}, 
-        {FMS_SC(3), stripFlags, 3, 0,0,0,0, BKS}, 
-        {FMS_SC(4), stripFlags, 4, 0,0,0,0, BKS}, 
-        {FMS_SC(5), stripFlags, 5, 0,0,0,0, BKS}, 
-        {FMS_SC(6), stripFlags, 6, 0,0,0,0, BKS},
-        {FMS_SC(7), stripFlags, 7, 0,0,0,0, BKS}
+        {FMS_SC(0), stripFlags, 0, 5, 35, 22, 22, nullptr}, // top left button
+        {FMS_SC(1), stripFlags, 1, 0,0,0,0, nullptr}, 
+        {FMS_SC(2), stripFlags, 2, 0,0,0,0, nullptr}, 
+        {FMS_SC(3), stripFlags, 3, 0,0,0,0, nullptr}, 
+        {FMS_SC(4), stripFlags, 4, 0,0,0,0, nullptr}, 
+        {FMS_SC(5), stripFlags, 5, 0,0,0,0, nullptr}, 
+        {FMS_SC(6), stripFlags, 6, 0,0,0,0, nullptr},
+        {FMS_SC(7), stripFlags, 7, 0,0,0,0, nullptr}
     }; 
 #undef FMS_SC
 
@@ -592,9 +665,9 @@ class MainMIDIsettings : public UIclass
     uint32_t midiCtlFlags{0};
     UIradioButton ctlSelectButtons[ctlsPerStrip]  
     {
-        {buttonColours, rimColour, midiCtlFlags, 0, ctlX + 00, 35, 22, 22, BKS, },
-        {buttonColours, rimColour, midiCtlFlags, 1, ctlX + 25, 35, 22, 22, BKS, fader_button_info},
-        {buttonColours, rimColour, midiCtlFlags, 2, ctlX + 50, 35, 22, 22, BKS, button_button_info},
+        {buttonColours, rimColour, midiCtlFlags, 0, ctlX + 00, 35, 22, 22, nullptr, },
+        {buttonColours, rimColour, midiCtlFlags, 1, ctlX + 25, 35, 22, 22, nullptr, fader_button_info},
+        {buttonColours, rimColour, midiCtlFlags, 2, ctlX + 50, 35, 22, 22, nullptr, button_button_info},
     };
 
 
