@@ -347,7 +347,91 @@ public:
     static bool setActive(UIradioButton* buttons, int count, int which);
     int getActive(void) { return 31 - __builtin_clz(groupFlags); }
 };
+//==================================================================
+//             888 d8b      888                  
+//             888 Y8P      888                  
+//             888          888                  
+//    .d8888b  888 888  .d88888  .d88b.  888d888 
+//    88K      888 888 d88" 888 d8P  Y8b 888P"   
+//    "Y8888b. 888 888 888  888 88888888 888     
+//         X88 888 888 Y88b 888 Y8b.     888     
+//     88888P' 888 888  "Y88888  "Y8888  888     
+// 
+class UIslider
+{
+  protected:
+    enum buttonState_e {notDrawn, 
+          drawnNormal, drawnHit, drawnLatched,
+           setNormal,   setHit,   setLatched} 
+            state{notDrawn};
+  public:
+    TFTcolours colours; // copied from reference at construction time
+    int x,y,w,h, // main slider body
+        sw,sh,   // slider knob
+        r;       // radii
+    char* label; 
+    const GFXfont* font{nullptr};
+    const uint8_t* smoothFont{nullptr};
+    int labXoff, labYoff;
+  protected: 
+    bool drawLabel(TFT_eSprite* pSprite, int datum, int x, int y, uint16_t txt, int bg = -1)
+    {
+        bool result = false;
 
+        if (nullptr != label)
+        {
+            setFont(pSprite);
+            pSprite->setTextDatum(datum);
+            if (bg < 0) 
+                pSprite->setTextColor(txt);
+            else                
+                pSprite->setTextColor(txt, bg);
+            pSprite->drawString(label,x,y);
+
+            result = true;
+        }
+        return result;
+    }
+
+    bool vertical;
+    float value;    
+  public:
+    UIslider(TFTcolours& c,
+             char* _label = (char*) "!",
+             int _x = 0, int _y = 0, int _w = 6, int _h = 100,
+             int _sw = 10, int _sh = 6, int _r = 3,
+             const GFXfont *_f = &FONT_BUTTON, 
+             int _labXoff = 0, int _labYoff = -3)
+      : colours{c},
+        x{_x}, y{_y}, w{_w}, h{_h},
+        sw{_sw}, sh{_sh}, r{_r},
+        label{_label}, 
+        font{_f}, labXoff{_labXoff}, labYoff{_labYoff},
+        vertical{_h > _w}
+        { }
+    virtual bool draw(TFT_eSprite* pSprite);
+    virtual bool isIn(GTPoint&);
+    
+    virtual void setColours(TFTcolours c) {colours = c;}
+    virtual void setFont(const GFXfont* f) { font = f; }
+    virtual void setFont(const uint8_t* f) { smoothFont = f; }
+    virtual void setFont(TFT_eSprite* pSprite)
+    {
+        if (nullptr != smoothFont)
+            FontSetter::loadFont(*pSprite, smoothFont);
+        else
+            FontSetter::setFreeFont(*pSprite, font);
+
+    }
+
+    virtual bool needsDrawing(void) 
+    { 
+        return setNormal == state || setHit == state || setLatched == state || notDrawn == state; 
+    }
+};
+
+
+//==================================================================
 /**
  * Set the colours for an array of buttons.
  * Has to be a template, since the various derived classes are different sizes.
