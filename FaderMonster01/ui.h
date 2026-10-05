@@ -366,9 +366,9 @@ class UIslider
             state{notDrawn};
   public:
     TFTcolours colours; // copied from reference at construction time
-    int x,y,w,h, // main slider body
-        sw,sh,   // slider knob
-        r;       // radii
+    int x,y,w,h, // touch area
+        kw,kh,   // slider knob
+        cwh, r;   // column width or height; radii
     char* label; 
     const GFXfont* font{nullptr};
     const uint8_t* smoothFont{nullptr};
@@ -394,21 +394,23 @@ class UIslider
     }
 
     bool vertical;
-    float value;    
+    int value, oldValue;    
   public:
     UIslider(TFTcolours& c,
              char* _label = (char*) "!",
-             int _x = 0, int _y = 0, int _w = 6, int _h = 100,
-             int _sw = 10, int _sh = 6, int _r = 3,
+             // indicator bar dimensions
+             int _x = 5, int _y = 3, int _w = 6, int _h = 100,
+             // knob width and height; corner radii
+             int _kw = 10, int _kh = 6, int _r = 3,
              const GFXfont *_f = &FONT_BUTTON, 
              int _labXoff = 0, int _labYoff = -3)
       : colours{c},
-        x{_x}, y{_y}, w{_w}, h{_h},
-        sw{_sw}, sh{_sh}, r{_r},
+        x{_x - (_kw-_w)/2}, y{_y - _kh/2}, w{_kw}, h{_h + _kh}, // adjust to make isIn() work
+        kw{_kw}, kh{_kh}, r{_r},
         label{_label}, 
         font{_f}, labXoff{_labXoff}, labYoff{_labYoff},
         vertical{_h > _w}
-        { }
+        { cwh = vertical?_w:_h; }
     virtual bool draw(TFT_eSprite* pSprite);
     virtual bool isIn(GTPoint&);
     
@@ -428,6 +430,28 @@ class UIslider
     { 
         return setNormal == state || setHit == state || setLatched == state || notDrawn == state; 
     }
+
+    /**
+     * Set a new slider value based on the touched point.
+     * \return true if slider value has changed (state is also changed)
+     */
+    bool setValue(GTPoint& pt)
+    {
+        bool result = false;
+        int newValue;
+        if (vertical)
+            newValue = y+h-pt.y;
+        else
+            newValue = pt.x-x;
+
+        if (newValue != value)
+        {
+            oldValue = value;
+            value = newValue;
+            state = setNormal;
+            result = true;
+        }
+        return result;
 };
 
 

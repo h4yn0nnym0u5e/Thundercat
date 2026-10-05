@@ -579,6 +579,50 @@ bool UIgraphicButton::isIn(GTPoint& p, int threshold)
 // 
 bool UIslider::draw(TFT_eSprite* pSprite)
 {
+    bool result = false;
+    if (needsDrawing())
+    {
+        uint16_t fg  = colours.fg, 
+                 bg  = colours.bg, 
+                 txt = colours.txt ; // txt used for knob and unfilled border
+        if (notDrawn == state) // first draw - whole area
+        {
+            pSprite->setViewport(x,y,w,h);
+            pSprite->fillRect(x,y,w,h,bg); // just for safety
+        }
+        else
+        {
+            // set viewport and erase old knob
+            if (vertical)
+            {
+                int py = min(value, oldValue) - kw / 2;
+                pSprite->setViewport(x,py,w,abs(value - oldValue)+kh);
+
+                pSprite->fillRoundRect(x, y+h-oldValue+kh/2 ,kw,kh,r,bg);
+            }
+            else
+            {
+                int px = min(value, oldValue) - kw / 2;
+                pSprite->setViewport(px,y,abs(value - oldValue)+kw,kh);
+
+                pSprite->fillRoundRect(x+oldValue-kw/2 ,y,kw,kh,r,bg);
+            }
+        }
+
+        // draw all features: may be clipped by viewport
+        if (vertical)
+        {
+            pSprite->fillRoundRect(x+(kw-cwh)/2,y+h-value, cwh,   value,r,fg);
+            pSprite->drawRoundRect(x+(kw-cwh)/2,y,         cwh, h-value,r,txt);
+            pSprite->fillRoundRect(x, y+h-value+kh/2 ,kw,kh,r,txt);
+        }
+        else
+        {
+            pSprite->fillRoundRect(x,y+(kh-cwh)/2,         value, cwh, r,fg);
+            pSprite->drawRoundRect(x+value,y+(kh-cwh)/2, w-value, cwh, r,txt);
+            pSprite->fillRoundRect(x+value-kw/2,y ,kw,kh, r,txt);
+        }
+    }
     return false;
 }
 

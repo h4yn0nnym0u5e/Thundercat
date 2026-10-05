@@ -99,3 +99,15 @@ Teensyduino version is about 10 years out of date. We may not be using the
 fixes, but better safe than sorry...
 
 https://github.com/h4yn0nnym0u5e/ResponsiveAnalogRead
+
+# Unchanged libraries #
+Also need to install these, they seem to work OK as-is:
+
+PacketSerial (1.4.0) - Arduino Library Manager
+nanopb
+TeensyTimerTool
+
+# Submodules #
+See https://github.com/h4yn0nnym0u5e/submodules/tree/ThunderLibs
+Attempts to maintain the above using submodules, although actually
+keeping things up to date seems unnecessarily difficult.
