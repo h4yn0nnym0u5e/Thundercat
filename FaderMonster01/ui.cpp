@@ -585,47 +585,49 @@ bool UIslider::draw(TFT_eSprite* pSprite)
         uint16_t fg  = colours.fg, 
                  bg  = colours.bg, 
                  txt = colours.txt ; // txt used for knob and unfilled border
+
         if (notDrawn == state) // first draw - whole area
         {
-            pSprite->setViewport(x,y,w,h);
-            pSprite->fillRect(x,y,w,h,bg); // just for safety
+            setViewport(pSprite, x,y,w,h); // datum is still top left
         }
         else
         {
             // set viewport and erase old knob
             if (vertical)
             {
-                int py = min(value, oldValue) - kw / 2;
-                pSprite->setViewport(x,py,w,abs(value - oldValue)+kh);
-
-                pSprite->fillRoundRect(x, y+h-oldValue+kh/2 ,kw,kh,r,bg);
+                int py = y+h - max(value, oldValue) - kh;
+                setViewport(pSprite, x,py,w,abs(value - oldValue)+kh); // datum is still top left
             }
             else
             {
-                int px = min(value, oldValue) - kw / 2;
-                pSprite->setViewport(px,y,abs(value - oldValue)+kw,kh);
-
-                pSprite->fillRoundRect(x+oldValue-kw/2 ,y,kw,kh,r,bg);
+                int px = min(value, oldValue) - kw;
+                setViewport(pSprite, px,y,abs(value - oldValue)+kw,kh); // datum is still top left
             }
         }
 
         // draw all features: may be clipped by viewport
-        if (vertical)
-        {
-            pSprite->fillRoundRect(x+(kw-cwh)/2,y+h-value, cwh,   value,r,fg);
-            pSprite->drawRoundRect(x+(kw-cwh)/2,y,         cwh, h-value,r,txt);
-            pSprite->fillRoundRect(x, y+h-value+kh/2 ,kw,kh,r,txt);
-        }
-        else
-        {
-            pSprite->fillRoundRect(x,y+(kh-cwh)/2,         value, cwh, r,fg);
-            pSprite->drawRoundRect(x+value,y+(kh-cwh)/2, w-value, cwh, r,txt);
-            pSprite->fillRoundRect(x+value-kw/2,y ,kw,kh, r,txt);
-        }
+        //drawKnob(pSprite,oldValue,bg);  // remove old knob
+        pSprite->fillRect(x,y,w,h,bg); // brute force! clear everything
+        drawLevel(pSprite, value, fg);  // draw new level
+        drawOutline(pSprite, txt);      // draw outline
+        drawKnob(pSprite,value,txt);    // draw new knob
+
+        pSprite->resetViewport();
+        state = drawnNormal;
+        result = true;
     }
-    return false;
+    return result;
 }
 
+WHICHMEM
+bool UIslider::isIn(GTPoint& pt)
+{
+    bool result = pt.x >= x && pt.x <= x+w
+               && pt.y >= y && pt.y <= y+h
+               && setValue(pt);
+
+    return result;
+}
 //==================================================================
 //
 //                              d8b 888      888      888          
@@ -1902,6 +1904,10 @@ UIclass::State MainMIDIsettings::begin(TFT_eSprite& sprite, colours_t c)
     // Strip control selection ---------------------------------
     drawAll(pSprite, ctlSelectButtons, ctlsPerStrip);
 
+    // Sliders
+    ccNumSlider.setColours({TFT_RED, TFT_GREEN, TFT_BLUE});
+    ccNumSlider.draw(pSprite);
+
     return (state = result); // save and return state
 }
 
@@ -1951,6 +1957,12 @@ UIclass::State MainMIDIsettings::update(Trigger trigger)
                     result = State::push;
                     phase = pollSelect;
                 }
+                else if (ccNumSlider.isIn(newPt))
+                {
+                    ccNumSlider.setValue(newPt);
+                    result = State::push;
+                    phase = drawCCnumSlider;
+                }
             }
         }
         break;
@@ -1975,6 +1987,11 @@ UIclass::State MainMIDIsettings::update(Trigger trigger)
 
                 case pollCtls:
                     result = UIradioButton::processDraw(pSprite, ctlTypeButtons, numCtlTypes);
+                    break;
+
+                case drawCCnumSlider:
+                    if (ccNumSlider.draw(pSprite))
+                        result = State::push;
                     break;
 
                 // nothing (more) to do

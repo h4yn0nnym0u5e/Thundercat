@@ -364,11 +364,12 @@ class UIslider
           drawnNormal, drawnHit, drawnLatched,
            setNormal,   setHit,   setLatched} 
             state{notDrawn};
+    bool vertical;
   public:
     TFTcolours colours; // copied from reference at construction time
     int x,y,w,h, // touch area
         kw,kh,   // slider knob
-        cwh, r;   // column width or height; radii
+        cwh, r;  // column width or height; radii
     char* label; 
     const GFXfont* font{nullptr};
     const uint8_t* smoothFont{nullptr};
@@ -393,24 +394,36 @@ class UIslider
         return result;
     }
 
-    bool vertical;
     int value, oldValue;    
   public:
     UIslider(TFTcolours& c,
              char* _label = (char*) "!",
              // indicator bar dimensions
-             int _x = 5, int _y = 3, int _w = 6, int _h = 100,
+             int _x = 5, int _y = 3, int _w = 10, int _h = 127,
              // knob width and height; corner radii
-             int _kw = 10, int _kh = 6, int _r = 3,
+             int _kw = 16, int _kh = 10, int _r = 4,
              const GFXfont *_f = &FONT_BUTTON, 
              int _labXoff = 0, int _labYoff = -3)
-      : colours{c},
-        x{_x - (_kw-_w)/2}, y{_y - _kh/2}, w{_kw}, h{_h + _kh}, // adjust to make isIn() work
-        kw{_kw}, kh{_kh}, r{_r},
+      : vertical{_h > _w},
+        colours{c},
+        // adjust to make isIn() work
+        x{_x - (vertical?((_kw-_w)/2):(_kw/2))}, y{_y - (vertical?(_kh/2):((_kh-_h)/2))}, 
+        w{vertical?_kw:(_w + _kw)}, h{vertical?(_h + _kh):_kh},
+
+        // knob and corners as provided
+        kw{_kw}, kh{_kh}, r{_r}, 
         label{_label}, 
-        font{_f}, labXoff{_labXoff}, labYoff{_labYoff},
-        vertical{_h > _w}
-        { cwh = vertical?_w:_h; }
+        font{_f}, labXoff{_labXoff}, labYoff{_labYoff}
+        { 
+            cwh = vertical?_w:_h; 
+            /*
+            // adjust to make isIn() work
+            x = _x - vertical?((_kw-_w)/2):(_kw/2); 
+            y = _y - vertical?(_kh/2):((_kh-_h)/2);
+            w = vertical?_kw:(_w + _kw);
+            h = vertical?(_h + _kh):_kh;
+            */
+        }
     virtual bool draw(TFT_eSprite* pSprite);
     virtual bool isIn(GTPoint&);
     
@@ -431,6 +444,37 @@ class UIslider
         return setNormal == state || setHit == state || setLatched == state || notDrawn == state; 
     }
 
+    void setViewport(TFT_eSprite* pSprite, int x, int y, int w, int h)
+    {
+Serial.printf("viewport %d,%d; %d, %d: ", x,y,w,h);        
+        pSprite->setViewport(x,y,w,h, false);
+    }
+
+    void drawKnob(TFT_eSprite* pSprite, int pos, uint16_t colour)
+    {
+Serial.printf("knob @ %d / %d (%04X)%s", pos, y+h-pos-kh/2, colour, colour>32?"; ":"\n");
+        if (vertical)
+            pSprite->fillRoundRect(x, y+h-pos-kh ,kw,kh,r,colour);
+        else
+            pSprite->fillRoundRect(x+pos-kw, y,   kw,kh,r,colour);
+    }
+
+    void drawLevel(TFT_eSprite* pSprite, int pos, uint16_t colour)
+    {
+        if (vertical)
+            pSprite->fillRoundRect(x+(kw-cwh)/2,y+h-kh/2-pos, cwh,pos, r,colour);
+        else
+            pSprite->fillRoundRect(x+kw/2,y+(kh-cwh)/2,       pos,cwh, r,colour);
+    }
+
+    void drawOutline(TFT_eSprite* pSprite, uint16_t colour)
+    {
+        if (vertical)
+            pSprite->drawRoundRect(x+(kw-cwh)/2,y+kh/2, cwh,h-kh, r,colour);
+        else
+            pSprite->drawRoundRect(x+kw/2,y+(kh-cwh)/2, w-kw,cwh, r,colour);
+    }
+
     /**
      * Set a new slider value based on the touched point.
      * \return true if slider value has changed (state is also changed)
@@ -440,9 +484,17 @@ class UIslider
         bool result = false;
         int newValue;
         if (vertical)
-            newValue = y+h-pt.y;
+        {
+            newValue = y+h-kh/2-pt.y;
+            if (newValue < 0 || newValue > (h-kh))
+                newValue = value;
+        }
         else
-            newValue = pt.x-x;
+        {
+            newValue = pt.x-x-kw/2;
+            if (newValue < 0 || newValue > (w-kw))
+                newValue = value;
+        }
 
         if (newValue != value)
         {
@@ -452,6 +504,7 @@ class UIslider
             result = true;
         }
         return result;
+    }
 };
 
 
@@ -733,7 +786,9 @@ class MainSceneLoad : public UIclass
 class MainMIDIsettings : public UIclass 
 {
     enum {idle,
-          pollCtls, pollStrips, pollSelect} phase{idle};
+          pollCtls, pollStrips, pollSelect,
+          drawCCnumSlider
+        } phase{idle};
     static constexpr int stripXspc{25}, ccYspc{24},
                      ctlsPerStrip{3}, ctlX{230},
                      numCtlTypes{7}; // should pick this up somehow...
@@ -777,6 +832,8 @@ class MainMIDIsettings : public UIclass
         {buttonColours, rimColour, midiCtlFlags, 1, ctlX + 25, 35, 22, 22, nullptr, fader_button_info},
         {buttonColours, rimColour, midiCtlFlags, 2, ctlX + 50, 35, 22, 22, nullptr, button_button_info},
     };
+
+    UIslider ccNumSlider{buttonColours,(char*) "CC %d", 130,95};
 
 
     MIDIcontrolSetting* pControl;
