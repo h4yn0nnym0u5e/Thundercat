@@ -241,6 +241,7 @@ class FontSetter
 
     static constexpr const uint8_t* RADIO_LABEL{NotoSansRegular16};
     static constexpr const uint8_t* TITLE_BAR{NotoSansRegular24};
+    static constexpr const uint8_t* SLIDER_LABEL{NotoSansRegular14};
 };
 
 //                      888    888    d8b                            

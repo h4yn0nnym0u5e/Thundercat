@@ -124,6 +124,7 @@ class UIclass
             pSprite = &sprite; 
             colours = c;   
 
+            pSprite->unloadFont();
             pSprite->setTextDatum(TL_DATUM);
             pSprite->resetViewport();
 
@@ -181,7 +182,7 @@ class UIbutton
             if (bg < 0) 
                 pSprite->setTextColor(txt);
             else                
-                pSprite->setTextColor(txt, bg);
+                pSprite->setTextColor(txt, bg, true);
             pSprite->drawString(label,x,y);
 
             result = true;
@@ -394,7 +395,7 @@ class UIslider
         return result;
     }
 
-    int value, oldValue;    
+    int value, oldValue;
   public:
     UIslider(TFTcolours& c,
              char* _label = (char*) "!",
@@ -446,13 +447,11 @@ class UIslider
 
     void setViewport(TFT_eSprite* pSprite, int x, int y, int w, int h)
     {
-Serial.printf("viewport %d,%d; %d, %d: ", x,y,w,h);        
         pSprite->setViewport(x,y,w,h, false);
     }
 
     void drawKnob(TFT_eSprite* pSprite, int pos, uint16_t colour)
     {
-Serial.printf("knob @ %d / %d (%04X)%s", pos, y+h-pos-kh/2, colour, colour>32?"; ":"\n");
         if (vertical)
             pSprite->fillRoundRect(x, y+h-pos-kh ,kw,kh,r,colour);
         else
@@ -475,13 +474,47 @@ Serial.printf("knob @ %d / %d (%04X)%s", pos, y+h-pos-kh/2, colour, colour>32?";
             pSprite->drawRoundRect(x+kw/2,y+(kh-cwh)/2, w-kw,cwh, r,colour);
     }
 
+    void setPadding(TFT_eSprite* pSprite, char* oldText, char* newText)
+    {
+        int16_t oldWidth = pSprite->textWidth(oldText);
+        int16_t newWidth = pSprite->textWidth(newText);
+        if (newWidth < oldWidth)
+        {
+            pSprite->setTextPadding(oldWidth+2); // occasional dropped pixels - hack!
+        }
+    }
+
+    bool drawValue(TFT_eSprite* pSprite, char* oldText)
+    {
+        bool result = false;
+        char buf[20];
+        sprintf(buf, label, value);
+
+        if (0 != strcmp(buf, oldText))
+        {
+            const int offset = 2; // default offset of text from slider graphic
+            // position top centre or centre left, offset by a few  pixels (default 2)
+            int px = vertical?(x+kw/2):x-offset,
+                py = vertical?y-offset:(y+kh/2);
+            setFont(pSprite);
+            pSprite->setTextDatum(vertical?BC_DATUM:CR_DATUM);
+            pSprite->setTextColor(colours.txt, colours.bg, true);
+            setPadding(pSprite, oldText, buf);
+            pSprite->drawString(buf,px + labXoff, py + labYoff);
+            pSprite->setTextPadding(0);
+
+            strcpy(oldText, buf);
+            result = true;
+        }
+        return result;
+    }
+
     /**
      * Set a new slider value based on the touched point.
      * \return true if slider value has changed (state is also changed)
      */
     bool setValue(GTPoint& pt)
     {
-        bool result = false;
         int newValue;
         if (vertical)
         {
@@ -496,15 +529,32 @@ Serial.printf("knob @ %d / %d (%04X)%s", pos, y+h-pos-kh/2, colour, colour>32?";
                 newValue = value;
         }
 
-        if (newValue != value)
-        {
-            oldValue = value;
+        bool result = setValue(newValue);
+        return result;
+    }
+
+    /**
+     * Set a new slider value directly.
+     * \return true if it was changed
+     */
+    bool setValue(int newValue, bool redraw = false)
+    {
+        bool result = false;
+        if (redraw || newValue != value || needsDrawing())
+        {         
+            if (!needsDrawing())    // if it's been drawn...
+                oldValue = value;   // ...store old value for setting viewport
             value = newValue;
-            state = setNormal;
+            state = redraw?notDrawn:setNormal;
             result = true;
         }
         return result;
     }
+
+    /**
+     * Get the current slider value
+     */
+    int getValue(void) { return value; }
 };
 
 
@@ -559,6 +609,15 @@ template<class B>
 void drawAll(TFT_eSprite* pSprite, B* buttons, int count)
 {
     for (int i=0;i<count;i++) buttons[i].draw(pSprite);
+}
+
+/**
+ * Set font for array of buttons
+ */
+template<class B, class F>
+void setFontAll(B* buttons, int count, F font)
+{
+    for (int i=0;i<count;i++) buttons[i].setFont(font);
 }
 
 //==================================================================
@@ -787,12 +846,12 @@ class MainMIDIsettings : public UIclass
 {
     enum {idle,
           pollCtls, pollStrips, pollSelect,
-          drawCCnumSlider
+          drawCCnumSlider, drawCCnumLabel
         } phase{idle};
     static constexpr int stripXspc{25}, ccYspc{24},
                      ctlsPerStrip{3}, ctlX{230},
                      numCtlTypes{7}; // should pick this up somehow...
-
+    char ccNumText[10]{0};
     // strip select
 #define FMS_SC(n) faderMonsterSettings.stripsConfig.colours[n].scribble, \
                   faderMonsterSettings.stripsConfig.colours[n].scribble.fg
@@ -858,6 +917,7 @@ class MainMIDIsettings : public UIclass
         }
         UIradioButton::setActive(ctlTypeButtons, numCtlTypes, 
                                  (int) pControl->controlType - 1);
+        ccNumSlider.setValue(pControl->controlNum, true); // complete re-draw needed
     }
 };
 

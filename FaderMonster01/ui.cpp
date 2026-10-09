@@ -470,7 +470,7 @@ bool UIradioButton::draw(TFT_eSprite* pSprite)
 // Serial.printf("Draw '%s' in %s state\n", label, drawnNormal == state?"normal":(drawnHit == state?"hit":"latched"));
         pSprite->pushImage(x,y+(h-pGraphic->height)/2, pGraphic->width,pGraphic->height, (uint8_t*) pGraphic->data, 0,false, (uint16_t*) cmap);
 
-        drawLabel(pSprite, CL_DATUM, x+labXoff,y+h/2+labYoff, colours.txt);
+        drawLabel(pSprite, CL_DATUM, x+labXoff,y+h/2+labYoff, colours.txt, colours.bg);
 
         //pSprite->drawRect(x,y,w,h,TFT_BLACK); // just for debug
 
@@ -616,6 +616,7 @@ bool UIslider::draw(TFT_eSprite* pSprite)
         state = drawnNormal;
         result = true;
     }
+
     return result;
 }
 
@@ -1792,6 +1793,7 @@ UIclass::State MainSceneLoad::begin(TFT_eSprite& sprite, colours_t c)
         sceneButtons[i].label = sceneNames[i];
     }
     makeGrid(sceneButtons, numScenes, 2, barXspc, barYspc); // grid
+    setFontAll(sceneButtons, numScenes, FontSetter::RADIO_LABEL);
     drawAll(pSprite, sceneButtons, numScenes);
 
     return (state = result); // save and return state
@@ -1872,7 +1874,7 @@ UIclass::State MainMIDIsettings::begin(TFT_eSprite& sprite, colours_t c)
     UIclass::begin(sprite, c); // do standard setup
     setColours<UIradioButton>(ctlTypeButtons, numCtlTypes, c);
     setColours<UIradioButton>(ctlSelectButtons, ctlsPerStrip, c);
-    selectStrip(2,1); // initialises pControl
+    selectStrip(0,0); // initialises pControl
     
     // clear screen
     pSprite->fillScreen(colours.bg);
@@ -1887,6 +1889,7 @@ UIclass::State MainMIDIsettings::begin(TFT_eSprite& sprite, colours_t c)
 
     // MIDI control types: radio button set ---------------------------------
     makeGrid<UIradioButton>(ctlTypeButtons, numCtlTypes, 1, 0, ccYspc); // vertical
+    setFontAll(ctlTypeButtons, numCtlTypes, FontSetter::RADIO_LABEL);
     drawAll(pSprite, ctlTypeButtons, numCtlTypes);
 
     // Strips: radio button set ---------------------------------
@@ -1905,8 +1908,10 @@ UIclass::State MainMIDIsettings::begin(TFT_eSprite& sprite, colours_t c)
     drawAll(pSprite, ctlSelectButtons, ctlsPerStrip);
 
     // Sliders
-    ccNumSlider.setColours({TFT_RED, TFT_GREEN, TFT_BLUE});
+    ccNumSlider.setColours(c);//{TFT_RED, TFT_GREEN, TFT_BLUE});
+    ccNumSlider.setFont(FontSetter::SLIDER_LABEL);
     ccNumSlider.draw(pSprite);
+    ccNumSlider.drawValue(pSprite, ccNumText);
 
     return (state = result); // save and return state
 }
@@ -1948,20 +1953,23 @@ UIclass::State MainMIDIsettings::update(Trigger trigger)
 //              strip, (int) pControl->controlType,
 //              ctlTypeButtons[0].getActive()
 //            );
-                    result = State::push;
+                    result = State::next;
                     phase = pollStrips;
                 }
                 else if (UIradioButton::processTouch(ctlSelectButtons, ctlsPerStrip, newPt))
                 {
                     selectStrip(stripSelectButtons[0].getActive(), ctlSelectButtons[0].getActive());
-                    result = State::push;
+                    result = State::next;
                     phase = pollSelect;
                 }
                 else if (ccNumSlider.isIn(newPt))
                 {
-                    ccNumSlider.setValue(newPt);
-                    result = State::push;
-                    phase = drawCCnumSlider;
+                    if (ccNumSlider.setValue(newPt))
+                    {
+                        pControl->controlNum = ccNumSlider.getValue();
+                        result = State::next;
+                        phase = drawCCnumSlider;
+                    }
                 }
             }
         }
@@ -1987,10 +1995,19 @@ UIclass::State MainMIDIsettings::update(Trigger trigger)
 
                 case pollCtls:
                     result = UIradioButton::processDraw(pSprite, ctlTypeButtons, numCtlTypes);
-                    break;
+                    if (State::done == result)      // done strip button changes...
+                        phase = drawCCnumSlider;    // ...they may have resulted in control button changes
+                    else
+                        break;
 
                 case drawCCnumSlider:
                     if (ccNumSlider.draw(pSprite))
+                        result = State::push;
+                    phase = drawCCnumLabel;                        
+                    break;
+
+                case drawCCnumLabel:
+                    if (ccNumSlider.drawValue(pSprite, ccNumText))
                         result = State::push;
                     break;
 
