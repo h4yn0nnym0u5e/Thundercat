@@ -29,7 +29,7 @@
 #include "RingLEDs.h"
 #include "contPot.h"
 #include "Touches.h"
-#include "basics.h"
+#include "basics.h" // #includes settings.h
 extern FaderMonsterSettings faderMonsterSettings; // needed for UI
 #include "ui.h"
 #include "classes.h"

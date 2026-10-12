@@ -78,6 +78,7 @@ class UIclass
     void drawArc(float s, float e, uint16_t fg, uint16_t bg);
     void drawTouchEllipse(int thickness = -1);
     void drawTouch(TouchStatus::eStatus estatus);
+    void setText(char* buf, bool setFont = true);
 
     // higher-level methods: can tell when item has changed
     bool setArc(float newPot, float& lastPot);
@@ -362,8 +363,8 @@ class UIslider
 {
   protected:
     enum buttonState_e {notDrawn, 
-          drawnNormal, drawnHit, drawnLatched,
-           setNormal,   setHit,   setLatched} 
+          drawnNormal, drawnHit, drawnLatched, drawnBlank,
+           setNormal,   setHit,   setLatched,   setBlank} 
             state{notDrawn};
     bool vertical;
   public:
@@ -417,13 +418,6 @@ class UIslider
         font{_f}, labXoff{_labXoff}, labYoff{_labYoff}
         { 
             cwh = vertical?_w:_h; 
-            /*
-            // adjust to make isIn() work
-            x = _x - vertical?((_kw-_w)/2):(_kw/2); 
-            y = _y - vertical?(_kh/2):((_kh-_h)/2);
-            w = vertical?_kw:(_w + _kw);
-            h = vertical?(_h + _kh):_kh;
-            */
         }
     virtual bool draw(TFT_eSprite* pSprite);
     virtual bool isIn(GTPoint&);
@@ -442,7 +436,8 @@ class UIslider
 
     virtual bool needsDrawing(void) 
     { 
-        return setNormal == state || setHit == state || setLatched == state || notDrawn == state; 
+        return setNormal == state  || setHit == state || setLatched == state 
+               || setBlank == state || notDrawn == state; 
     }
 
     void setViewport(TFT_eSprite* pSprite, int x, int y, int w, int h)
@@ -484,28 +479,38 @@ class UIslider
         }
     }
 
-    bool drawValue(TFT_eSprite* pSprite, char* oldText)
+    /**
+     * Draw the label.
+     * Text should already have been created in the Textifier
+     */
+    bool drawValue(TFT_eSprite* pSprite, Textifier& t)
     {
         bool result = false;
-        char buf[20];
-        sprintf(buf, label, value);
+        //char buf[20];
+        //sprintf(buf, label, value);
 
-        if (0 != strcmp(buf, oldText))
+        //if (0 != strcmp(buf, oldText))
+
+        setFont(pSprite);
+        pSprite->setTextDatum(vertical?BC_DATUM:CR_DATUM);
+
+        // Now we know the font and datum, we can set the padding
+        // and copy the new value to the label buffer
+        result = t.setPadding(pSprite).toTarget();
+        //setPadding(pSprite, oldText, buf);
+        if (result) // only draw if text has changed
         {
             const int offset = 2; // default offset of text from slider graphic
             // position top centre or centre left, offset by a few  pixels (default 2)
             int px = vertical?(x+kw/2):x-offset,
                 py = vertical?y-offset:(y+kh/2);
-            setFont(pSprite);
-            pSprite->setTextDatum(vertical?BC_DATUM:CR_DATUM);
             pSprite->setTextColor(colours.txt, colours.bg, true);
-            setPadding(pSprite, oldText, buf);
-            pSprite->drawString(buf,px + labXoff, py + labYoff);
-            pSprite->setTextPadding(0);
-
-            strcpy(oldText, buf);
-            result = true;
+            pSprite->drawString(t.get(),px + labXoff, py + labYoff);
         }
+        pSprite->setTextPadding(0);
+
+        //strcpy(oldText, buf);
+
         return result;
     }
 
@@ -535,7 +540,7 @@ class UIslider
 
     /**
      * Set a new slider value directly.
-     * \return true if it was changed
+     * \return true if value was changed or redraw was forced
      */
     bool setValue(int newValue, bool redraw = false)
     {
@@ -549,6 +554,30 @@ class UIslider
             result = true;
         }
         return result;
+    }
+
+    /**
+     * Set slider area to blank
+     * \return true if it was changed
+     */
+    bool makeBlank(void)
+    {
+        bool result = false;
+
+        if (drawnBlank != state)
+        {
+            state = setBlank;
+            result = true;
+        }
+        return result;
+    }
+
+    /**
+     * Force a complete re-draw of the slider.
+     */
+    void forceRedraw(void)
+    {
+        state = notDrawn;
     }
 
     /**
@@ -842,11 +871,12 @@ class MainSceneLoad : public UIclass
 };
 
 //------------------------------------------------------------------
+extern const char* MIDIcontrolNames[];
 class MainMIDIsettings : public UIclass 
 {
     enum {idle,
           pollCtls, pollStrips, pollSelect,
-          drawCCnumSlider, drawCCnumLabel
+          drawingCCnumSlider, drawingCCnumLabel
         } phase{idle};
     static constexpr int stripXspc{25}, ccYspc{24},
                      ctlsPerStrip{3}, ctlX{230},
@@ -875,14 +905,15 @@ class MainMIDIsettings : public UIclass
     uint32_t groupFlags{0};
     UIradioButton ctlTypeButtons[numCtlTypes]  
     {
-        {buttonColours, rimColour, groupFlags, 0, 15, 70, 80, 22, (char*) "CC"}, // top left button
-        {buttonColours, rimColour, groupFlags, 1, 0,0,0,0, (char*) "RPN"}, 
-        {buttonColours, rimColour, groupFlags, 2, 0,0,0,0, (char*) "NRPN"}, 
-        {buttonColours, rimColour, groupFlags, 3, 0,0,0,0, (char*) "Bend"}, 
-        {buttonColours, rimColour, groupFlags, 4, 0,0,0,0, (char*) "Prog"}, 
-        {buttonColours, rimColour, groupFlags, 5, 0,0,0,0, (char*) "AfTch"}, 
-        {buttonColours, rimColour, groupFlags, 6, 0,0,0,0, (char*) "Note"}
+        {buttonColours, rimColour, groupFlags, 0, 15, 70, 80, 22, (char*) MIDIcontrolNames[1]}, // top left button
+        {buttonColours, rimColour, groupFlags, 1, 0,0,0,0, (char*) MIDIcontrolNames[2]}, 
+        {buttonColours, rimColour, groupFlags, 2, 0,0,0,0, (char*) MIDIcontrolNames[3]}, 
+        {buttonColours, rimColour, groupFlags, 3, 0,0,0,0, (char*) MIDIcontrolNames[4]}, 
+        {buttonColours, rimColour, groupFlags, 4, 0,0,0,0, (char*) MIDIcontrolNames[5]}, 
+        {buttonColours, rimColour, groupFlags, 5, 0,0,0,0, (char*) MIDIcontrolNames[6]}, 
+        {buttonColours, rimColour, groupFlags, 6, 0,0,0,0, (char*) MIDIcontrolNames[7]}
     }; 
+
 
     uint32_t midiCtlFlags{0};
     UIradioButton ctlSelectButtons[ctlsPerStrip]  
@@ -892,7 +923,52 @@ class MainMIDIsettings : public UIclass
         {buttonColours, rimColour, midiCtlFlags, 2, ctlX + 50, 35, 22, 22, nullptr, button_button_info},
     };
 
-    UIslider ccNumSlider{buttonColours,(char*) "CC %d", 130,95};
+
+    UIslider ccNumSlider{buttonColours,ccNumText, 130,95};
+    void setCCnumLabel(Textifier& t)
+    {
+        if (ccNumSliderVisible())
+            t.s(MIDIcontrolNames[(int) pControl->controlType]).c(' ').i(pControl->controlNum);
+        else
+            t.z(); // zap to empty string            
+    }
+
+    bool ccNumSliderVisible(void)
+    {
+        return MIDIcontrolType::CC == pControl->controlType
+            || MIDIcontrolType::RPN == pControl->controlType
+            || MIDIcontrolType::NRPN == pControl->controlType;
+    }
+
+    UIclass::State drawCCnumSlider(void)
+    {
+        UIclass::State result = State::next;
+
+        if (ccNumSliderVisible())
+        {
+            if (ccNumSlider.draw(pSprite))
+                result = State::push;
+        }
+        else
+        {
+            if (ccNumSlider.makeBlank()
+             && ccNumSlider.draw(pSprite))
+                result = State::push;
+        }
+
+        return result;
+    }
+
+    UIclass::State drawCCnumLabel(void)
+    {
+        UIclass::State result = State::next;
+        Textifier t{ccNumText, 10};
+        setCCnumLabel(t);
+        if (ccNumSlider.drawValue(pSprite, t))
+            result = State::push;
+
+        return result;
+    }
 
 
     MIDIcontrolSetting* pControl;

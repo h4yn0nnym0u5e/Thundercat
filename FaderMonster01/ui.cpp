@@ -1,6 +1,13 @@
 #include "header.h"
 
 #define WHICHMEM FLASHMEM
+
+const char* MIDIcontrolNames[]
+{
+#define MIDI_CONTROL(enm,txt,num) #txt,
+    MIDI_CONTROLS
+#undef MIDI_CONTROL    
+};
 //==========================================================================
 //
 //    888     888 8888888         888                            
@@ -168,21 +175,7 @@ bool UIclass::setText(char* buf, char* lastString, size_t sizeofLastString, bool
     bool result = strncmp(buf, lastString, sizeofLastString) != 0;
     if (result)
     {
-        int w = pSprite->getViewportWidth(),
-            h = pSprite->getViewportHeight();
-        pSprite->fillRect(0,0,w,h,colours.bg); //fillSprite(bkgnds[i]);
-
-        if (setFont)
-        {
-            FontSetter::setFreeFont(*pSprite,&FONT_DP);
-            pSprite->setTextColor(colours.txt);
-        }
-        // when drawing numbers with a leading space or minus sign,
-        // ensure the first digit always appears at the same location
-        int spaceOffset = buf[0] == ' '
-                                 ?(pSprite->textWidth("-0") - pSprite->textWidth(" 0"))
-                                 :0;
-        pSprite->drawString(buf, spaceOffset, 0);
+        setText(buf, setFont);
 
         strncpy(lastString, buf, sizeofLastString);
         lastString[sizeofLastString - 1] = 0; // force termination
@@ -191,17 +184,43 @@ bool UIclass::setText(char* buf, char* lastString, size_t sizeofLastString, bool
     return result;
 }
 
+// update sprite with text 
+// assumes viewport has been set appropriately
+WHICHMEM
+void UIclass::setText(char* buf, bool setFont)
+{
+    int w = pSprite->getViewportWidth(),
+        h = pSprite->getViewportHeight();
+    pSprite->fillRect(0,0,w,h,colours.bg); //fillSprite(bkgnds[i]);
+
+    if (setFont)
+    {
+        FontSetter::setFreeFont(*pSprite,&FONT_DP);
+        pSprite->setTextColor(colours.txt);
+    }
+    // when drawing numbers with a leading space or minus sign,
+    // ensure the first digit always appears at the same location
+    int spaceOffset = buf[0] == ' '
+                                ?(pSprite->textWidth("-0") - pSprite->textWidth(" 0"))
+                                :0;
+    pSprite->drawString(buf, spaceOffset, 0);
+}
 
 // update sprite with a float value in the centre of the display
 // returns true if the text is different from the previous
 WHICHMEM
 bool UIclass::setFloat(float potPos, char* lastString, size_t sizeofLastString)
 {
-  char buf[BUF_SIZE];
+  bool result;
   if (potPos < 0.0f && potPos > -CHGTHR_DP / 100.0f) potPos = 0.0f; // don't show -0.000
-  sprintf(buf,FMT_DP,potPos);
+  //sprintf(buf,FMT_DP,potPos);
 
-  return setText(buf, lastString, sizeofLastString);
+  //return setText(buf, lastString, sizeofLastString);
+  Textifier t{lastString, sizeofLastString};
+  if ((result = t.f(potPos, FMT_DP).toTarget()))
+    setText(t.get());
+
+  return result;
 }
 
 
@@ -586,7 +605,7 @@ bool UIslider::draw(TFT_eSprite* pSprite)
                  bg  = colours.bg, 
                  txt = colours.txt ; // txt used for knob and unfilled border
 
-        if (notDrawn == state) // first draw - whole area
+        if (notDrawn == state || setBlank == state) // first draw - whole area
         {
             setViewport(pSprite, x,y,w,h); // datum is still top left
         }
@@ -606,14 +625,18 @@ bool UIslider::draw(TFT_eSprite* pSprite)
         }
 
         // draw all features: may be clipped by viewport
-        //drawKnob(pSprite,oldValue,bg);  // remove old knob
-        pSprite->fillRect(x,y,w,h,bg); // brute force! clear everything
-        drawLevel(pSprite, value, fg);  // draw new level
-        drawOutline(pSprite, txt);      // draw outline
-        drawKnob(pSprite,value,txt);    // draw new knob
+        pSprite->fillRect(x,y,w,h,bg);  // brute force! clear everything
+        if (setBlank != state)
+        {
+            drawLevel(pSprite, value, fg);  // draw new level
+            drawOutline(pSprite, txt);      // draw outline
+            drawKnob(pSprite,value,txt);    // draw new knob
+            state = drawnNormal;
+        }
+        else
+            state = drawnBlank;
 
         pSprite->resetViewport();
-        state = drawnNormal;
         result = true;
     }
 
@@ -625,6 +648,7 @@ bool UIslider::isIn(GTPoint& pt)
 {
     bool result = pt.x >= x && pt.x <= x+w
                && pt.y >= y && pt.y <= y+h
+               && drawnBlank != state
                && setValue(pt);
 
     return result;
@@ -1045,21 +1069,29 @@ void MainColourPicker::showColours(void)
 
   tft.setTextDatum(TL_DATUM); 
 
-  char buffer[20];
+  char buffer[Textifier::MAX_STRING];
+  Textifier t{buffer};
+
   tft.setTextColor(TFT_WHITE);
   tft.setTextFont(1);
 
-  sprintf(buffer," Hue: %04X", hue & 0xFFFF);
-  tft.fillRect(90,60,70,10,TFT_BLACK);
-  tft.drawString(buffer, 90,60);
+  if (t.z().s(" Hue: ").x4(hue).toTarget())
+  {
+    tft.fillRect(90,60,70,10,TFT_BLACK);
+    tft.drawString(buffer, 90,60);
+  }
 
-  sprintf(buffer,"Text: %04X", textColour & 0xFFFF);
-  tft.fillRect(90,70,70,10,TFT_BLACK);
-  tft.drawString(buffer, 90,70);
+  if (t.z().s("Text: ").x4(textColour).toTarget())
+  {
+    tft.fillRect(90,70,70,10,TFT_BLACK);
+    tft.drawString(buffer, 90,70);
+  }
 
-  sprintf(buffer,"Bgnd: %04X", bgColour & 0xFFFF);
-  tft.fillRect(90,80,70,10,TFT_BLACK);
-  tft.drawString(buffer, 90,80);
+  if (t.z().s("Bgnd: ").x4(bgColour).toTarget())
+  {
+    tft.fillRect(90,80,70,10,TFT_BLACK);
+    tft.drawString(buffer, 90,80);
+  }
 }
 
 WHICHMEM
@@ -1607,8 +1639,9 @@ UIclass::State MainExprTune::_setFloat(float f, char* buf, char* stash)
     FontSetter::setFreeFont(*pSprite,&FreeSans9pt7b);
     pSprite->setTextColor(colours.fg, colours.bg, false); // no background fill
     pSprite->setTextDatum(TL_DATUM);
-    sprintf(buf,"% .3f",f);
-    bool changed = setText(buf, stash, textLen, false);
+
+    Textifier t{stash};
+    bool changed = t.f(f, "% .3f").toTarget();
     pSprite->resetViewport();
 
     return changed
@@ -1908,10 +1941,13 @@ UIclass::State MainMIDIsettings::begin(TFT_eSprite& sprite, colours_t c)
     drawAll(pSprite, ctlSelectButtons, ctlsPerStrip);
 
     // Sliders
-    ccNumSlider.setColours(c);//{TFT_RED, TFT_GREEN, TFT_BLUE});
+    ccNumSlider.setColours(c);
     ccNumSlider.setFont(FontSetter::SLIDER_LABEL);
-    ccNumSlider.draw(pSprite);
-    ccNumSlider.drawValue(pSprite, ccNumText);
+    drawCCnumSlider();
+
+    Textifier t{ccNumText, 10};
+    setCCnumLabel(t);
+    ccNumSlider.drawValue(pSprite, t);
 
     return (state = result); // save and return state
 }
@@ -1942,7 +1978,8 @@ UIclass::State MainMIDIsettings::update(Trigger trigger)
                 {
                     pControl->controlType
                         = (MIDIcontrolType) (ctlTypeButtons[0].getActive() + 1);
-                    result = State::push;
+                    ccNumSlider.forceRedraw();
+                    result = State::next;
                     phase = pollCtls;
                 }
                 else if (UIradioButton::processTouch(stripSelectButtons, NUM_POTS, newPt))
@@ -1968,7 +2005,7 @@ UIclass::State MainMIDIsettings::update(Trigger trigger)
                     {
                         pControl->controlNum = ccNumSlider.getValue();
                         result = State::next;
-                        phase = drawCCnumSlider;
+                        phase = drawingCCnumSlider;
                     }
                 }
             }
@@ -1981,34 +2018,33 @@ UIclass::State MainMIDIsettings::update(Trigger trigger)
                 // at least one button has changed: poll until we've done them all
                 case pollStrips:
                     result = UIradioButton::processDraw(pSprite, stripSelectButtons, NUM_POTS);
-                    if (State::done == result)  // done strip button changes...
+                    if (State::done == result)  // done strip# button changes...
                         phase = pollCtls;       // ...they may have resulted in control button changes
                     else                        
                         break;
 
                 case pollSelect:
                     result = UIradioButton::processDraw(pSprite, ctlSelectButtons, ctlsPerStrip);
-                    if (State::done == result)  // done strip button changes...
+                    if (State::done == result)  // done pot / fader / button selection change...
                         phase = pollCtls;       // ...they may have resulted in control button changes
                     else                        
                         break;
 
                 case pollCtls:
                     result = UIradioButton::processDraw(pSprite, ctlTypeButtons, numCtlTypes);
-                    if (State::done == result)      // done strip button changes...
-                        phase = drawCCnumSlider;    // ...they may have resulted in control button changes
+                    if (State::done == result)      // done control type button changes...
+                        phase = drawingCCnumSlider;    // ...they may have resulted in control button changes
                     else
                         break;
 
-                case drawCCnumSlider:
-                    if (ccNumSlider.draw(pSprite))
-                        result = State::push;
-                    phase = drawCCnumLabel;                        
+                case drawingCCnumSlider:
+                    result = drawCCnumSlider();
+                    phase = drawingCCnumLabel;                        
                     break;
 
-                case drawCCnumLabel:
-                    if (ccNumSlider.drawValue(pSprite, ccNumText))
-                        result = State::push;
+                case drawingCCnumLabel:
+                    result = drawCCnumLabel();
+                    phase = idle;
                     break;
 
                 // nothing (more) to do

@@ -298,10 +298,24 @@ class CfgBaseOffset
     virtual int getMemberCount(void) = 0;
 };
 
-
+//! List of MIDI control type macros
+#define MIDI_CONTROLS \
+    MIDI_CONTROL(undefined,undefined,0) \
+    MIDI_CONTROL(CC,CC,1) \
+    MIDI_CONTROL(RPN,RPN,2) \
+    MIDI_CONTROL(NRPN,NRPN,3) \
+    MIDI_CONTROL(BEND,Bend,4) \
+    MIDI_CONTROL(PC,Prog,5) \
+    MIDI_CONTROL(AT,AfTch,6) \
+    MIDI_CONTROL(NOTE,Note,7)
+    
 //! Possible MIDI control types
 enum class MIDIcontrolType : int 
 {
+#define MIDI_CONTROL(enm,txt,num)  enm = num,
+    MIDI_CONTROLS
+#undef MIDI_CONTROL    
+/*
     undefined = 0,
     CC = 1,     //!< control change
     RPN = 2,    //!< registered parameter number
@@ -310,6 +324,7 @@ enum class MIDIcontrolType : int
     PC = 5,     //!< program change
     AT = 6,     //!< aftertouch
     NOTE = 7    //!< note on / off (button)
+*/    
 };
 
 #define TO_OFFSET(mbr) \
@@ -371,5 +386,112 @@ typedef struct
 #define IMAGES_AS_HEADER
 #include "images.cpp"
 #undef IMAGES_AS_HEADER
+
+
+//================================================================
+//
+//    888                     888    d8b  .d888 d8b                  
+//    888                     888    Y8P d88P"  Y8P                  
+//    888                     888        888                         
+//    888888 .d88b.  888  888 888888 888 888888 888  .d88b.  888d888 
+//    888   d8P  Y8b `Y8bd8P' 888    888 888    888 d8P  Y8b 888P"   
+//    888   88888888   X88K   888    888 888    888 88888888 888     
+//    Y88b. Y8b.     .d8""8b. Y88b.  888 888    888 Y8b.     888     
+//     "Y888 "Y8888  888  888  "Y888 888 888    888  "Y8888  888     
+//
+class Textifier
+{
+  public:
+    static constexpr size_t MAX_STRING{30+1};
+  private:    
+    char buf[MAX_STRING];
+    char* target; // assumed at least big enough for buffer!
+    size_t offset{0};
+    size_t max_string;
+    bool ok{true};
+
+  public:    
+    Textifier(char* _target, size_t _max = MAX_STRING) 
+        : target{_target},
+          max_string{_max < MAX_STRING?_max:MAX_STRING}
+        {}
+
+    /**
+     * Overwrite target with possibly new string.
+     * \return true if new string is well-formed and different
+     */
+    bool toTarget(void)
+    {
+        bool result = false;
+        if (ok && 0 != strcmp(target, buf))
+        {
+            strcpy(target,buf);
+            result = true;
+        }
+        return result;
+    }
+
+    Textifier& setPadding(TFT_eSprite* pSprite)
+    {
+        int16_t oldWidth = pSprite->textWidth(target);
+        int16_t newWidth = pSprite->textWidth(buf);
+        if (newWidth < oldWidth)
+        {
+            pSprite->setTextPadding(oldWidth+2); // occasional dropped pixels - hack!
+        }
+        return *this;
+    }
+
+    char* get(void) { return target; }
+    char* getBuffer(void) { return buf; }
+
+    Textifier& z(void) 
+    {
+        offset = 0;
+        *buf = 0;
+        return *this;
+    }
+
+    Textifier& s(const char* _s) 
+    { 
+        size_t l = strlen(_s);
+        if (l <= max_string-offset)
+        {
+            strcpy(buf+offset, _s);
+            offset += l;
+        }
+        else
+            ok = false;
+
+        return *this;
+    }
+
+    Textifier& i(int _i) 
+    { 
+        char _s[20];
+        sprintf(_s,"%d", _i);
+        return s(_s);
+    }
+
+    Textifier& c(char _c) 
+    { 
+        char _s[2]{_c,0};
+        return s(_s);
+    }
+
+    Textifier& f(float _f, const char* _fmt = "%.3f") 
+    { 
+        char _s[20];
+        sprintf(_s,_fmt, _f);
+        return s(_s);
+    }
+
+    Textifier& x4(int _i) 
+    { 
+        char _s[20];
+        sprintf(_s,"%04X", _i & 0xFFFF);
+        return s(_s);
+    }  
+};
 
 #endif // !defined(_BASICS_H_)

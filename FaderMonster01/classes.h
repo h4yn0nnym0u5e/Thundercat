@@ -1131,4 +1131,5 @@ class Settings
     static void save(Stream& s);
     static void load(File& s, FaderMonsterSettings& f);
 };
+
 #endif // !defined(_CLASSES_H_)
