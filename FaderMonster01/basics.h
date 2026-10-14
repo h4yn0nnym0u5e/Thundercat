@@ -469,7 +469,28 @@ class Textifier
     Textifier& i(int _i) 
     { 
         char _s[20];
+        sprintf(_s,"% d", _i);
+        return s(_s);
+    }
+
+    Textifier& u(int _i) 
+    { 
+        char _s[20];
         sprintf(_s,"%d", _i);
+        return s(_s);
+    }
+
+    /**
+     * Create a string from a MIDI note number
+     */
+    Textifier& n(int _n) 
+    { 
+        char _s[20];
+        int note = _n % 12; // 0 = C etc
+        int octave = (_n / 12) - 1;
+        const char names[]{"C C#D D#E F F#G G#A A# B "};
+        sprintf(_s,"%.2s", names+note*2);
+        sprintf(_s+(' ' == _s[1]?1:2),"%d",octave);
         return s(_s);
     }
 

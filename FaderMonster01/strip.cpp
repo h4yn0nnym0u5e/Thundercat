@@ -87,7 +87,7 @@ InterTaskRequest::Result StripTask::doTouchChange(void* pTouchStatus)
 
 InterTaskRequest::Result StripTask::doTFTcolourChange(void* pNothing)
 {
-  ui.begin(scribble, cfg.scribble); // update display
+  ui.begin(scribble, cfg.scribble, num); // update display
   setDotCurrent(); // and ring
 
   return InterTaskRequest::Result::done;
@@ -142,7 +142,7 @@ void StripTask::run(void)
   
   // set the initial UI presentation on the display
   new(_ui.space) ScribblePotArc; // placement new
-  ui.begin(scribble, cfg.scribble);
+  ui.begin(scribble, cfg.scribble, num);
   
   while (1)
   {

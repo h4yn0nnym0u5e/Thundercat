@@ -28,7 +28,7 @@
     TRIGGER_ITEM(float, potValue) \
     TRIGGER_ITEM(float, faderValue) \
     TRIGGER_ITEM(GTPoint, touchPoint) \
-    TRIGGER_ITEM(TouchStatus*, pTouchStatus) 
+    TRIGGER_ITEM(TouchStatus*, pTouchStatus)
 
 union UpdateTrigger
 {
@@ -68,11 +68,17 @@ class UIclass
   protected:
     TFT_eSprite* pSprite;
     colours_t    colours;
+    int          which{0}; // strip number for scribble UIs, or 0 for main LCD
     int          phase{0};
     Trigger      currentTrigger{Trigger::eTriggerType::notrigger,0};
     elapsedMicros interval; // polling interval timer
     static constexpr const char* bks{""};
 #define BKS (char*) bks    
+
+    StripColours&  getStripColours(void)  { return faderMonsterSettings.stripsConfig.colours[which]; }
+    StripControls& getStripControls(void) { return faderMonsterSettings.stripsConfig.controls[which]; }
+    float toAngle(float pot) { return (pot + 1.0f) * (ea - sa) / 2.0f; }
+    float toPotval(float angle) { return angle*2.0f/(ea-sa) - 1.0f; }
 
     // standard drawing methods
     void drawArc(float s, float e, uint16_t fg, uint16_t bg);
@@ -120,10 +126,11 @@ class UIclass
                       push, //! sprite changed, can push to display
                       busy  //! busy pushing to display
                      } state;
-    virtual State begin(TFT_eSprite& sprite, colours_t c) 
+    virtual State begin(TFT_eSprite& sprite, colours_t c, int _which) 
         { 
             pSprite = &sprite; 
-            colours = c;   
+            colours = c;
+            which   = _which;
 
             pSprite->unloadFont();
             pSprite->setTextDatum(TL_DATUM);
@@ -131,6 +138,8 @@ class UIclass
 
             return (state = State::done); 
         }
+    virtual State begin(TFT_eSprite& sprite, colours_t c) { return begin(sprite, c, 0); }
+
     virtual State update(Trigger trigger) { return (state = State::done); }
     virtual InterTaskRequest& writeToDisplay(void) { return autoFail; }
     virtual uint32_t poll(void) { uint32_t result = interval; interval = 0; return result; }
@@ -143,8 +152,52 @@ class UIclass
     static constexpr float POT_NOT_SET{-999.0f};
     static constexpr float sa{2*18.0f}, ea{360.0f - 2*18.0f}; // TFT_eSPI has zero at 6 o'clock
     static constexpr int BUF_SIZE{MAX_TEXT_LEN};
+    static constexpr int ARC_OFF{+22};
 
     InterTaskRequest updateReq;
+};
+
+//==================================================================
+//             888                                          888    
+//             888                                          888    
+//             888                                          888    
+//     .d88b.  888  .d88b.  88888b.d88b.   .d88b.  88888b.  888888 
+//    d8P  Y8b 888 d8P  Y8b 888 "888 "88b d8P  Y8b 888 "88b 888    
+//    88888888 888 88888888 888  888  888 88888888 888  888 888    
+//    Y8b.     888 Y8b.     888  888  888 Y8b.     888  888 Y88b.  
+//     "Y8888  888  "Y8888  888  888  888  "Y8888  888  888  "Y888 
+// 
+class UIelement
+{
+  protected:
+    enum elementState_e {notDrawn, 
+          drawnNormal, drawnHit, drawnLatched, drawnBlank,
+           setNormal,   setHit,   setLatched,   setBlank} 
+            state {notDrawn};
+  public:
+    TFTcolours colours; // copied from reference at construction time
+    int x,y,w,h;
+    const GFXfont* font{nullptr};
+    const uint8_t* smoothFont{nullptr};
+
+    UIelement(TFTcolours& _c,
+            int _x, int _y, int _w, int _h,
+            const GFXfont* _f, const uint8_t* _s)
+        : colours{_c},
+          x{_x}, y{_y}, w{_w}, h{_h},
+          font{_f}, smoothFont{_s}
+        {}
+
+    virtual void setColours(TFTcolours c) {colours = c;}
+    virtual void setFont(const GFXfont* f) { font = f; }
+    virtual void setFont(const uint8_t* f) { smoothFont = f; }
+    virtual void setFont(TFT_eSprite* pSprite)
+    {
+        if (nullptr != smoothFont)
+            FontSetter::loadFont(*pSprite, smoothFont);
+        else
+            FontSetter::setFreeFont(*pSprite, font);
+    }
 };
 
 //==================================================================
@@ -157,19 +210,10 @@ class UIclass
 //    888 d88P Y88b 888 Y88b.  Y88b. Y88..88P 888  888 
 //    88888P"   "Y88888  "Y888  "Y888 "Y88P"  888  888 
 //  
-class UIbutton
+class UIbutton : public UIelement
 {
-  protected:
-    enum buttonState_e {notDrawn, 
-          drawnNormal, drawnHit, drawnLatched,
-           setNormal,   setHit,   setLatched} 
-            state{notDrawn};
   public:
-    TFTcolours colours; // copied from reference at construction time
-    int x,y,w,h;
     char* label; 
-    const GFXfont* font{nullptr};
-    const uint8_t* smoothFont{nullptr};
     int labXoff, labYoff;
   protected: 
     bool drawLabel(TFT_eSprite* pSprite, int datum, int x, int y, uint16_t txt, int bg = -1)
@@ -222,30 +266,19 @@ class UIbutton
     }
 
   public:
-    UIbutton(TFTcolours& c,
+    UIbutton(TFTcolours& _c,
              int _x = 0, int _y = 0, int _w = 4, int _h = 4,
              char* _label = (char*) "!", const GFXfont *_f = &FONT_BUTTON, 
              int _labXoff = 0, int _labYoff = -3)
-      : colours{c},
-        x{_x}, y{_y}, w{_w}, h{_h},
+      : UIelement(_c, _x, _y, _w, _h, _f, nullptr),
         label{_label}, 
-        font{_f}, labXoff{_labXoff}, labYoff{_labYoff}
+        labXoff{_labXoff}, labYoff{_labYoff}
         { }
     virtual bool draw(TFT_eSprite* pSprite);
     virtual bool isIn(GTPoint&);
     virtual bool isLifted(void) { bool result = lifted; lifted = false; return result; }    
     
     virtual void setColours(TFTcolours c) {colours = c;}
-    virtual void setFont(const GFXfont* f) { font = f; }
-    virtual void setFont(const uint8_t* f) { smoothFont = f; }
-    virtual void setFont(TFT_eSprite* pSprite)
-    {
-        if (nullptr != smoothFont)
-            FontSetter::loadFont(*pSprite, smoothFont);
-        else
-            FontSetter::setFreeFont(*pSprite, font);
-
-    }
 
     virtual bool needsDrawing(void) 
     { 
@@ -359,22 +392,14 @@ public:
 //         X88 888 888 Y88b 888 Y8b.     888     
 //     88888P' 888 888  "Y88888  "Y8888  888     
 // 
-class UIslider
+class UIslider : public UIelement
 {
   protected:
-    enum buttonState_e {notDrawn, 
-          drawnNormal, drawnHit, drawnLatched, drawnBlank,
-           setNormal,   setHit,   setLatched,   setBlank} 
-            state{notDrawn};
     bool vertical;
   public:
-    TFTcolours colours; // copied from reference at construction time
-    int x,y,w,h, // touch area
-        kw,kh,   // slider knob
+    int kw,kh,   // slider knob
         cwh, r;  // column width or height; radii
     char* label; 
-    const GFXfont* font{nullptr};
-    const uint8_t* smoothFont{nullptr};
     int labXoff, labYoff;
   protected: 
     bool drawLabel(TFT_eSprite* pSprite, int datum, int x, int y, uint16_t txt, int bg = -1)
@@ -398,7 +423,7 @@ class UIslider
 
     int value, oldValue;
   public:
-    UIslider(TFTcolours& c,
+    UIslider(TFTcolours& _c,
              char* _label = (char*) "!",
              // indicator bar dimensions
              int _x = 5, int _y = 3, int _w = 10, int _h = 127,
@@ -406,34 +431,24 @@ class UIslider
              int _kw = 16, int _kh = 10, int _r = 4,
              const GFXfont *_f = &FONT_BUTTON, 
              int _labXoff = 0, int _labYoff = -3)
-      : vertical{_h > _w},
-        colours{c},
-        // adjust to make isIn() work
-        x{_x - (vertical?((_kw-_w)/2):(_kw/2))}, y{_y - (vertical?(_kh/2):((_kh-_h)/2))}, 
-        w{vertical?_kw:(_w + _kw)}, h{vertical?(_h + _kh):_kh},
-
+      : UIelement(_c, 
+                 // adjust to make isIn() work
+                  _x - ((_h > _w)?((_kw-_w)/2):(_kw/2)), 
+                  _y - ((_h > _w)?(_kh/2):((_kh-_h)/2)), 
+                  (_h > _w)?_kw:(_w + _kw), 
+                  (_h > _w)?(_h + _kh):_kh, 
+                  _f, nullptr),
+        vertical{_h > _w},
         // knob and corners as provided
         kw{_kw}, kh{_kh}, r{_r}, 
         label{_label}, 
-        font{_f}, labXoff{_labXoff}, labYoff{_labYoff}
+        labXoff{_labXoff}, labYoff{_labYoff}
         { 
             cwh = vertical?_w:_h; 
         }
     virtual bool draw(TFT_eSprite* pSprite);
     virtual bool isIn(GTPoint&);
     
-    virtual void setColours(TFTcolours c) {colours = c;}
-    virtual void setFont(const GFXfont* f) { font = f; }
-    virtual void setFont(const uint8_t* f) { smoothFont = f; }
-    virtual void setFont(TFT_eSprite* pSprite)
-    {
-        if (nullptr != smoothFont)
-            FontSetter::loadFont(*pSprite, smoothFont);
-        else
-            FontSetter::setFreeFont(*pSprite, font);
-
-    }
-
     virtual bool needsDrawing(void) 
     { 
         return setNormal == state  || setHit == state || setLatched == state 
@@ -665,26 +680,55 @@ class ScribblePotArc : public UIclass
     enum {idle, drawingArc, drawingNumber, drawingTouch, drawingBackground};
     char  lastText[MAX_TEXT_LEN]{0};
     float lastPot{POT_NOT_SET};
+    char  scribbleText[MAX_TEXT_LEN]{0};
     TouchStatus::eStatus lastTouch{TouchStatus::eStatus::OFF};
 
-    bool setArc(void)
-        { return UIclass::setArc((currentTrigger.trigger.potValue + 1.0f) * (ea - sa) / 2.0f, lastPot); }
-    bool setFloat(void)
+    bool setArc(float newValue)
+        { return UIclass::setArc(newValue, lastPot); }
+    bool setArcLabel(void)
         {
-            bool retVal;
-            // here is where we choose the position:
-            pSprite->setViewport(55+10*(SCRIBBLE_DP - 3),  100, 
-                                    140-15*(SCRIBBLE_DP - 3), 45);
+            bool retVal{false};
+            StripControls& ctls = getStripControls();
+            Textifier t{lastText, MAX_TEXT_LEN};
 
-            retVal = UIclass::setFloat(currentTrigger.trigger.potValue, lastText, sizeof lastText);
+            switch (ctls.pot.controlType)
+            {
+                default:
+                    // here is where we choose the position:
+                    pSprite->setViewport(55+10*(SCRIBBLE_DP - 3),  100+ARC_OFF, 
+                                            140-15*(SCRIBBLE_DP - 3), 45);
+                    retVal = UIclass::setFloat(currentTrigger.trigger.potValue, lastText, sizeof lastText);
+                    break;
+
+                case MIDIcontrolType::CC:
+                case MIDIcontrolType::PC:
+                case MIDIcontrolType::AT:
+                case MIDIcontrolType::NOTE:
+                {
+                    int ccValue = (lastPot + 1.0f)/2.0f
+                                *(ctls.pot.maxVal - ctls.pot.minVal+0.99f) 
+                                + ctls.pot.minVal;
+                    retVal = t.i(ccValue).setPadding(pSprite).toTarget();
+                    if (retVal)
+                    {
+                        pSprite->setViewport(50,  100+ARC_OFF, 
+                                             pSprite->width() - 100, 45);
+                        pSprite->setTextDatum(TC_DATUM);
+                        setText(t.get());
+                    }
+                }
+                    break;
+            }                    
             pSprite->resetViewport();                        
             return retVal;
         }
     bool setTouch(void)
         { return UIclass::setTouch(currentTrigger.trigger.pTouchStatus, lastTouch); }
 
+    bool setScribbleText(bool force = false);
+
   public:
-    virtual State begin(TFT_eSprite& sprite, colours_t c);
+    virtual State begin(TFT_eSprite& sprite, colours_t c, int _which);
     virtual State update(Trigger trigger);
     virtual InterTaskRequest& writeToDisplay(void) { return writeToScribble(); }
 };
@@ -824,7 +868,7 @@ class MainExprTune : public UIclass
     static constexpr int barX{10}, barY{50}, barW{300}, barH{20}, 
                      textW{60}, textH{25}, textLen{10};
     UIclass::State drawBarTo(float pos);
-    UIclass::State _setFloat(float f, char* buf, char* stash);
+    UIclass::State _setFloat(float f, char* stash);
     void clearBar(void)
     {
         pSprite->fillRect(barX, barY, barW, barH, colours.bg);
@@ -876,12 +920,13 @@ class MainMIDIsettings : public UIclass
 {
     enum {idle,
           pollCtls, pollStrips, pollSelect,
-          drawingCCnumSlider, drawingCCnumLabel
+          drawingCCnumSlider, drawingCCnumLabel,
+          drawingChannelNumSlider, drawingChannelNumLabel,
         } phase{idle};
     static constexpr int stripXspc{25}, ccYspc{24},
                      ctlsPerStrip{3}, ctlX{230},
-                     numCtlTypes{7}; // should pick this up somehow...
-    char ccNumText[10]{0};
+                     numCtlTypes{7}, // should pick this up somehow...
+                     MIDIchX{20}, ctlTypeX{MIDIchX + 50}, ccNumX{ctlTypeX + 115};
     // strip select
 #define FMS_SC(n) faderMonsterSettings.stripsConfig.colours[n].scribble, \
                   faderMonsterSettings.stripsConfig.colours[n].scribble.fg
@@ -905,7 +950,7 @@ class MainMIDIsettings : public UIclass
     uint32_t groupFlags{0};
     UIradioButton ctlTypeButtons[numCtlTypes]  
     {
-        {buttonColours, rimColour, groupFlags, 0, 15, 70, 80, 22, (char*) MIDIcontrolNames[1]}, // top left button
+        {buttonColours, rimColour, groupFlags, 0, ctlTypeX, 70, 80, 22, (char*) MIDIcontrolNames[1]}, // top left button
         {buttonColours, rimColour, groupFlags, 1, 0,0,0,0, (char*) MIDIcontrolNames[2]}, 
         {buttonColours, rimColour, groupFlags, 2, 0,0,0,0, (char*) MIDIcontrolNames[3]}, 
         {buttonColours, rimColour, groupFlags, 3, 0,0,0,0, (char*) MIDIcontrolNames[4]}, 
@@ -923,12 +968,56 @@ class MainMIDIsettings : public UIclass
         {buttonColours, rimColour, midiCtlFlags, 2, ctlX + 50, 35, 22, 22, nullptr, button_button_info},
     };
 
+    void initSlider(UIslider& s, Textifier& t)
+    {
+        s.setColours(colours);
+        s.setFont(FontSetter::SLIDER_LABEL);
+        s.drawValue(pSprite, t);
+    }
 
-    UIslider ccNumSlider{buttonColours,ccNumText, 130,95};
+    //-----------------------------------------------------------------
+    char channelNumText[10]{0};
+    UIslider channelNumSlider{buttonColours,channelNumText, MIDIchX,95, 10, 79};
+    /**
+     * Set the channel number slider label according to the current control
+     */
+    void setChannelNumLabel(Textifier& t)
+    {
+        t.s("Ch ").i(pControl->channel+1);
+    }
+
+    UIclass::State drawChannelNumSlider(void)
+    {
+        return channelNumSlider.draw(pSprite)
+                    ?State::push
+                    :State::next;
+    }
+
+    UIclass::State drawChannelNumLabel(void)
+    {
+        Textifier t{channelNumText, 10};
+        setChannelNumLabel(t);
+        return channelNumSlider.drawValue(pSprite, t)
+                ?State::push
+                :State::next;
+    }
+
+    //-----------------------------------------------------------------
+    char ccNumText[10]{0};
+    UIslider ccNumSlider{buttonColours,ccNumText, ccNumX,95};
+    /**
+     * Set the control slider label according to the current control
+     */
     void setCCnumLabel(Textifier& t)
     {
         if (ccNumSliderVisible())
-            t.s(MIDIcontrolNames[(int) pControl->controlType]).c(' ').i(pControl->controlNum);
+        {
+            t.s(MIDIcontrolNames[(int) pControl->controlType]).c(' ');
+            if (MIDIcontrolType::NOTE == pControl->controlType)
+                t.n(pControl->controlNum);
+            else 
+                t.i(pControl->controlNum);
+        }
         else
             t.z(); // zap to empty string            
     }
@@ -937,7 +1026,8 @@ class MainMIDIsettings : public UIclass
     {
         return MIDIcontrolType::CC == pControl->controlType
             || MIDIcontrolType::RPN == pControl->controlType
-            || MIDIcontrolType::NRPN == pControl->controlType;
+            || MIDIcontrolType::NRPN == pControl->controlType
+            || MIDIcontrolType::NOTE == pControl->controlType;
     }
 
     UIclass::State drawCCnumSlider(void)
@@ -969,6 +1059,7 @@ class MainMIDIsettings : public UIclass
 
         return result;
     }
+    //-----------------------------------------------------------------
 
 
     MIDIcontrolSetting* pControl;
@@ -994,6 +1085,7 @@ class MainMIDIsettings : public UIclass
         UIradioButton::setActive(ctlTypeButtons, numCtlTypes, 
                                  (int) pControl->controlType - 1);
         ccNumSlider.setValue(pControl->controlNum, true); // complete re-draw needed
+        channelNumSlider.setValue(pControl->channel*5, true);
     }
 };
 

@@ -86,7 +86,7 @@ void UIclass::drawButton(int x, int y,
 WHICHMEM
 void UIclass::drawArc(float s, float e, uint16_t fg, uint16_t bg)
 {
-  pSprite->drawArc(120, 120, 110, 80, s+sa, e+sa, fg, bg);
+  pSprite->drawArc(120, 120+ARC_OFF, 104, 76, s+sa, e+sa, fg, bg);
 }
 
 WHICHMEM
@@ -134,9 +134,14 @@ void UIclass::drawTouch(TouchStatus::eStatus estatus)
     }
 }
 
-// return true if change was worth drawing
+/**
+ * Draw a pot arc.
+ * \return true if change was worth drawing
+ */
+// 
 WHICHMEM
-bool UIclass::setArc(float newPot, float& lastPot)
+bool UIclass::setArc(float newPot,      //!< new pot value; ±1.0
+                     float& lastPot)    //!< previous pot value; updated to new value after call
 {
     bool result = false;
     const float CHANGE_THRESHOLD = CHGTHR_DP;
@@ -145,20 +150,21 @@ bool UIclass::setArc(float newPot, float& lastPot)
         if (POT_NOT_SET == lastPot)
         {
             // initial background and black arc
+            pSprite->setViewport(0,ARC_OFF, pSprite->width(),pSprite->height() - ARC_OFF);
             pSprite->fillScreen(colours.bg);
+            pSprite->resetViewport();
             drawArc(0.0f, ea-sa, TFT_BLACK, colours.bg);
-            lastPot = 0.0f;
+            lastPot = -1.0f;
         }
 
         if (newPot < lastPot)
-            drawArc(newPot, lastPot, TFT_BLACK, colours.bg);
+            drawArc(toAngle(newPot),  toAngle(lastPot), TFT_BLACK, colours.bg);
         else
-            drawArc(lastPot, newPot, colours.fg, colours.bg);
+            drawArc(toAngle(lastPot), toAngle(newPot), colours.fg, colours.bg);
 
         lastPot = newPot;
         
-        int32_t x,y,w,h;
-        result = pSprite->getDirtyArea(x,y,w,h);
+        result = pSprite->isDirty();
     }
 
     return result;
@@ -190,7 +196,8 @@ WHICHMEM
 void UIclass::setText(char* buf, bool setFont)
 {
     int w = pSprite->getViewportWidth(),
-        h = pSprite->getViewportHeight();
+        h = pSprite->getViewportHeight(),
+        d = pSprite->getTextDatum();
     pSprite->fillRect(0,0,w,h,colours.bg); //fillSprite(bkgnds[i]);
 
     if (setFont)
@@ -203,6 +210,8 @@ void UIclass::setText(char* buf, bool setFont)
     int spaceOffset = buf[0] == ' '
                                 ?(pSprite->textWidth("-0") - pSprite->textWidth(" 0"))
                                 :0;
+    if (TC_DATUM == d)
+        spaceOffset = w/2;
     pSprite->drawString(buf, spaceOffset, 0);
 }
 
@@ -663,23 +672,65 @@ bool UIslider::isIn(GTPoint& pt)
 //    "Y8888b. 888      888     888 888  888 888  888 888 88888888 
 //         X88 Y88b.    888     888 888 d88P 888 d88P 888 Y8b.     
 //     88888P'  "Y8888P 888     888 88888P"  88888P"  888  "Y8888  
-// 
+//
 WHICHMEM
-UIclass::State ScribblePotArc::begin(TFT_eSprite& sprite, colours_t c)
+bool ScribblePotArc::setScribbleText(bool force /* false */)
 {
-    UIclass::begin(sprite, c);
+    bool result;
+    Textifier t{scribbleText, MAX_TEXT_LEN};
+    StripControls& ctls = getStripControls();
+
+    t // .s(ctls.pot.name).s(": ") // broken at the moment!
+            .i(ctls.pot.channel+1)
+            .s(": ").s(MIDIcontrolNames[(int) ctls.pot.controlType]);
+
+    switch (ctls.pot.controlType)
+    {
+        default: break;
+
+        case MIDIcontrolType::CC:
+        case MIDIcontrolType::RPN:
+        case MIDIcontrolType::NRPN:
+            t.c(' ').i(ctls.pot.controlNum);
+            break;
+
+        case MIDIcontrolType::NOTE:
+            t.c(' ').n(ctls.pot.controlNum);
+            break;
+    }
+    result = t.toTarget();
+
+    if (result || force)
+    {
+        FontSetter::loadFont(*pSprite, FontSetter::TITLE_BAR);
+        pSprite->setTextColor(colours.txt, TFT_BLACK, true);
+        pSprite->setTextPadding(pSprite->width());
+        pSprite->setTextDatum(TL_DATUM);
+        pSprite->drawString(t.get(), 0,0);
+        pSprite->setTextPadding(0);
+    }
+
+    return result;
+} 
+
+
+WHICHMEM
+UIclass::State ScribblePotArc::begin(TFT_eSprite& sprite, colours_t c, int _which)
+{
+    UIclass::begin(sprite, c, _which);
     //pSprite->fillScreen(colours.bg); // setArc() will do this
-    float lastPotRaw = lastPot*2.0f/(ea-sa) - 1.0f; // back to raw pot value
     currentTrigger.trigger.potValue = POT_NOT_SET == lastPot
-                                    ?0.0f
-                                    :lastPotRaw;
+                                    ?-1.0f
+                                    :lastPot;
     lastPot = POT_NOT_SET;
     lastText[0] = 0;
-    setArc();
-    setFloat();
+    setArc(currentTrigger.trigger.potValue);
+    setArcLabel();
 
     currentTrigger.trigger.pTouchStatus = nullptr;
     setTouch();
+
+    setScribbleText(true);
 
     return (state = State::push); // need to update display
 }
@@ -703,7 +754,7 @@ UIclass::State ScribblePotArc::update(Trigger trigger)
         case Trigger::eTriggerType::potValue: // draw pot value change
             currentTrigger = trigger; // keep the trigger and value(s)
             phase = drawingArc;
-            if (!setArc())
+            if (!setArc(currentTrigger.trigger.potValue))
                 result = State::next;
             break;
 
@@ -726,7 +777,7 @@ UIclass::State ScribblePotArc::update(Trigger trigger)
 
                 case drawingArc:
                     phase = drawingNumber;
-                    if (!setFloat())
+                    if (!setArcLabel())
                         result = State::done;
                     break;
             }
@@ -1634,7 +1685,7 @@ UIclass::State MainExprTune::begin(TFT_eSprite& sprite, colours_t c)
  * Draw a float into a preset viewport (which is reset on exit).
  */
 WHICHMEM
-UIclass::State MainExprTune::_setFloat(float f, char* buf, char* stash)
+UIclass::State MainExprTune::_setFloat(float f, char* stash)
 {
     FontSetter::setFreeFont(*pSprite,&FreeSans9pt7b);
     pSprite->setTextColor(colours.fg, colours.bg, false); // no background fill
@@ -1642,6 +1693,8 @@ UIclass::State MainExprTune::_setFloat(float f, char* buf, char* stash)
 
     Textifier t{stash};
     bool changed = t.f(f, "% .3f").toTarget();
+    if (changed)
+        setText(stash, false);
     pSprite->resetViewport();
 
     return changed
@@ -1653,7 +1706,6 @@ WHICHMEM
 UIclass::State MainExprTune::update(Trigger trigger)
 {
     State result = State::done;
-    char buf[textLen];
 
     switch (trigger.type)
     {
@@ -1740,28 +1792,28 @@ UIclass::State MainExprTune::update(Trigger trigger)
 
                 case drawMin:
                     pSprite->setViewport(barX, barY+barH+5, textW, textH);
-                    result = _setFloat(min, buf, minText);
+                    result = _setFloat(min, minText);
                     phase = drawMax;
                     break;
                                             
                 case drawMax:
                     pSprite->setViewport(barX+barW-textW, barY+barH+5, textW, textH);
                     pSprite->setTextDatum(TR_DATUM);
-                    result = _setFloat(max, buf, maxText);
+                    result = _setFloat(max, maxText);
                     phase = drawCurrent;
                     break;
                                             
                 case drawCurrent:
                     pSprite->setViewport(barX+(barW-textW)/2, barY+barH+5, textW, textH);
                     pSprite->setTextDatum(TC_DATUM);
-                    result = _setFloat(last, buf, curText);
+                    result = _setFloat(last, curText);
                     phase = drawScaled;
                     break;
 
                 case drawScaled:
                     pSprite->setViewport(barX+(barW-textW)/2, barY+barH+5*2 + textH, textW, textH);
                     pSprite->setTextDatum(TC_DATUM);
-                    result = _setFloat(touchADCtask.expressionPedal.getResponsiveScaled(), buf, scaledText);
+                    result = _setFloat(touchADCtask.expressionPedal.getResponsiveScaled(), scaledText);
                     phase = idle;
                     break;
             }
@@ -1857,7 +1909,7 @@ UIclass::State MainSceneLoad::update(Trigger trigger)
                         {
                             char buf[30];
                             sprintf(buf,"%s.csv",sceneButtons[i].label);
-                            Serial.printf("Load %s\n", buf);
+Serial.printf("Load %s\n", buf);
                             superTask.loadSettings(buf);
                             result = State::push;
                         }
@@ -1941,13 +1993,22 @@ UIclass::State MainMIDIsettings::begin(TFT_eSprite& sprite, colours_t c)
     drawAll(pSprite, ctlSelectButtons, ctlsPerStrip);
 
     // Sliders
-    ccNumSlider.setColours(c);
-    ccNumSlider.setFont(FontSetter::SLIDER_LABEL);
-    drawCCnumSlider();
+    //ccNumSlider.setColours(c);
+    //ccNumSlider.setFont(FontSetter::SLIDER_LABEL);
 
-    Textifier t{ccNumText, 10};
-    setCCnumLabel(t);
-    ccNumSlider.drawValue(pSprite, t);
+    {
+        Textifier t{ccNumText, 10};
+        setCCnumLabel(t);
+        initSlider(ccNumSlider, t);
+        drawCCnumSlider();
+    }
+
+    {
+        Textifier t{channelNumText, 10};
+        setChannelNumLabel(t);
+        initSlider(channelNumSlider, t);
+        drawChannelNumSlider();
+    }
 
     return (state = result); // save and return state
 }
@@ -2008,6 +2069,15 @@ UIclass::State MainMIDIsettings::update(Trigger trigger)
                         phase = drawingCCnumSlider;
                     }
                 }
+                else if (channelNumSlider.isIn(newPt))
+                {
+                    if (channelNumSlider.setValue(newPt))
+                    {
+                        pControl->channel = channelNumSlider.getValue()/5;
+                        result = State::next;
+                        phase = drawingChannelNumSlider;
+                    }
+                }
             }
         }
         break;
@@ -2037,6 +2107,7 @@ UIclass::State MainMIDIsettings::update(Trigger trigger)
                     else
                         break;
 
+
                 case drawingCCnumSlider:
                     result = drawCCnumSlider();
                     phase = drawingCCnumLabel;                        
@@ -2044,8 +2115,20 @@ UIclass::State MainMIDIsettings::update(Trigger trigger)
 
                 case drawingCCnumLabel:
                     result = drawCCnumLabel();
+                    phase = drawingChannelNumSlider;
+                    break;
+
+
+                case drawingChannelNumSlider:
+                    result = drawChannelNumSlider();
+                    phase = drawingChannelNumLabel;                        
+                    break;
+
+                case drawingChannelNumLabel:
+                    result = drawChannelNumLabel();
                     phase = idle;
                     break;
+
 
                 // nothing (more) to do
                 default:
