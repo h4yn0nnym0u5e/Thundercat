@@ -843,6 +843,7 @@ class StripTask : public FaderMonsterTask
     InterTaskRequest::Result doPotChange(void* pNothing);
     InterTaskRequest::Result doTouchChange(void* pNothing);
     InterTaskRequest::Result doTFTcolourChange(void* pNothing);
+    InterTaskRequest::Result doSettingsChange(void* pNothing);
     
     //------------------------------------------------------------------------
     static StripTask* tasks[NUM_POTS];
@@ -928,7 +929,15 @@ class StripTask : public FaderMonsterTask
     InterTaskRequest::Result tftColourChanged(void)
     {
         requestPayload payload{&StripTask::doTFTcolourChange, nullptr};
-        RequestQueue<StripTask, requestPayload>::queueEntry entry{&touchReq, payload};
+        RequestQueue<StripTask, requestPayload>::queueEntry entry{&uiReq, payload};
+
+        return reqQueue.request(entry, 0);
+    }
+
+    InterTaskRequest::Result settingsChanged(void)
+    {
+        requestPayload payload{&StripTask::doSettingsChange, nullptr};
+        RequestQueue<StripTask, requestPayload>::queueEntry entry{&uiReq, payload};
 
         return reqQueue.request(entry, 0);
     }
@@ -938,7 +947,8 @@ class StripTask : public FaderMonsterTask
     int bright;
     bool useRingPattern;
     InterTaskRequest displayReq,        // outgoing
-                     potReq, touchReq;  // incoming
+                     potReq, touchReq,  // incoming
+                     uiReq;
 };
 
 //                      888             

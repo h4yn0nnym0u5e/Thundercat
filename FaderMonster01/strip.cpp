@@ -93,6 +93,14 @@ InterTaskRequest::Result StripTask::doTFTcolourChange(void* pNothing)
   return InterTaskRequest::Result::done;
 }    
 
+InterTaskRequest::Result StripTask::doSettingsChange(void* pNothing)
+{
+  ui.begin(scribble, cfg.scribble, num); // update display
+  setDotCurrent(); // and ring
+
+  return InterTaskRequest::Result::done;
+}    
+
 
 
 //-------------------------------------------------------------------------

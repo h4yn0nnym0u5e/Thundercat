@@ -28,7 +28,9 @@
     TRIGGER_ITEM(float, potValue) \
     TRIGGER_ITEM(float, faderValue) \
     TRIGGER_ITEM(GTPoint, touchPoint) \
-    TRIGGER_ITEM(TouchStatus*, pTouchStatus)
+    TRIGGER_ITEM(TouchStatus*, pTouchStatus) \
+    TRIGGER_ITEM(int, settings)
+    
 
 union UpdateTrigger
 {
@@ -677,7 +679,7 @@ void setFontAll(B* buttons, int count, F font)
 // 
 class ScribblePotArc : public UIclass 
 {
-    enum {idle, drawingArc, drawingNumber, drawingTouch, drawingBackground};
+    enum {idle, drawingTitle, drawingArc, drawingNumber, drawingTouch, drawingBackground};
     char  lastText[MAX_TEXT_LEN]{0};
     float lastPot{POT_NOT_SET};
     char  scribbleText[MAX_TEXT_LEN]{0};

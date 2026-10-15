@@ -764,9 +764,18 @@ UIclass::State ScribblePotArc::update(Trigger trigger)
             if (!setTouch())
                 result = State::done;
             break;
-        
+
+        case Trigger::eTriggerType::settings: // draw settings change
+            currentTrigger = trigger; // keep the trigger and value(s)
+            // only interested in changes relating to the pot settings
+            phase = drawingTitle;
+            if (!setScribbleText())
+                result = State::next;
+            break;
+
 
         //----------------------------------------------------------------------
+        // result defaults to push, i.e. something has been drawn to the sprite:
         case Trigger::eTriggerType::nextPhase:
             switch (phase)
             {
@@ -775,6 +784,7 @@ UIclass::State ScribblePotArc::update(Trigger trigger)
                     result = State::done;
                     break;
 
+                case drawingTitle:
                 case drawingArc:
                     phase = drawingNumber;
                     if (!setArcLabel())
@@ -2034,12 +2044,14 @@ UIclass::State MainMIDIsettings::update(Trigger trigger)
             {
                 currentTrigger = trigger; // keep the trigger and value(s)
                 result = State::next;
+                bool uiChanged{false};
 
                 if (UIradioButton::processTouch(ctlTypeButtons, numCtlTypes, newPt))
                 {
                     pControl->controlType
                         = (MIDIcontrolType) (ctlTypeButtons[0].getActive() + 1);
                     ccNumSlider.forceRedraw();
+                    uiChanged = true;
                     result = State::next;
                     phase = pollCtls;
                 }
@@ -2065,6 +2077,7 @@ UIclass::State MainMIDIsettings::update(Trigger trigger)
                     if (ccNumSlider.setValue(newPt))
                     {
                         pControl->controlNum = ccNumSlider.getValue();
+                        uiChanged = true;
                         result = State::next;
                         phase = drawingCCnumSlider;
                     }
@@ -2074,10 +2087,20 @@ UIclass::State MainMIDIsettings::update(Trigger trigger)
                     if (channelNumSlider.setValue(newPt))
                     {
                         pControl->channel = channelNumSlider.getValue()/5;
+                        uiChanged = true;
                         result = State::next;
                         phase = drawingChannelNumSlider;
                     }
                 }
+
+                // if touch has changed something material, update the 
+                // currently-selected strip's UI
+                if (uiChanged)
+                {
+                    int strip = stripSelectButtons[0].getActive();
+                    StripTask::getStripTask(strip).settingsChanged();
+                }
+
             }
         }
         break;
