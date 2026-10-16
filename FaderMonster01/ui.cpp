@@ -8,6 +8,8 @@ const char* MIDIcontrolNames[]
     MIDI_CONTROLS
 #undef MIDI_CONTROL    
 };
+
+DMAMEM PB_SmartKnobConfig UIsmartConfig;
 //==========================================================================
 //
 //    888     888 8888888         888                            
@@ -343,6 +345,45 @@ bool UIclass::writeFinished(void)
     return result;
 }
 
+
+/**
+ * Set SmartKnob into a "fine-tune CC" mode.
+ * (or other 0-127 value )
+ */
+WHICHMEM
+void UIclass::setSmartKnobFine(const char* legend, int initValue)
+{
+
+    UIsmartConfig = SmartKnobTask::configs[3]; // hacky hack...
+    UIsmartConfig.position = initValue;
+    UIsmartConfig.max_position = 127;
+    UIsmartConfig.position_width_radians = 2.0 * PI / 180;
+    strcpy(UIsmartConfig.text, legend);
+    UIsmartConfig.led_hue = 140; //cyan
+
+    pushSmartKnob();
+}
+
+WHICHMEM
+void UIclass::pushSmartKnob(void)
+{
+    smartKnobTask.pushConfig(skReq, UIsmartConfig);
+    ownsSmartKnob = true;
+}
+
+WHICHMEM
+void UIclass::popSmartKnob(void)
+{
+    smartKnobTask.popConfig(skReq);
+    ownsSmartKnob = false;
+}
+
+WHICHMEM
+void UIclass::setSmartKnobValue(int value)
+{
+    UIsmartConfig.position = value;
+    smartKnobTask.setConfig(skReq, UIsmartConfig);
+}
 //==========================================================================
 InterTaskRequest UIclass::autoFail{InterTaskRequest::Result::failed};
 //==========================================================================
@@ -657,8 +698,7 @@ bool UIslider::isIn(GTPoint& pt)
 {
     bool result = pt.x >= x && pt.x <= x+w
                && pt.y >= y && pt.y <= y+h
-               && drawnBlank != state
-               && setValue(pt);
+               && drawnBlank != state;
 
     return result;
 }
@@ -2028,6 +2068,7 @@ WHICHMEM
 UIclass::State MainMIDIsettings::update(Trigger trigger)
 {
     State result = State::done;
+    bool uiChanged{false};
 
     switch (trigger.type)
     {
@@ -2044,7 +2085,7 @@ UIclass::State MainMIDIsettings::update(Trigger trigger)
             {
                 currentTrigger = trigger; // keep the trigger and value(s)
                 result = State::next;
-                bool uiChanged{false};
+                bool needsSmartKnob{false}, newSKvalue{false};
 
                 if (UIradioButton::processTouch(ctlTypeButtons, numCtlTypes, newPt))
                 {
@@ -2078,9 +2119,13 @@ UIclass::State MainMIDIsettings::update(Trigger trigger)
                     {
                         pControl->controlNum = ccNumSlider.getValue();
                         uiChanged = true;
+                        newSKvalue = true;
                         result = State::next;
                         phase = drawingCCnumSlider;
                     }
+
+                    // regardless of touch or lift...
+                    needsSmartKnob = true;
                 }
                 else if (channelNumSlider.isIn(newPt))
                 {
@@ -2093,18 +2138,42 @@ UIclass::State MainMIDIsettings::update(Trigger trigger)
                     }
                 }
 
-                // if touch has changed something material, update the 
-                // currently-selected strip's UI
-                if (uiChanged)
+                if (needsSmartKnob)
                 {
-                    int strip = stripSelectButtons[0].getActive();
-                    StripTask::getStripTask(strip).settingsChanged();
-                }
+                    if (!ownsSmartKnob)
+                        setSmartKnobFine("CC fine", ccNumSlider.getValue());
+                    else if (newSKvalue)                        
+                        setSmartKnobValue(ccNumSlider.getValue());
+                } 
 
+                if (ownsSmartKnob && !needsSmartKnob)
+                    popSmartKnob();
             }
         }
-        break;
+            break;
 
+        //----------------------------------------------------------------------
+        case Trigger::eTriggerType::SKreport:
+        {
+            // for now we only have CC fine tuning as an option
+            // figure out how to deal with other options later...
+            if (ownsSmartKnob)
+            {
+                currentTrigger = trigger;
+                SmartKnobReport& skReport = currentTrigger.trigger.SKreport;
+                if (ccNumSlider.setValue(skReport.position))
+                {
+                    pControl->controlNum = ccNumSlider.getValue();
+                    uiChanged = true;
+                    result = State::next;
+                    phase = drawingCCnumSlider;
+                }
+            }
+        }
+            break;
+
+
+        //----------------------------------------------------------------------
         case Trigger::eTriggerType::nextPhase:
             switch (phase)
             {
@@ -2162,8 +2231,14 @@ UIclass::State MainMIDIsettings::update(Trigger trigger)
                 phase = idle;
 
             break;
+    }
 
-
+    // if touch has changed something material, update the 
+    // currently-selected strip's UI
+    if (uiChanged)
+    {
+        int strip = stripSelectButtons[0].getActive();
+        StripTask::getStripTask(strip).settingsChanged();
     }
 
     return (state = result); // save and return state

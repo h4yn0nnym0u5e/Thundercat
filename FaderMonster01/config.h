@@ -118,5 +118,8 @@
 // ============== MIDI ==============
 #define MAX_NAME_LENGTH 20
 
+// ============== SmartKnob ==============
+#define SK_CONFIG_STACK_SIZE 5
+
 
 #endif // !defined(_CONFIG_H_)

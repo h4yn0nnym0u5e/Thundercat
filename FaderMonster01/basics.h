@@ -210,6 +210,11 @@ struct SmartKnobReport
     int32_t min, max; // min and max values
 };
 
+struct SmartKnobConfigStackEntry
+{
+    PB_SmartKnobConfig config;
+};
+
 
 //     .d888                  888             
 //    d88P"                   888             

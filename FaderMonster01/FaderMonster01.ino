@@ -163,18 +163,29 @@ InterTaskRequest& SuperTask::sendSmartKnobReport(InterTaskRequest& req, SmartKno
 InterTaskRequest::Result SuperTask::doProcessSmartKnob(void* pSKreport)
 {
   SmartKnobReport& skReport = *((SmartKnobReport*) pSKreport);
-  if (skReport.isInteger)
+
+  if (ui.ownsSmartKnob)
   {
-    if (skReport.max != 255) // don't use fine values for flipping UI
-    {
-      //Serial.printf("[%lu] : Position: %d\n", skReport.ms, skReport.position);
-      flipui = true;
-      whichUI = skReport.position % MAIN_UI_COUNT; // less magic!
-      whichUI--; // because flipping increments it
-    }
+    Trigger trigger{.type    = Trigger::eTriggerType::SKreport, 
+                    .trigger = { .SKreport = skReport }};
+
+    ui.update(trigger);
   }
   else
-    Serial.printf("[%lu] : Position: %.3f\n", skReport.ms, skReport.sub_position);
+  {
+      if (skReport.isInteger)
+      {
+        if (skReport.max != 255) // don't use fine values for flipping UI
+        {
+          //Serial.printf("[%lu] : Position: %d\n", skReport.ms, skReport.position);
+          flipui = true;
+          whichUI = skReport.position % MAIN_UI_COUNT; // less magic!
+          whichUI--; // because flipping increments it
+        }
+      }
+      else
+        Serial.printf("[%lu] : Position: %.3f\n", skReport.ms, skReport.sub_position);
+  }
 
   return InterTaskRequest::Result::done;
 }

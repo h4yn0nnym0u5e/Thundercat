@@ -18,7 +18,7 @@ PB_SmartKnobConfig SmartKnobTask::configs[] =
     // float snap_point_bias;
     // int8_t led_hue;
 
-    {
+    { // 0
         .position = 0,
         .sub_position_unit = 0.0,
         .position_nonce = 6,
@@ -34,7 +34,7 @@ PB_SmartKnobConfig SmartKnobTask::configs[] =
         .snap_point_bias = 0.0f,
         .led_hue = 0, //  red
     },
-    {
+    { // 1
         .position = 0,
         .sub_position_unit = 0,
         .position_nonce = 0,
@@ -50,7 +50,7 @@ PB_SmartKnobConfig SmartKnobTask::configs[] =
         .snap_point_bias = 0,
         .led_hue = 200, // purple
     },
-    {
+    { // 2
         .position = 0,
         .sub_position_unit = 0.0,
         .position_nonce = 4,
@@ -66,7 +66,7 @@ PB_SmartKnobConfig SmartKnobTask::configs[] =
         .snap_point_bias = 0,
         .led_hue = 45, // yellow
     },
-    {
+    { // 3
         .position = 127,
         .sub_position_unit = 0.0,
         .position_nonce = 5,
@@ -82,7 +82,7 @@ PB_SmartKnobConfig SmartKnobTask::configs[] =
         .snap_point_bias = 0,
         .led_hue = 25, // orange
     },
-    {
+    { // 4
         .position = 0,
         .sub_position_unit = 0.0,
         .position_nonce = 6,

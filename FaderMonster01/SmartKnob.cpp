@@ -104,6 +104,9 @@ void SmartKnobTask::packetHandler(const uint8_t* buffer, size_t size)
   } while (0);
 }
 
+/**
+ * Set the SmartKnob configuration, and stack a copy of it
+ */
 bool SmartKnobTask::knobSendConfig(const PB_SmartKnobConfig& cfg)
 {
     bool result = false;
@@ -136,7 +139,7 @@ bool SmartKnobTask::knobSendConfig(const PB_SmartKnobConfig& cfg)
       knobSerial.send(tx_buffer_, stream.bytes_written + 4);  
       result = true;
     } while (0);
-    pCurrentConfig = &cfg;
+    configStack[configStackPointer].config = cfg;
     lastConfigChange = 0;
     configChangePending = true; // sent, but may get old-style ones for a while
 
@@ -149,6 +152,39 @@ InterTaskRequest::Result SmartKnobTask::doSetConfig(void* _PB_SmartKnobConfig)
     const PB_SmartKnobConfig cfg = *(const PB_SmartKnobConfig*) _PB_SmartKnobConfig;
     if (!knobSendConfig(cfg))
         result = InterTaskRequest::Result::failed;
+    return result;
+}
+
+InterTaskRequest::Result SmartKnobTask::doPushConfig(void* _PB_SmartKnobConfig)
+{
+    InterTaskRequest::Result result = InterTaskRequest::Result::failed;
+
+    if (configStackPointer < SK_CONFIG_STACK_SIZE) // must have room for new entry
+    {
+        SmartKnobConfigStackEntry& current = configStack[configStackPointer];
+        current.config.position = last_position; // change stacked config's position to current
+
+        configStackPointer++; // index next slot to be used
+        result = doSetConfig(_PB_SmartKnobConfig);
+        if (InterTaskRequest::Result::done != result)
+            configStackPointer--; 
+    }
+    return result;
+}
+
+InterTaskRequest::Result SmartKnobTask::doPopConfig(void* nothing)
+{
+    InterTaskRequest::Result result = InterTaskRequest::Result::failed;
+
+    if (configStackPointer > 0) // must have an entry in there!
+    {
+        configStackPointer--;
+        SmartKnobConfigStackEntry& current = configStack[configStackPointer];
+        PB_SmartKnobConfig restore = current.config;
+
+        result = doSetConfig(&restore);
+    }
+
     return result;
 }
 
@@ -172,6 +208,27 @@ InterTaskRequest::Result SmartKnobTask::doSetConfig(void* _PB_SmartKnobConfig)
 InterTaskRequest& SmartKnobTask::setConfig(InterTaskRequest& req, const PB_SmartKnobConfig& cfg)
 {
     requestPayload payload{&SmartKnobTask::doSetConfig, (void*) &cfg};
+    RequestQueue<SmartKnobTask, requestPayload>::queueEntry entry{&req, payload};
+
+    reqQueue.request(entry, 0);
+
+    return req;
+}
+
+InterTaskRequest& SmartKnobTask::pushConfig(InterTaskRequest& req, const PB_SmartKnobConfig& cfg)
+{
+    requestPayload payload{&SmartKnobTask::doPushConfig, (void*) &cfg};
+    RequestQueue<SmartKnobTask, requestPayload>::queueEntry entry{&req, payload};
+
+    reqQueue.request(entry, 0);
+
+    return req;
+}
+
+
+InterTaskRequest& SmartKnobTask::popConfig(InterTaskRequest& req)
+{
+    requestPayload payload{&SmartKnobTask::doPopConfig, nullptr};
     RequestQueue<SmartKnobTask, requestPayload>::queueEntry entry{&req, payload};
 
     reqQueue.request(entry, 0);

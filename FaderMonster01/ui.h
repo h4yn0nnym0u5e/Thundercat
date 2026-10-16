@@ -24,12 +24,13 @@
 // Define list of things that might 
 // trigger a change to a display:
 #define TRIGGER_LIST \
-    TRIGGER_ITEM(int, nextPhase) \
-    TRIGGER_ITEM(float, potValue) \
-    TRIGGER_ITEM(float, faderValue) \
-    TRIGGER_ITEM(GTPoint, touchPoint) \
-    TRIGGER_ITEM(TouchStatus*, pTouchStatus) \
-    TRIGGER_ITEM(int, settings)
+    TRIGGER_ITEM(int,             nextPhase) \
+    TRIGGER_ITEM(float,           potValue) \
+    TRIGGER_ITEM(float,           faderValue) \
+    TRIGGER_ITEM(SmartKnobReport, SKreport) \
+    TRIGGER_ITEM(GTPoint,         touchPoint) \
+    TRIGGER_ITEM(TouchStatus*,    pTouchStatus) \
+    TRIGGER_ITEM(int,             settings)
     
 
 union UpdateTrigger
@@ -120,6 +121,12 @@ class UIclass
     // display writing methods
     InterTaskRequest& writeToMainLCD(void);
     InterTaskRequest& writeToScribble(void);
+
+    // SmartKnob methods
+    void pushSmartKnob(void);
+    void popSmartKnob(void);
+    void setSmartKnobFine(const char* legend, int initValue);
+    void setSmartKnobValue(int value);
     
   public:
     //! possible UI drawing states
@@ -156,7 +163,8 @@ class UIclass
     static constexpr int BUF_SIZE{MAX_TEXT_LEN};
     static constexpr int ARC_OFF{+22};
 
-    InterTaskRequest updateReq;
+    InterTaskRequest updateReq, skReq;
+    bool ownsSmartKnob{false};
 };
 
 //==================================================================

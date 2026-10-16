@@ -1063,7 +1063,9 @@ class SmartKnobTask : public FaderMonsterTask
     };
     RequestQueue<SmartKnobTask, requestPayload> reqQueue;
 
-    InterTaskRequest::Result doSetConfig(void*);
+    InterTaskRequest::Result doSetConfig(void* pCfg);
+    InterTaskRequest::Result doPushConfig(void*);
+    InterTaskRequest::Result doPopConfig(void*);
     InterTaskRequest toMIDI, toSuper;
     //------------------------------------------------------------------------
     static void knobPacketHandler(const uint8_t* buffer, size_t size);
@@ -1086,7 +1088,9 @@ class SmartKnobTask : public FaderMonsterTask
     uint8_t tx_buffer_[300]; // should be enough...
     uint32_t tx_nonce;
     static SmartKnobTask* pThisTask;
-    const PB_SmartKnobConfig* pCurrentConfig{nullptr};
+    //const PB_SmartKnobConfig* pCurrentConfig{nullptr};
+    SmartKnobConfigStackEntry configStack[SK_CONFIG_STACK_SIZE];
+    int configStackPointer{0};
     bool configChangePending{false};
     //------------------------------------------------------------------------
 
@@ -1103,6 +1107,8 @@ class SmartKnobTask : public FaderMonsterTask
     
     void run(void) override;
     InterTaskRequest& setConfig(InterTaskRequest& req, const PB_SmartKnobConfig& cfg);
+    InterTaskRequest& pushConfig(InterTaskRequest& req, const PB_SmartKnobConfig& cfg);
+    InterTaskRequest& popConfig(InterTaskRequest& req);
 
     static PB_SmartKnobConfig configs[5];
     int whichConfig;
