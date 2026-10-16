@@ -71,7 +71,13 @@ FLASHMEM bool setchar(void* _dst, const char* src)
     if ('"' == *src) src++; // strip leading "
     int len = strlen(src);
     strcpy(dst, src);
-    if ('"' == dst[len-1]) dst[len-1] = 0; // strip trailing "
+
+    // strip trailing "
+    char* quotePos = strchr(dst,'"'); // where's the trailing quote?
+    if (nullptr != quotePos)
+      *quotePos = 0;
+    //if ('"' == dst[len-1]) dst[len-1] = 0; 
+
     return true; 
 }
 

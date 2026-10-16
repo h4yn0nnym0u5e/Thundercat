@@ -292,6 +292,7 @@ taskEXIT_CRITICAL();
   {
     Settings::save(f);
 taskENTER_CRITICAL();
+    f.truncate(f.position());
     f.close();
 taskEXIT_CRITICAL();
     result = InterTaskRequest::Result::done;

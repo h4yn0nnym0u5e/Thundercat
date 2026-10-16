@@ -720,7 +720,7 @@ bool ScribblePotArc::setScribbleText(bool force /* false */)
     Textifier t{scribbleText, MAX_TEXT_LEN};
     StripControls& ctls = getStripControls();
 
-    t // .s(ctls.pot.name).s(": ") // broken at the moment!
+    t  .s(ctls.pot.name).s(": ") // broken at the moment!
             .i(ctls.pot.channel+1)
             .s(": ").s(MIDIcontrolNames[(int) ctls.pot.controlType]);
 
