@@ -244,9 +244,10 @@ class FontSetter
         spr.unloadFont(); // this masks the free font, so unload it
     }
 
-    static constexpr const uint8_t* RADIO_LABEL{NotoSansRegular16};
-    static constexpr const uint8_t* TITLE_BAR{NotoSansRegular24};
     static constexpr const uint8_t* SLIDER_LABEL{NotoSansRegular14};
+    static constexpr const uint8_t* RADIO_LABEL{NotoSansRegular16};
+    static constexpr const uint8_t* TEXT_ENTRY{NotoSansRegular20};
+    static constexpr const uint8_t* TITLE_BAR{NotoSansRegular24};
 };
 
 //                      888    888    d8b                            
@@ -262,6 +263,7 @@ class FontSetter
 //                                                  "Y88P"           
 //
 #include <string.h>
+extern const char* MIDIcontrolNames[];
 /*
  * Configuration for a strip
  * This is outside the strip, as we want a convenient method to
@@ -436,13 +438,13 @@ class Textifier
         return result;
     }
 
-    Textifier& setPadding(TFT_eSprite* pSprite)
+    Textifier& setPadding(TFT_eSprite* pSprite, int extra = 3)
     {
         int16_t oldWidth = pSprite->textWidth(target);
         int16_t newWidth = pSprite->textWidth(buf);
         if (newWidth < oldWidth)
         {
-            pSprite->setTextPadding(oldWidth+2); // occasional dropped pixels - hack!
+            pSprite->setTextPadding(oldWidth+extra); // occasional dropped pixels - hack!
         }
         return *this;
     }
@@ -470,6 +472,38 @@ class Textifier
 
         return *this;
     }
+
+    Textifier& del(size_t n = 1) 
+    {
+        if (n > offset)
+            offset = 0;
+        else
+            offset -= n;            
+        buf[offset] = 0;
+        return *this;
+    }
+
+
+    Textifier& cc(MIDIcontrolType cType, int ccNum) 
+    { 
+        s(MIDIcontrolNames[(int) cType]);
+        switch (cType)
+        {
+            default: break;
+
+            case MIDIcontrolType::CC:
+            case MIDIcontrolType::RPN:
+            case MIDIcontrolType::NRPN:
+                c(' ').i(ccNum);
+                break;
+
+            case MIDIcontrolType::NOTE:
+                c(' ').n(ccNum);
+                break;
+        }
+        return *this;
+    }
+
 
     Textifier& i(int _i) 
     { 

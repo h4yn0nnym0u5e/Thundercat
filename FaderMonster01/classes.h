@@ -387,6 +387,8 @@ class SuperTask : public FaderMonsterTask
     UIclass& ui;
     bool flipui;
     int whichUI;
+    int UIstack[MAIN_UI_STACK_SIZE];
+    int UIstackIndex{0};
     uint32_t doneFlags{UINT32_MAX}; // everything is done
     bool processUI(void);
 
@@ -404,6 +406,9 @@ class SuperTask : public FaderMonsterTask
     
     void run(void) override;
     void flipUI(void) { flipui = true; }
+    void flipUI(int ui) { whichUI = ui % MAIN_UI_COUNT; whichUI--; flipui = true; }
+    void pushUI(int ui);
+    void popUI(void);
 
     //------------------------------------------------------------------------
     // stuff for UI to do actions
@@ -413,6 +418,8 @@ class SuperTask : public FaderMonsterTask
     InterTaskRequest& updateMainTouch(InterTaskRequest& req, GTPoint& touchPoint, TickType_t timeout = 0);
     InterTaskRequest& sendSmartKnobReport(InterTaskRequest& req, SmartKnobReport& SKreport, TickType_t timeout = 0);
 
+    char headerText[40]{0}; // header for main LCD screen
+    char enteredText[40]{0};
 };
 
 //    888                              888      
@@ -774,8 +781,6 @@ class MainLCDtask : public FaderMonsterTask
     void setDMAbuffer(uint16_t* buf) { DMAbuffer = buf; }
     bool tftInitComplete(void) { return initComplete; }
     TFT_eSprite& getSprite(void) { return sprite; }
-
-    char headerText[40]{0}; // header for main LCD screen
 
     bool pauseOutput{false}; // temporary hack...
     bool zapScreen{false}; // as is this

@@ -130,10 +130,12 @@ class UIclass
     
   public:
     //! possible UI drawing states
-    enum class State {done, //! UI update from currentTrigger is complete
-                      next, //! no change to display, can do next step    
-                      push, //! sprite changed, can push to display
-                      busy  //! busy pushing to display
+    enum class State {done, //!< UI update from currentTrigger is complete
+                      next, //!< no change to display, can do next step    
+                      push, //!< sprite changed, can push to display
+                      busy, //!< busy pushing to display
+                      abandon, //!< abandon UI, return no result to caller
+                      accept,  //!< accept UI result, return to caller
                      } state;
     virtual State begin(TFT_eSprite& sprite, colours_t c, int _which) 
         { 
@@ -162,6 +164,12 @@ class UIclass
     static constexpr float sa{2*18.0f}, ea{360.0f - 2*18.0f}; // TFT_eSPI has zero at 6 o'clock
     static constexpr int BUF_SIZE{MAX_TEXT_LEN};
     static constexpr int ARC_OFF{+22};
+    struct UIshared
+    {
+        int strip, control;
+        char* text;
+    };
+    static UIshared uiShared;        
 
     InterTaskRequest updateReq, skReq;
     bool ownsSmartKnob{false};
@@ -768,6 +776,16 @@ union ScribbleUIholder
 //    888   "   888 888  888 888 888  888 888     Y88b  d88P 888  .d88P 
 //    888       888 "Y888888 888 888  888 88888888 "Y8888P"  8888888P"  
 // 
+//==================================================================
+//                             888             
+//                             888             
+//                             888             
+//    888d888 .d88b.   .d8888b 888888 .d8888b  
+//    888P"  d8P  Y8b d88P"    888    88K      
+//    888    88888888 888      888    "Y8888b. 
+//    888    Y8b.     Y88b.    Y88b.       X88 
+//    888     "Y8888   "Y8888P  "Y888  88888P' 
+// 
 class MainTestRects : public UIclass 
 {
     enum {idle, drawingRect};
@@ -779,7 +797,17 @@ class MainTestRects : public UIclass
     virtual InterTaskRequest& writeToDisplay(void) { return writeToMainLCD(); }
     virtual uint32_t poll(void);
 };
+
 //------------------------------------------------------------------
+//                     888                           8888888b.  d8b          888                       
+//                     888                           888   Y88b Y8P          888                       
+//                     888                           888    888              888                       
+//     .d8888b .d88b.  888  .d88b.  888  888 888d888 888   d88P 888  .d8888b 888  888  .d88b.  888d888 
+//    d88P"   d88""88b 888 d88""88b 888  888 888P"   8888888P"  888 d88P"    888 .88P d8P  Y8b 888P"   
+//    888     888  888 888 888  888 888  888 888     888        888 888      888888K  88888888 888     
+//    Y88b.   Y88..88P 888 Y88..88P Y88b 888 888     888        888 Y88b.    888 "88b Y8b.     888     
+//     "Y8888P "Y88P"  888  "Y88P"   "Y88888 888     888        888  "Y8888P 888  888  "Y8888  888     
+// 
 class MainColourPicker : public UIclass 
 {
     enum {idle, doUnMarkHue, doMarkHue,  
@@ -843,12 +871,27 @@ class MainColourPicker : public UIclass
     virtual State update(Trigger trigger);
     virtual InterTaskRequest& writeToDisplay(void) { return writeToMainLCD(); }
 };
+
 //------------------------------------------------------------------
+//                                            888             
+//                                            888             
+//                                            888             
+//     .d88888 888  888  888  .d88b.  888d888 888888 888  888 
+//    d88" 888 888  888  888 d8P  Y8b 888P"   888    888  888 
+//    888  888 888  888  888 88888888 888     888    888  888 
+//    Y88b 888 Y88b 888 d88P Y8b.     888     Y88b.  Y88b 888 
+//     "Y88888  "Y8888888P"   "Y8888  888      "Y888  "Y88888 
+//         888                                            888 
+//         888                                       Y8b d88P 
+//         888                                        "Y88P"  
+// 
 class MainQwerty : public UIclass 
 {
-    enum {idle, drawingRect};
+    enum {idle, drawingKeyboard, drawingBlank, drawingKey, drawingBuffer};
     int kbd{0}, kbdTop;
-    char currentKey;
+    char currentKey;    //!< last key pressed
+    bool keyIsActioned{true}; //!< key has been actioned
+    char entryBuffer[MAX_TEXT_LEN]{0};
     uint16_t* tempCmap{nullptr};
     static constexpr int kWidth{28}, kHeight{28}, kPadding{1},
                          kXoff{3}, 
@@ -856,10 +899,11 @@ class MainQwerty : public UIclass
 
     void drawRow(const char* keys, int row, int off);
     void drawKeyboard(int& n);
+    void drawEntry(char* s);
     char whichKey(int x, int y);
     const image_4bit_info* getKeyCap(char c);
     void blankTheChar(void) { pSprite->fillRect(xo,yo,xh,yh, colours.bg); }
-
+    void actionKey(char theKey) { currentKey = theKey; keyIsActioned = false;}
 
   public:
     virtual State begin(TFT_eSprite& sprite, colours_t c);
@@ -868,6 +912,18 @@ class MainQwerty : public UIclass
 };
 
 //------------------------------------------------------------------
+//    8888888888                       88888888888                         
+//    888                                  888                             
+//    888                                  888                             
+//    8888888    888  888 88888b.  888d888 888  888  888 88888b.   .d88b.  
+//    888        `Y8bd8P' 888 "88b 888P"   888  888  888 888 "88b d8P  Y8b 
+//    888          X88K   888  888 888     888  888  888 888  888 88888888 
+//    888        .d8""8b. 888 d88P 888     888  Y88b 888 888  888 Y8b.     
+//    8888888888 888  888 88888P"  888     888   "Y88888 888  888  "Y8888  
+//                        888                                              
+//                        888                                              
+//                        888                                              
+// 
 class MainExprTune : public UIclass 
 {
     enum {idle,
@@ -901,6 +957,13 @@ class MainExprTune : public UIclass
 };
 
 //------------------------------------------------------------------
+//                                                
+//    .d8888b   .d8888b .d88b.  88888b.   .d88b.  
+//    88K      d88P"   d8P  Y8b 888 "88b d8P  Y8b 
+//    "Y8888b. 888     88888888 888  888 88888888 
+//         X88 Y88b.   Y8b.     888  888 Y8b.     
+//     88888P'  "Y8888P "Y8888  888  888  "Y8888  
+//
 class MainSceneLoad : public UIclass 
 {
     enum {idle, pollButtons} phase{idle};
@@ -925,7 +988,15 @@ class MainSceneLoad : public UIclass
 };
 
 //------------------------------------------------------------------
-extern const char* MIDIcontrolNames[];
+//    888b     d888 8888888 8888888b. 8888888 
+//    8888b   d8888   888   888  "Y88b  888   
+//    88888b.d88888   888   888    888  888   
+//    888Y88888P888   888   888    888  888   
+//    888 Y888P 888   888   888    888  888   
+//    888  Y8P  888   888   888    888  888   
+//    888   "   888   888   888  .d88P  888   
+//    888       888 8888888 8888888P" 8888888 
+//
 class MainMIDIsettings : public UIclass 
 {
     enum {idle,
@@ -1082,6 +1153,8 @@ class MainMIDIsettings : public UIclass
     virtual InterTaskRequest& writeToDisplay(void) { return writeToMainLCD(); }
     void selectStrip(int n, int which = 0) 
     { 
+        uiShared.strip = n;
+        uiShared.control = which;
         StripControls& ctls = faderMonsterSettings.stripsConfig.controls[n];
 
         UIradioButton::setActive(stripSelectButtons, NUM_POTS, n);

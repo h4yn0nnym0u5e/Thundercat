@@ -10,6 +10,12 @@ const char* MIDIcontrolNames[]
 };
 
 DMAMEM PB_SmartKnobConfig UIsmartConfig;
+
+/**
+ * Shared UI structure, used when flipping 
+ * between UI classes
+ */
+/* static */ UIclass::UIshared UIclass::uiShared{0,0,nullptr};
 //==========================================================================
 //
 //    888     888 8888888         888                            
@@ -720,32 +726,19 @@ bool ScribblePotArc::setScribbleText(bool force /* false */)
     Textifier t{scribbleText, MAX_TEXT_LEN};
     StripControls& ctls = getStripControls();
 
-    t  .s(ctls.pot.name).s(": ") // broken at the moment!
-            .i(ctls.pot.channel+1)
-            .s(": ").s(MIDIcontrolNames[(int) ctls.pot.controlType]);
+    t.s(ctls.pot.name).s(": ")
+     .i(ctls.pot.channel+1)
+     .s(": ").cc(ctls.pot.controlType, ctls.pot.controlNum);
 
-    switch (ctls.pot.controlType)
-    {
-        default: break;
-
-        case MIDIcontrolType::CC:
-        case MIDIcontrolType::RPN:
-        case MIDIcontrolType::NRPN:
-            t.c(' ').i(ctls.pot.controlNum);
-            break;
-
-        case MIDIcontrolType::NOTE:
-            t.c(' ').n(ctls.pot.controlNum);
-            break;
-    }
     result = t.toTarget();
 
     if (result || force)
     {
         FontSetter::loadFont(*pSprite, FontSetter::TITLE_BAR);
         pSprite->setTextColor(colours.txt, TFT_BLACK, true);
-        pSprite->setTextPadding(pSprite->width());
         pSprite->setTextDatum(TL_DATUM);
+        pSprite->setTextPadding(pSprite->width());
+        pSprite->setTextWrap(false, false);
         pSprite->drawString(t.get(), 0,0);
         pSprite->setTextPadding(0);
     }
@@ -1476,6 +1469,7 @@ void MainQwerty::drawKeyboard(int& n)
 {
     uint16_t cmap[16];
     FontSetter::setFreeFont(*pSprite,&FreeSansBold9pt7b);
+    pSprite->setTextDatum(TC_DATUM);
 
     tempCmap = makeCmap(cmap, TFT_BLACK, colours.bg);
     pSprite->setTextColor(colours.fg, cmap[15], false); // no background fill
@@ -1489,6 +1483,16 @@ void MainQwerty::drawKeyboard(int& n)
     drawRow(&kbds[n][3][0],3,0);
 
     tempCmap = nullptr;
+}
+
+WHICHMEM
+void MainQwerty::drawEntry(char* s)
+{
+    FontSetter::loadFont(*pSprite,FontSetter::TEXT_ENTRY); // cheap if already loaded
+    pSprite->setTextDatum(TL_DATUM);
+    pSprite->setTextColor(colours.fg, colours.bg, true); // no background fill
+    pSprite->drawString(s,xo+xh+15,yo+yh+2);
+    pSprite->setTextPadding(0);
 }
 
 WHICHMEM
@@ -1559,15 +1563,18 @@ UIclass::State MainQwerty::begin(TFT_eSprite& sprite, colours_t c)
     pSprite->fillScreen(colours.bg);
 
     // draw heading 
-    drawHeader(mainLCDtask.headerText);
-    
+    drawHeader(superTask.headerText);
+
     // preset text choices
     FontSetter::setFreeFont(*pSprite,&FreeSansBold9pt7b);
     pSprite->setTextColor(colours.fg, colours.bg, false); // no background fill
-    pSprite->setTextDatum(TC_DATUM);
 
     // draw the initial keyboard
     drawKeyboard(kbd);
+
+    // draw initial entry, if any
+    strcpy(entryBuffer, superTask.enteredText);
+    drawEntry(entryBuffer);
 
     return (state = result); // save and return state
 }
@@ -1583,6 +1590,106 @@ UIclass::State MainQwerty::update(Trigger trigger)
             result = State::done;
             break;
         //----------------------------------------------------------------------
+        case Trigger::eTriggerType::nextPhase:
+        {
+            switch (phase)
+            {
+                default:
+                    phase = idle;
+                    break;
+
+                case drawingKeyboard:
+                    drawKeyboard(kbd);
+                    result = State::push;
+                    phase = drawingBlank;
+                    break;
+
+                case drawingKey:
+                {
+                    char buf[2]{0};
+
+                    phase = idle;
+                    result = State::push;
+                    if (currentKey > ' ') // can't draw a newline!
+                    {
+                        FontSetter::setFreeFont(*pSprite,&FreeSansBold18pt7b);
+                        pSprite->setTextColor(colours.fg, colours.bg, true); // no background fill
+                        pSprite->setTextDatum(TC_DATUM);
+                        *buf = currentKey;
+                        blankTheChar();
+                        pSprite->drawString(buf,xo+15,yo+2);
+                    }
+                    else if (' ' == currentKey)
+                    {
+                        const int indent = 4;
+                        blankTheChar();
+                        pSprite->setViewport(xo,yo,xh,yh);
+                        pSprite->fillRect(indent,  yh*2/3,xh-indent*2,  4,colours.fg);
+                        pSprite->fillRect(indent+2,yh*2/3,xh-indent*2-4,2,colours.bg);
+                        pSprite->resetViewport();
+                    }
+                    else
+                        result = State::next;
+                }
+                    break;
+
+                case drawingBlank:
+                    blankTheChar();
+                    result = State::push;
+                    phase = drawingBuffer;
+                    break;
+
+                case drawingBuffer:
+                {
+                    if (!keyIsActioned)
+                    {
+                        Textifier t{entryBuffer, sizeof entryBuffer};
+
+                        t.s(entryBuffer); // preset to existing value
+                        switch (currentKey)
+                        {
+                            default:
+                                t.c(currentKey); // apennd new keystroke
+                                break;
+
+                            case '\x12': // back-arrow
+                                t.del(); // delete one character, if possible
+                                break;
+
+                            case 0:
+                            case '\x01' ... '\x03':
+                                break;
+
+                            case '\x14': // cross
+                                result = State::abandon;
+                                superTask.popUI();
+                                break;
+
+                            case '\n': // tick -> newline
+                                strcpy(superTask.enteredText, entryBuffer);
+                                superTask.popUI();
+                                result = State::accept;
+                                break;
+                        }
+                        
+                        // draw if needed; have to load font to set padding
+                        FontSetter::loadFont(*pSprite,FontSetter::TEXT_ENTRY);
+                        pSprite->setTextDatum(TL_DATUM);
+                        if (t.setPadding(pSprite).toTarget())
+                        {
+                            drawEntry(t.get());
+                            result = State::push;
+                        }
+                    }
+                    currentKey = 0;
+                    keyIsActioned = true;
+                }
+                    break;
+            }
+        }
+            break;
+
+        //----------------------------------------------------------------------
         case Trigger::eTriggerType::touchPoint:
         {
             GTPoint& newPt = trigger.trigger.touchPoint;
@@ -1590,40 +1697,33 @@ UIclass::State MainQwerty::update(Trigger trigger)
             {
                 currentTrigger = trigger; // keep the trigger and value(s)
                 char theKey = whichKey(newPt.x, newPt.y);
+                bool isLifted{255 == newPt.reserved};
+
+                // may want to draw something, so default to next phase
+                result = State::next;
+
                 switch (theKey)
                 {
                     case '\x13': // tick
-                        theKey = '\n';
+                        //theKey = '\n';
+                        Serial.println();
+                        strcpy(superTask.enteredText, entryBuffer);
+                        superTask.popUI();
+                        result = State::accept;
+                        break;
+
                     default:
                         if (theKey != currentKey)
                         {
-                            char buf[2]{0};
                             currentKey = theKey;
-                            if (theKey > ' ') // can't draw a newline!
-                            {
-                                FontSetter::setFreeFont(*pSprite,&FreeSansBold18pt7b);
-                                pSprite->setTextColor(colours.fg, colours.bg, true); // no background fill
-                                pSprite->setTextDatum(TC_DATUM);
-                                *buf = theKey;
-                                blankTheChar();
-                                pSprite->drawString(buf,xo+15,yo+2);
-                            }
-                            else if (' ' == theKey)
-                            {
-                                const int indent = 4;
-                                blankTheChar();
-                                pSprite->setViewport(xo,yo,xh,yh);
-                                pSprite->fillRect(indent,  yh*2/3,xh-indent*2,  4,colours.fg);
-                                pSprite->fillRect(indent+2,yh*2/3,xh-indent*2-4,2,colours.bg);
-                                pSprite->resetViewport();
-                            }
+                            phase = drawingKey;
                         }
-                        if (255 == newPt.reserved)
+                        if (isLifted)
                         {
-                            if (theKey >= ' ' || '\n' == theKey)
+                            if (theKey >= ' ' || '\n' == theKey)                            
                                 Serial.print(theKey); // do something better here!
-                            blankTheChar();
-                            currentKey = 0; // allow for double letters!
+                            phase = drawingBlank;
+                            //currentKey = 0; // allow for double letters!
                         }
                         break;
 
@@ -1631,21 +1731,23 @@ UIclass::State MainQwerty::update(Trigger trigger)
                         break;
 
                     case '\x14': // cross
+                        result = State::abandon;
+                        superTask.popUI();
                         break;
 
                     case '\x01':
                     case '\x02':
                     case '\x03':
-                        if (255 == newPt.reserved)
+                        if (isLifted)
                         {
                             kbd++;
-                            drawKeyboard(kbd);
+                            phase = drawingKeyboard;
                         }
-                        blankTheChar();
                         break;
                 }
 
-                result = State::push;
+                if (isLifted)
+                    actionKey(theKey);
             }
         }
             break;
@@ -2009,7 +2111,13 @@ UIclass::State MainMIDIsettings::begin(TFT_eSprite& sprite, colours_t c)
     UIclass::begin(sprite, c); // do standard setup
     setColours<UIradioButton>(ctlTypeButtons, numCtlTypes, c);
     setColours<UIradioButton>(ctlSelectButtons, ctlsPerStrip, c);
-    selectStrip(0,0); // initialises pControl
+    selectStrip(uiShared.strip,uiShared.control); // initialises pControl
+    if (nullptr != uiShared.text)
+    {
+        strcpy(pControl->name, uiShared.text);
+        uiShared.text = nullptr;
+        StripTask::getStripTask(uiShared.strip).settingsChanged();
+    }
     
     // clear screen
     pSprite->fillScreen(colours.bg);
@@ -2086,6 +2194,7 @@ UIclass::State MainMIDIsettings::update(Trigger trigger)
                 currentTrigger = trigger; // keep the trigger and value(s)
                 result = State::next;
                 bool needsSmartKnob{false}, newSKvalue{false};
+                bool isLifted{255 == newPt.reserved};
 
                 if (UIradioButton::processTouch(ctlTypeButtons, numCtlTypes, newPt))
                 {
@@ -2136,6 +2245,14 @@ UIclass::State MainMIDIsettings::update(Trigger trigger)
                         result = State::next;
                         phase = drawingChannelNumSlider;
                     }
+                }
+                else if (isLifted && newPt.x<50 && newPt.y>200)
+                {
+                    strcpy(superTask.enteredText, pControl->name); // initial value
+                    uiShared.text = superTask.enteredText;
+                    sprintf(superTask.headerText, "Strip %d name", 
+                            stripSelectButtons[0].getActive() + 1);
+                    superTask.pushUI(2); // aargh
                 }
 
                 if (needsSmartKnob)

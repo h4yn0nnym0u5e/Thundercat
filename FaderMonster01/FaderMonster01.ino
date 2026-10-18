@@ -178,9 +178,7 @@ InterTaskRequest::Result SuperTask::doProcessSmartKnob(void* pSKreport)
         if (skReport.max != 255) // don't use fine values for flipping UI
         {
           //Serial.printf("[%lu] : Position: %d\n", skReport.ms, skReport.position);
-          flipui = true;
-          whichUI = skReport.position % MAIN_UI_COUNT; // less magic!
-          whichUI--; // because flipping increments it
+          flipUI(skReport.position);
         }
       }
       else
@@ -324,7 +322,7 @@ bool SuperTask::processUI(void)
   bool wait = true;
 
   // test of changing UI classes on the fly
-  if (flipui) // set by power button brief press
+  if (flipui) // set by power button brief press or call to flipUI(n)
   {
     flipui = false; // this is kinda important!
     whichUI++;      // flip to the next UI
@@ -341,7 +339,8 @@ bool SuperTask::processUI(void)
         break;
 
       case 2:
-        sprintf(mainLCDtask.headerText,"Enter Stuff!");
+        if (0 == headerText[0])
+          sprintf(headerText,"Enter Stuff!");
         new(_ui.space) MainQwerty; 
         break;
 
@@ -364,7 +363,12 @@ bool SuperTask::processUI(void)
   // is dealt with separately by a high-priority task
   [[maybe_unused]] uint32_t pollInterval = ui.poll(); // allow UI to do internally-timed stuff
   switch (ui.state)
-  {
+  {     
+      case UIclass::State::accept:
+        Serial.printf("Accepted '%s'\n", enteredText);
+      case UIclass::State::abandon:
+        ui.state = UIclass::State::done;
+        // fall through
       case UIclass::State::done: // ready for a new trigger
         // poll for queued requests
         if (InterTaskRequest::Result::inactive == reqQueue.executeRequest(*this, 0))
@@ -372,7 +376,8 @@ bool SuperTask::processUI(void)
         break;
 
       case UIclass::State::next: // can do next phase, if any
-        ui.update({Trigger::eTriggerType::nextPhase});
+        if (UIclass::State::accept == ui.update({Trigger::eTriggerType::nextPhase}))
+          Serial.printf("Accepted '%s'\n", enteredText);
         wait = false; // have probably changed state - loop quickly
         break;
 
@@ -388,6 +393,26 @@ bool SuperTask::processUI(void)
         break;
   }
   return wait;
+}
+
+void SuperTask::pushUI(int ui)
+{
+  if (UIstackIndex < MAIN_UI_STACK_SIZE)
+  {
+    UIstack[UIstackIndex] = whichUI;
+    UIstackIndex++;
+    flipUI(ui);
+  }
+}
+
+
+void SuperTask::popUI(void)
+{
+  if (UIstackIndex > 0)
+  {
+    UIstackIndex--;
+    flipUI(UIstack[UIstackIndex]);
+  }
 }
 
 //    888                            8888888888       

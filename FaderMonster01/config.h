@@ -97,6 +97,8 @@
 #define FMT_DP xFMT_DP(SCRIBBLE_DP)
 #define CHGTHR_DP xCHG_DP(SCRIBBLE_DP)
 
+#define MAIN_UI_STACK_SIZE 5
+
 // ============== Port expanders ==============
 // expander pin assignments in expanders.h
 
