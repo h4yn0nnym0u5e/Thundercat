@@ -160,6 +160,9 @@ void StripTask::run(void)
     [[maybe_unused]] uint32_t pollInterval = ui.poll(); // allow UI to do internally-timed stuff
     switch (ui.state)
     {
+        case UIclass::State::accept:
+        case UIclass::State::abandon:
+          ui.state = UIclass::State::done;
         case UIclass::State::done: // ready for a new trigger
             // poll for queued requests
             if (InterTaskRequest::Result::inactive == reqQueue.executeRequest(*this, 10))

@@ -377,10 +377,12 @@ class SuperTask : public FaderMonsterTask
     //InterTaskRequest::Result doCalibrateTouch(void*);
     InterTaskRequest::Result doUpdateMainTouch(void* pGTPoint);
     InterTaskRequest::Result doProcessSmartKnob(void* pSKreport);
+    InterTaskRequest::Result doTouchChange(void* pTouch);
     //------------------------------------------------------------------------
 
     void loopFn(void);
-    InterTaskRequest touchCalibrationRequest, saveSettingsRequest, generalRequest;
+    InterTaskRequest touchCalibrationRequest, saveSettingsRequest, generalRequest,
+                     touchReq;
 
     // display UI
     MainUIholder _ui;
@@ -417,6 +419,13 @@ class SuperTask : public FaderMonsterTask
     // stuff to allow another task to make async requests:
     InterTaskRequest& updateMainTouch(InterTaskRequest& req, GTPoint& touchPoint, TickType_t timeout = 0);
     InterTaskRequest& sendSmartKnobReport(InterTaskRequest& req, SmartKnobReport& SKreport, TickType_t timeout = 0);
+    void touchChanged(TouchStatus& touch)
+    {
+        requestPayload payload{&SuperTask::doTouchChange, &touch};
+        RequestQueue<SuperTask, requestPayload>::queueEntry entry{&touchReq, payload};
+
+        reqQueue.request(entry, 0);
+    }
 
     char headerText[40]{0}; // header for main LCD screen
     char enteredText[40]{0};
@@ -496,6 +505,10 @@ class TouchTask : public FaderMonsterTask
     bool supplyValid{false};
     bool checkChange{true}; // public: set by ISR
     static TouchStatus keyStatuses[NUM_POTS];
+    int whichTouch(TouchStatus& tch) 
+    { 
+        return TouchStatus::whichTouch(tch, keyStatuses);
+    }
     UBaseType_t messagesWaiting(void) { return reqQueue.messagesWaiting(); }
 };
 
@@ -605,6 +618,10 @@ class TouchADCtask : public FaderMonsterTask
 
     bool checkChange{true}; // public: set by ISR
     static TouchStatus keyStatuses[NUM_POTS];
+    int whichTouch(TouchStatus& tch) 
+    { 
+        return TouchStatus::whichTouch(tch, keyStatuses);
+    }
     UBaseType_t messagesWaiting(void) { return reqQueue.messagesWaiting(); }
 
     uint32_t enablePedalPrint{0};//{10};

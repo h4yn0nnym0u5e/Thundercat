@@ -1706,7 +1706,7 @@ UIclass::State MainQwerty::update(Trigger trigger)
                 {
                     case '\x13': // tick
                         //theKey = '\n';
-                        Serial.println();
+// Serial.println();
                         strcpy(superTask.enteredText, entryBuffer);
                         superTask.popUI();
                         result = State::accept;
@@ -1720,8 +1720,7 @@ UIclass::State MainQwerty::update(Trigger trigger)
                         }
                         if (isLifted)
                         {
-                            if (theKey >= ' ' || '\n' == theKey)                            
-                                Serial.print(theKey); // do something better here!
+// if (theKey >= ' ' || '\n' == theKey) Serial.print(theKey); // do something better here!
                             phase = drawingBlank;
                             //currentKey = 0; // allow for double letters!
                         }
@@ -2182,6 +2181,25 @@ UIclass::State MainMIDIsettings::update(Trigger trigger)
     {
         default: // we don't react to that trigger type
             break;
+
+        //----------------------------------------------------------------------
+        case Trigger::eTriggerType::pTouchStatus: // select strip based on control touch
+        {
+            currentTrigger = trigger; // keep the trigger and value(s)
+            TouchStatus& touch = *trigger.trigger.pTouchStatus;
+
+            int ctl = 0, strip = touchTask.whichTouch(touch);
+            if (strip < 0) { strip = touchADCtask.whichTouch(touch); ctl++; }
+            if (strip >= 0 && TouchStatus::eStatus::DOUBLE == touch.getExtendedStatus()) // valid touch pointer
+            {
+// Serial.printf("Select strip %d\n", strip);
+                selectStrip(strip, ctl); //ctlSelectButtons[0].getActive()); // point to controls we're editing            
+                result = State::next;
+                phase = pollStrips;
+            }
+        }
+            break;
+
         //----------------------------------------------------------------------
         case Trigger::eTriggerType::touchPoint:
         {
@@ -2252,7 +2270,7 @@ UIclass::State MainMIDIsettings::update(Trigger trigger)
                     uiShared.text = superTask.enteredText;
                     sprintf(superTask.headerText, "Strip %d name", 
                             stripSelectButtons[0].getActive() + 1);
-                    superTask.pushUI(2); // aargh
+                    superTask.pushUI(MAIN_UI_MainQwerty); // push to keyboard; will pop back with result
                 }
 
                 if (needsSmartKnob)

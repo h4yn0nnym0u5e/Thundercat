@@ -2,6 +2,7 @@
 #include "header.h"
 #include <usb_names.h>
 
+#define WHICHMEM FLASHMEM
 //================================================================
 //                      888    888    d8b                            
 //                      888    888    Y8P                            
@@ -37,6 +38,7 @@ FaderMonsterSettings faderMonsterSettings{{stripColours,stripControls}, miscCont
 // one source of truth on where / how to allocate a 
 // buffer used for DMA transfer of sprite image data
 // to a display
+WHICHMEM
 uint16_t* allocateDMAbuffer(int w, int h)
 {
   size_t sz = w*h               // number of pixels
@@ -69,6 +71,7 @@ TaskHandle_t* handles[]{nullptr, nullptr,    // 0-1
                         &superTask.handle,  &ringLEDsTask.handle, // 6-7
                         &smartKnobTask.handle, &potsTask.handle, // 8-9
                         &touchTask.handle, &touchADCtask.handle, &midiTask.handle}; // 10-12
+WHICHMEM
 void printTaskStates(void)
 {
   TaskHandle_t handleIdle = xTaskGetIdleTaskHandle();
@@ -120,6 +123,7 @@ bool enableADCprint;
 //                         888                                            
 //
 //! queue a request for the supervisor task to process a main LCD touch
+WHICHMEM
 InterTaskRequest& SuperTask::updateMainTouch(InterTaskRequest& req, GTPoint& touchPoint, TickType_t timeout)
 {
   requestPayload payload{&SuperTask::doUpdateMainTouch, &touchPoint};
@@ -131,6 +135,7 @@ InterTaskRequest& SuperTask::updateMainTouch(InterTaskRequest& req, GTPoint& tou
 }
 
 //! start UI executing a main LCD touch message
+WHICHMEM
 InterTaskRequest::Result SuperTask::doUpdateMainTouch(void* pGTPoint)
 {
   GTPoint& lastTouch = *((GTPoint*) pGTPoint);
@@ -143,12 +148,25 @@ InterTaskRequest::Result SuperTask::doUpdateMainTouch(void* pGTPoint)
   return InterTaskRequest::Result::done;
 }
 
+//! start UI executing a control touch message
+WHICHMEM
+InterTaskRequest::Result SuperTask::doTouchChange(void* pTouch)
+{
+  Trigger trigger{.type    = Trigger::eTriggerType::pTouchStatus, 
+                  .trigger = { .pTouchStatus = (TouchStatus*) pTouch }};
+
+  ui.update(trigger);
+ 
+  return InterTaskRequest::Result::done;
+}
+
 //----------------------------------------------------------------
 /**
  * Queue a request for the supervisor task to process a SmartKnob report.
  * This is guaranteed to have changed from the previous value.
  */
 //!
+WHICHMEM
 InterTaskRequest& SuperTask::sendSmartKnobReport(InterTaskRequest& req, SmartKnobReport& SKreport, TickType_t timeout)
 {
   requestPayload payload{&SuperTask::doProcessSmartKnob, &SKreport};
@@ -160,6 +178,7 @@ InterTaskRequest& SuperTask::sendSmartKnobReport(InterTaskRequest& req, SmartKno
 }
 
 //! execute a SmartKnob change message
+WHICHMEM
 InterTaskRequest::Result SuperTask::doProcessSmartKnob(void* pSKreport)
 {
   SmartKnobReport& skReport = *((SmartKnobReport*) pSKreport);
@@ -202,6 +221,7 @@ InterTaskRequest::Result SuperTask::doProcessSmartKnob(void* pSKreport)
 //    888                                                                                                 
 //
 TouchStatus powerButton;
+WHICHMEM
 void pollPowerButton(void)
 {
   static bool hadLongPress = false, canPowerOff = false;
@@ -317,6 +337,7 @@ void pollPowerButton(void)
  * Process the supervisor task's UI (main LCD).
  * \return true if extra delay might be wanted, e.g. if screen update was requested
  */
+WHICHMEM
 bool SuperTask::processUI(void)
 {
   bool wait = true;
@@ -329,30 +350,32 @@ bool SuperTask::processUI(void)
     switch (whichUI)
     {
       default:
-      case 0:
         whichUI = 0;
+        // fall through
+
+      case MAIN_UI_MainColourPicker:
         new(_ui.space) MainColourPicker; // placement new
         break;
 
-      case 1:
+      case MAIN_UI_MainTestRects:
         new(_ui.space) MainTestRects; 
         break;
 
-      case 2:
+      case MAIN_UI_MainQwerty:
         if (0 == headerText[0])
           sprintf(headerText,"Enter Stuff!");
         new(_ui.space) MainQwerty; 
         break;
 
-      case 3:
+      case MAIN_UI_MainExprTune:
         new(_ui.space) MainExprTune; 
         break;
 
-      case 4:
+      case MAIN_UI_MainSceneLoad:
         new(_ui.space) MainSceneLoad; 
         break;
 
-      case 5:
+      case MAIN_UI_MainMIDIsettings:
         new(_ui.space) MainMIDIsettings; 
         break;
     }
@@ -365,7 +388,6 @@ bool SuperTask::processUI(void)
   switch (ui.state)
   {     
       case UIclass::State::accept:
-        Serial.printf("Accepted '%s'\n", enteredText);
       case UIclass::State::abandon:
         ui.state = UIclass::State::done;
         // fall through
@@ -395,6 +417,7 @@ bool SuperTask::processUI(void)
   return wait;
 }
 
+WHICHMEM
 void SuperTask::pushUI(int ui)
 {
   if (UIstackIndex < MAIN_UI_STACK_SIZE)
@@ -406,6 +429,7 @@ void SuperTask::pushUI(int ui)
 }
 
 
+WHICHMEM
 void SuperTask::popUI(void)
 {
   if (UIstackIndex > 0)
@@ -433,7 +457,7 @@ uint8_t bits;
 bool countBits;
 int ADCcount;
 
-FLASHMEM
+WHICHMEM
 void SuperTask::loadSettings(char* name)
 {
     if (name != fileName)
@@ -446,7 +470,7 @@ void SuperTask::loadSettings(char* name)
 }
     
 
-FLASHMEM
+WHICHMEM
 void SuperTask::loopFn(void)
 {
   { // debug print of ADCs
@@ -751,7 +775,7 @@ void SuperTask::run(void)
 //                                      888      
 //
 static void getSerialNumber(char* sernum);
-FLASHMEM
+WHICHMEM
 void setup() 
 {
   /*
@@ -842,6 +866,7 @@ void setup()
   vTaskStartScheduler(); // start all tasks - the mayhem begins!
 }
 
+WHICHMEM
 static void getSerialNumber(char* sernum)
 {
   //char sernum[10];
@@ -853,6 +878,7 @@ static void getSerialNumber(char* sernum)
 void loop() {} // keep Arduino happy
 
 // Run a FaderMonsterTask
+WHICHMEM
 void taskRoot(void* pfmt)
 {
   FaderMonsterTask& fmt = *((FaderMonsterTask*) pfmt);

@@ -275,6 +275,7 @@ void TouchTask::pollTouch(void)
       //int status = (int) keyStatuses[i].getExtendedStatus();
       //Serial.printf("Touch %d: status %d\n", i+1, status);
       StripTask::getStripTask(i).touchChanged(keyStatuses[i]);
+      superTask.touchChanged(keyStatuses[i]);
     }
   }
 }

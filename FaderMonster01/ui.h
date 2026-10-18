@@ -1174,17 +1174,31 @@ class MainMIDIsettings : public UIclass
 
 //==================================================================
 class MainDummy : public UIclass {};
+
+#define MAIN_UI_LIST \
+    MAIN_UI_ENTRY(MainColourPicker, colourPicker) \
+    MAIN_UI_ENTRY(MainTestRects, testRects) \
+    MAIN_UI_ENTRY(MainQwerty, qwerty) \
+    MAIN_UI_ENTRY(MainExprTune, expr) \
+    MAIN_UI_ENTRY(MainSceneLoad, scene) \
+    MAIN_UI_ENTRY(MainMIDIsettings, midiSet) 
+
 union MainUI
 {
     MainDummy  dummy;
-    MainTestRects testRects;
-    MainColourPicker colourPicker;
-    MainQwerty qwerty;
-    MainExprTune expr;
-    MainSceneLoad scene;
-    MainMIDIsettings midiSet;
+#define MAIN_UI_ENTRY(typ, nam) typ nam;
+    MAIN_UI_LIST
+#undef MAIN_UI_ENTRY
 };
-#define MAIN_UI_COUNT 6
+
+enum {
+#define MAIN_UI_ENTRY(typ, nam) MAIN_UI_##typ,
+    MAIN_UI_LIST
+#undef MAIN_UI_ENTRY
+    MAIN_UI_COUNT
+};
+
+//#define MAIN_UI_COUNT 6
 
 union MainUIholder
 {

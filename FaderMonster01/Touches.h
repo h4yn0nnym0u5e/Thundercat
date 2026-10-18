@@ -54,6 +54,17 @@ class TouchStatus
         : status{0}, extendedStatus{eStatus::OFF},
           longTouch{500}, doubleTouch{250}
         {}
+
+    static int whichTouch(TouchStatus& tch, TouchStatus* keyStatuses, int count = NUM_POTS) 
+    { 
+        int result = &tch - keyStatuses;
+        if (result <  0
+         || result >= count
+         || &tch != keyStatuses+result)
+            result = -1;
+        return result;
+    }
+    
     operator bool(void) const { return 0 != status; } 
     eStatus getExtendedStatus(void)
     {
