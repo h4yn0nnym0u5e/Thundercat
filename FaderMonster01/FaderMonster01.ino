@@ -822,13 +822,17 @@ void setup()
     Serial.printf("Teensy serial number is: %s\n", buf);
   }
   // debug pins for scope:
-  //*
+  /*
   pinMode(DBG1, arduino::OUTPUT);
   pinMode(DBG2, arduino::OUTPUT);
   Serial8.begin(2'000'000);
   pinMode(34,arduino::INPUT);
   pinMode(DBG3, arduino::OUTPUT);
   //*/
+
+  // MIDI serial
+  // Initialise here because the Rx pin is used for something else
+  MIDIbegin();
 
   // enable 6V    
   pinMode(EN_6V, arduino::OUTPUT);

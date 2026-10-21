@@ -31,6 +31,8 @@
 #define POT_MAP {4,2,0,6}
 #define POT_READ_INTERVAL_US 1'000
 
+#define NUM_STRIP_CONTROLS 3 // pot / fader / button
+
 
 // ============== LED rings ==============
 #define LEDS_PER_RING 20

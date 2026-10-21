@@ -2,6 +2,7 @@
 #define _HEADER_H_
 
 #include <Arduino.h>
+#include <MIDI.h>
 #include <Wire.h>
 #include <TFT_eSPI.h>
 #undef SPISettings // undo macro hack
@@ -49,6 +50,7 @@ extern MIDItask midiTask;
 extern void taskRoot(void*);
 extern uint16_t* allocateDMAbuffer(int w, int h);
 extern void cycleLED(elapsedMillis& em, int& colour, int ring, int led = 11);
+extern void MIDIbegin(void);
 
 extern ContinuousPot allPots[NUM_POTS];
 //typedef RingLEDs<NUM_POTS> FaderMonsterRingLEDs; 

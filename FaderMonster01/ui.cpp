@@ -31,7 +31,7 @@ WHICHMEM
 void UIclass::drawHeader(const char* txt)
 {
     // draw heading 
-    pSprite->fillRect(0,0,pSprite->width(), 30, TFT_BLACK);
+    pSprite->fillRect(0,0,pSprite->width(), TITLE_HEIGHT, TFT_BLACK);
     FontSetter::loadFont(*pSprite, FontSetter::TITLE_BAR);
     pSprite->setTextColor(colours.fg, TFT_BLACK);
     pSprite->drawString(txt,2,2);
@@ -726,8 +726,11 @@ bool ScribblePotArc::setScribbleText(bool force /* false */)
     Textifier t{scribbleText, MAX_TEXT_LEN};
     StripControls& ctls = getStripControls();
 
-    t.s(ctls.pot.name).s(": ")
-     .i(ctls.pot.channel+1)
+    // only show the name if it's not "<unnamed>"
+    if (0 != strcmp("<unnamed>", ctls.pot.name))
+        t.s(ctls.pot.name).s(": ");
+
+    t.i(ctls.pot.channel+1)
      .s(": ").cc(ctls.pot.controlType, ctls.pot.controlNum);
 
     result = t.toTarget();
@@ -2214,6 +2217,7 @@ UIclass::State MainMIDIsettings::update(Trigger trigger)
                 bool needsSmartKnob{false}, newSKvalue{false};
                 bool isLifted{255 == newPt.reserved};
 
+                // control type radio buttons: CC / bend / etc.
                 if (UIradioButton::processTouch(ctlTypeButtons, numCtlTypes, newPt))
                 {
                     pControl->controlType
@@ -2223,6 +2227,7 @@ UIclass::State MainMIDIsettings::update(Trigger trigger)
                     result = State::next;
                     phase = pollCtls;
                 }
+                // strip select
                 else if (UIradioButton::processTouch(stripSelectButtons, NUM_POTS, newPt))
                 {
                     int strip = stripSelectButtons[0].getActive();
@@ -2234,12 +2239,14 @@ UIclass::State MainMIDIsettings::update(Trigger trigger)
                     result = State::next;
                     phase = pollStrips;
                 }
+                // control select radio buttons: pot / fader / button
                 else if (UIradioButton::processTouch(ctlSelectButtons, ctlsPerStrip, newPt))
                 {
                     selectStrip(stripSelectButtons[0].getActive(), ctlSelectButtons[0].getActive());
                     result = State::next;
                     phase = pollSelect;
                 }
+                // CC number, if relevant
                 else if (ccNumSlider.isIn(newPt))
                 {
                     if (ccNumSlider.setValue(newPt))
@@ -2254,6 +2261,7 @@ UIclass::State MainMIDIsettings::update(Trigger trigger)
                     // regardless of touch or lift...
                     needsSmartKnob = true;
                 }
+                // MIDI channel number
                 else if (channelNumSlider.isIn(newPt))
                 {
                     if (channelNumSlider.setValue(newPt))
@@ -2264,7 +2272,8 @@ UIclass::State MainMIDIsettings::update(Trigger trigger)
                         phase = drawingChannelNumSlider;
                     }
                 }
-                else if (isLifted && newPt.x<50 && newPt.y>200)
+                // hack for control name entry
+                else if (isLifted && newPt.y < TITLE_HEIGHT)
                 {
                     strcpy(superTask.enteredText, pControl->name); // initial value
                     uiShared.text = superTask.enteredText;
@@ -2273,6 +2282,7 @@ UIclass::State MainMIDIsettings::update(Trigger trigger)
                     superTask.pushUI(MAIN_UI_MainQwerty); // push to keyboard; will pop back with result
                 }
 
+                // in slider that needs to use SmartKnob for fine-tuning
                 if (needsSmartKnob)
                 {
                     if (!ownsSmartKnob)
@@ -2281,6 +2291,7 @@ UIclass::State MainMIDIsettings::update(Trigger trigger)
                         setSmartKnobValue(ccNumSlider.getValue());
                 } 
 
+                // no longer needs SmartKnob - release it
                 if (ownsSmartKnob && !needsSmartKnob)
                     popSmartKnob();
             }
@@ -2316,7 +2327,7 @@ UIclass::State MainMIDIsettings::update(Trigger trigger)
                 case pollStrips:
                     result = UIradioButton::processDraw(pSprite, stripSelectButtons, NUM_POTS);
                     if (State::done == result)  // done strip# button changes...
-                        phase = pollCtls;       // ...they may have resulted in control button changes
+                        phase = pollSelect;     // ...may also have control changes, if done by control touch
                     else                        
                         break;
 

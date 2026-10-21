@@ -135,7 +135,75 @@ class ButtonLED
     void show(void)               { ledString.show(); }
     void setBrightness(uint8_t n) { ledString.setBrightness(n); }
 };
+//    888      8888888b.   .d8888b.  
+//    888      888   Y88b d88P  Y88b 
+//    888      888    888 888    888 
+//    888      888   d88P 888        
+//    888      8888888P"  888        
+//    888      888 T88b   888    888 
+//    888      888  T88b  Y88b  d88P 
+//    88888888 888   T88b  "Y8888P"  
+// 
+#define LRC_ITEMS \
+    LRC_ITEM(invalid, INVALID, -1) \
+    LRC_ITEM(Rehearse, REHEARSE, 76) \
+    LRC_ITEM(Auto Record, AUTORECORD, 126) \
+    LRC_ITEM(Loop End, LOOPEND, 177) \
+    LRC_ITEM(Loop Start, LOOPSTART, 228) \
+    LRC_ITEM(Auto Loop, AUTOLOOP, 279) \
+    LRC_ITEM(Punch In, PUNCHIN, 330) \
+    LRC_ITEM(Punch Out, PUNCHOUT, 381) \
+    LRC_ITEM(Set Locate, SETLOCATE, 432) \
+    LRC_ITEM(Play+Stop, PLAYSTOP, 496) \
+    LRC_ITEM(Play+Rewind, PLAYREWIND, 596) \
+    LRC_ITEM(Play+F Fwd, PLAYFFWD, 696) \
+    LRC_ITEM(Rec+Play, RECPLAY, 796) \
+    LRC_ITEM(Play, PLAY, 899) \
+    LRC_ITEM(Stop, STOP, 1008) \
+    LRC_ITEM(Rewind, REWIND, 1107) \
+    LRC_ITEM(F Fwd, FFWD, 1207) \
+    LRC_ITEM(Record, RECORD, 1307) \
+    LRC_ITEM(idle, IDLE, 1406) 
 
+class LRC
+{
+  public:
+    enum eButton
+    {
+#define LRC_ITEM(t,e,r) e,
+        LRC_ITEMS
+#undef LRC_ITEM        
+    };    
+    struct sButton
+    {
+        const char* name;
+        eButton button;
+        int resistance;
+    };
+  private:
+    static constexpr int BUTTON_COUNT{19};
+    static constexpr sButton buttons[BUTTON_COUNT]
+    {
+#define LRC_ITEM(t,e,r) {#t, e, r},
+        LRC_ITEMS
+#undef LRC_ITEM        
+    };
+  public:
+    static const sButton& getButton(int r)
+    {
+        const sButton* result = buttons;
+        for (int i=0;i<BUTTON_COUNT;i++)
+        {
+            if (abs(buttons[i].resistance - r) < 20)
+            {
+                result = buttons+i;
+                break;
+            }
+        }
+
+        return *result;
+    }
+};
 //                           888          888 
 //                           888          888 
 //                           888          888 
@@ -161,6 +229,7 @@ class ExpressionPedal : public ResponsiveAnalogRead
 
     static constexpr float UNSTABLE{42.0f}, THRESHOLD{0.01f},
                            EXPR_MIN{-0.5f}, EXPR_MAX{0.5f};
+    static constexpr uint8_t ALESIS_GAIN{79};
     float getStableValue(int n, int d);
     int   gainSeek(float lower, float upper);
     float scaleValue(float val)
@@ -169,11 +238,26 @@ class ExpressionPedal : public ResponsiveAnalogRead
         return constrain(mapped, -1.0f, +1.0f);
     }
 
+    static constexpr float R4{1000.0f}, R5{1000.0f}, 
+                           openLRC{1406.0f}, softPot{10000.0f};
+    float calcLRCpullup(void)
+    {
+        float rPot = softPot * gain / 127;  // resistance soft pot is set to
+        ampGain = 1.0f + (rPot + R4)/R5;    // resulting gain of op-amp circuit
+        float lrcCounts = raw / ampGain;    // counts we'd get without that gain
+        LRCpullup = (float) ADCmax2*2 / lrcCounts * openLRC - openLRC;
+
+        return LRCpullup;
+    }
+
     bool  isOK{false};
     int   ADCmax2; // half the maximum expected reading
     int   gain;
-    float raw, lastValue, lastResponsiveValue, smooth;
+    int   raw;
+    float lastValue, lastResponsiveValue, smooth;
     float scaleMin, scaleMax;
+    float LRCpullup{11111.0f}, // close, probably
+          ampGain{8.22}; // maybe
     
   public:
     ExpressionPedal(TwoWire& _wire, 
@@ -219,16 +303,28 @@ class ExpressionPedal : public ResponsiveAnalogRead
             vTaskDelay(1);
         (*pullupRS_IN)(!b); 
     }
+    float getLRCpullup(void) { return LRCpullup; }
+    float getLRCresistance(void)
+    {
+        return LRCpullup/((float) ADCmax2 / raw * 2.0f * ampGain - 1.0f);
+    }
     float getValue(void) {return lastValue; };
     float getResponsiveValue(void) { return lastResponsiveValue; }
-    float getRaw(void)   {return raw; };
+    int   getRaw(void)   {return raw; }; // truly raw: sum of multiple ADC readings
+    float rawToFloat(int r) { return (float) r / ADCmax2 - 1.0f; } // raw, but mapped to ±1.0f
     void  setSmooth(float s) { smooth = s; }
     float setValue(void);
-    void  setGain(uint8_t g) { mcp4018.setWiperByte(g); gain = g;}
+    void  setGain(uint8_t g) 
+    { 
+        Serial.printf("gain: %d\n", g);
+        mcp4018.setWiperByte(g); 
+        gain = g;
+    }
+    void  setAlesisLRCgain(void) { setGain(ALESIS_GAIN); }
     int   getGain(void) { return gain; }
     bool  isPressed(int footSwitch);
 
-    enum class eType {none, expression, singleSwitch, dualSwitch} type;
+    enum class eType {none, expression, singleSwitch, dualSwitch, alesisLRC} type;
     eType autoDetect(void);
     int   autoCalibrate(float target, float range = 0.05f);
     void  setScale(float min, float max) 
@@ -308,9 +404,21 @@ class GenericTask : public FaderMonsterTask
 //    888   "   888   888   888  .d88P  888   
 //    888       888 8888888 8888888P" 8888888 
 // 
+
+enum MIDI_e
+{
+    CTL_NOT_STRIP=-1,
+    CTL_POT=0, CTL_FADER, CTL_BUTTON,
+    // these are set thus to allow indexing the lastValues[] array!
+    CTL_PEDAL=NUM_POTS*NUM_STRIP_CONTROLS, CTL_SMARTKNOB, CTL_SCREEN_X, CTL_SCREEN_Y,
+    CTL_COUNT
+};
+
 struct MIDImessage
 {
-    int type, cmd,value;
+    int    strip;   // strip (0-7) or CTL_NOT_STRIP
+    MIDI_e control; // determines the control settings to use
+    float  value;   // ±1.0f, scaled according to control settings
 };
 
 class MIDItask : public FaderMonsterTask
@@ -339,6 +447,10 @@ class MIDItask : public FaderMonsterTask
     {}
     
     void run(void) override;
+    MIDIcontrolSetting& findSettings(MIDImessage& msg, FaderMonsterSettings& settings = faderMonsterSettings);
+    int toInt(MIDIcontrolSetting& ctl, float value);
+    static int lastValues[(int) CTL_COUNT];
+    int& lastSent(MIDImessage& msg);
     InterTaskRequest::Result sendMIDI(InterTaskRequest& req, MIDImessage& msg)
     {
         InterTaskRequest::Result result = InterTaskRequest::Result::done;
@@ -1044,7 +1156,8 @@ class PotsTask : public FaderMonsterTask
         {
             lastMIDI = 0; // try not to overwhelm Serial (for now)
             midiReqs[n].lastValue = newValue;
-            MIDImessage msg{42, (n+1)*111, newValue};
+            //              strip, control, value
+            MIDImessage msg{n, CTL_POT, allPots[n].getCurrent()};
             midiTask.sendMIDI(midiReqs[n].req, msg);
         }
     }

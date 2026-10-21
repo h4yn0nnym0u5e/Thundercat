@@ -494,7 +494,7 @@ class Textifier
             case MIDIcontrolType::CC:
             case MIDIcontrolType::RPN:
             case MIDIcontrolType::NRPN:
-                c(' ').i(ccNum);
+                c(' ').u(ccNum);
                 break;
 
             case MIDIcontrolType::NOTE:

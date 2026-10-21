@@ -164,6 +164,7 @@ class UIclass
     static constexpr float sa{2*18.0f}, ea{360.0f - 2*18.0f}; // TFT_eSPI has zero at 6 o'clock
     static constexpr int BUF_SIZE{MAX_TEXT_LEN};
     static constexpr int ARC_OFF{+22};
+    static constexpr int TITLE_HEIGHT{30};
     struct UIshared
     {
         int strip, control;
@@ -703,6 +704,7 @@ class ScribblePotArc : public UIclass
 
     bool setArc(float newValue)
         { return UIclass::setArc(newValue, lastPot); }
+        
     bool setArcLabel(void)
         {
             bool retVal{false};
@@ -1005,7 +1007,7 @@ class MainMIDIsettings : public UIclass
           drawingChannelNumSlider, drawingChannelNumLabel,
         } phase{idle};
     static constexpr int stripXspc{25}, ccYspc{24},
-                     ctlsPerStrip{3}, ctlX{230},
+                     ctlsPerStrip{NUM_STRIP_CONTROLS}, ctlX{230},
                      numCtlTypes{7}, // should pick this up somehow...
                      MIDIchX{20}, ctlTypeX{MIDIchX + 50}, ccNumX{ctlTypeX + 115};
     // strip select
@@ -1197,8 +1199,6 @@ enum {
 #undef MAIN_UI_ENTRY
     MAIN_UI_COUNT
 };
-
-//#define MAIN_UI_COUNT 6
 
 union MainUIholder
 {

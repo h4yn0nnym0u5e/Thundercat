@@ -201,17 +201,18 @@ void TouchADCtask::initTouch(void)
 //    888                                     
 //
 /**
- * Get pedal reading, scaled to ±1.0f
+ * Get pedal reading, in range ±1.0f but NOT scaled
+ * Updates raw, lastValue and lastResponsiveValue
  */
 float ExpressionPedal::setValue(void)
 {
     // get a new value, and scale it
     raw = (*ADCread)();
-    float newValue = (float) raw/ADCmax2 - 1.0f;
+    float newValue = rawToFloat(raw); // float version
 
     // feed the ResponsiveAnalogRead class, and use it to get a scaled value
     ResponsiveAnalogRead::update(raw);
-    lastResponsiveValue = (float) ResponsiveAnalogRead::getValue()/ADCmax2 - 1.0f;
+    lastResponsiveValue = rawToFloat(ResponsiveAnalogRead::getValue());
 
     // also do our own smoothing, in case we don't like ResponsiveAnalogRead
     if (fabs(newValue - lastValue) > 0.01f) // big jump, act quickly
@@ -229,8 +230,11 @@ float ExpressionPedal::setValue(void)
  */
 float ExpressionPedal::getStableValue(int n, int d)
 {
+    elapsedMillis em=0;
     float newVal, oldVal = UNSTABLE;
     bool ok = false;
+    int okCount = 0;
+
     while (n--)
     {
         newVal = setValue();
@@ -240,12 +244,19 @@ float ExpressionPedal::getStableValue(int n, int d)
             continue;
         }
 
-        newVal = raw / ADCmax2 - 1.0f; // use raw value for this, scaled one my be sluggish
+        newVal = rawToFloat(raw); // use raw value for this, smoothed one my be sluggish
+Serial.printf("%d: %d / %.3f ", (int) em, raw, newVal);        
         if (fabs(newVal - oldVal) <= THRESHOLD)
         {
-            ok = true;
-            break;
+            okCount++;
+            if (okCount > 5)
+            {
+                ok = true;
+                break;
+            }
         }
+        else 
+            okCount = 0;
         oldVal = newVal;
         vTaskDelay(d);            
     }
@@ -305,14 +316,33 @@ int ExpressionPedal::gainSeek(float lower, float upper)
             break;
         }
         gainStep /= 2;
-        gain += newVal > (upper + lower) / 2
+        gain += (newVal > (upper + lower) / 2)
                         ?gainStep
                         :-gainStep;
     } while (gainStep > 1);
 
     return result;
 }
-
+/*
+From https://scotttroyer.com/2019/06/alesis-adat-hd24-remote-control-pin-out/
+-----------------------------------------------------------------------------
+                    Measured
+Switch 	Button 	    Value (R) 	PCB Label
+N/A 	N/A 	    1406 	    (value read with no buttons pressed)
+S1 	    Auto Loop 	126 	    Auto Input
+S2 	    Locate 0 	279 	    Locate 1
+S3 	    Loop Start 	228 	    Locate 2
+S4 	    Loop End 	177 	    Auto 2>1
+S5 	    Rehearse 	76 	        All Input
+S6 	    Set Locate 	432 	    Set Locate
+S7 	    Punch In 	330 	    Locate 0
+S8 	    Punch Out 	381 	    Auto Play
+S9 	    Rewind 	    1107 	    Rewind
+S10 	F Fwd 	    1207 	    F Fwd
+S11 	Stop 	    1008 	    Stop
+S12 	Play 	    899 	    Play
+S13 	Record 	    1307 	    Rec
+*/
 /**
  * Auto-detect pedal type.
  * This should be called, after a suitable delay, when a pedal has been plugged in.
@@ -328,6 +358,16 @@ ExpressionPedal::eType ExpressionPedal::autoDetect(void)
     {
         if (!isPresent())
             break;
+        // quick hack...
+        setExprMode(false); // probe using switch mode
+        setGain(ALESIS_GAIN);
+        float newVal = getStableValue(30,10);
+        if (newVal > 0.8f && newVal < +0.9f)
+        {
+            result = eType::alesisLRC;
+            calcLRCpullup();
+            break;
+        }
 
         setExprMode(true); // probe using Expression mode
 
@@ -458,6 +498,13 @@ void TouchADCtask::run(void)
                 case ExpressionPedal::eType::dualSwitch:
                     pedalType = "Dual switch";
                     break;
+                
+                case ExpressionPedal::eType::alesisLRC:
+                    pedalType = "Alesis LRC";
+                    expressionPedal.setAlesisLRCgain();
+                    expressionPedal.setExprMode(false);
+                    Serial.printf("Rpullup = %.3fk\n", expressionPedal.getLRCpullup() / 1000.0f);
+                    break;
             }
             Serial.printf("[%u] %s pedal is present\n", micros(), pedalType);
         }
@@ -478,6 +525,26 @@ void TouchADCtask::run(void)
                     enablePedalPrint--;
                     if (0 == enablePedalPrint)
                         Serial.println("Pedal print stopped");
+                }
+            }
+
+            if (ExpressionPedal::eType::alesisLRC == expressionPedal.type)
+            {
+                static float lastRes = 1.0f;
+                float newRes = expressionPedal.getLRCresistance();
+
+                if (fabs(newRes - lastRes) > 20.0f)
+                {
+                    const LRC::sButton& button = LRC::getButton(newRes);
+                    if (LRC::eButton::INVALID != button.button)
+                    {
+                        Serial.printf("LRC resistance is %.1f (raw = %d); button is '%s'\n", 
+                                        newRes, 
+                                        expressionPedal.getRaw(),
+                                        button.name
+                                    );
+                        lastRes = newRes;
+                    }
                 }
             }
         }

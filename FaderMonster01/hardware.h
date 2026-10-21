@@ -50,15 +50,16 @@
 #define MAINLCD_BL USB_T_2
 #define MAINLCD_CS 2
 #define MAINLCD_DC 0
-#define MAINLCD_MISO 34
+#define MAINLCD_MISO 34 // not used for LCD, but is used for MRAM
 #define MAINLCD_MOSI 36
-#define MAINLCD_SCK 37
+#define MAINLCD_SCK  37
 
 #define MAINLCD_SPI FlexIOSPI
 #define MAINLCD_SPI_PINS MAINLCD_MOSI,MAINLCD_MISO,MAINLCD_SCK
 
 // Serial MIDI
-#define MIDI_TX 35
+#define MIDI_TX     35
+#define NOT_MIDI_RX 34
 
 #define MIDI_SERIAL Serial8
 
