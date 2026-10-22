@@ -347,6 +347,7 @@ bool SuperTask::processUI(void)
   {
     flipui = false; // this is kinda important!
     whichUI++;      // flip to the next UI
+    touchADCtask.tuningPedal = false; // assume this
     switch (whichUI)
     {
       default:
@@ -369,6 +370,7 @@ bool SuperTask::processUI(void)
 
       case MAIN_UI_MainExprTune:
         new(_ui.space) MainExprTune; 
+        touchADCtask.tuningPedal = true;
         break;
 
       case MAIN_UI_MainSceneLoad:

@@ -550,7 +550,7 @@ void TouchADCtask::run(void)
         }
 
         // Hacky way of setting expression pedal gain
-        if (3 == smartKnobTask.whichConfig)
+        if (3 == smartKnobTask.whichConfig && tuningPedal)
         {
             static int lastSKpos = 127;
             if (smartKnobTask.last_position != lastSKpos)

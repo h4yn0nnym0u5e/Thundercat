@@ -434,7 +434,8 @@ class MIDItask : public FaderMonsterTask
 
     InterTaskRequest::Result doSendMIDI(MIDImessage& msg, uint32_t reqTime);
     //------------------------------------------------------------------------
-    
+    static constexpr uint32_t senseInterval{300};
+    elapsedMillis sensingTimer{0};
   public:
     MIDItask(const char* _name, 
               configSTACK_DEPTH_TYPE _stackDepth, 
@@ -738,6 +739,7 @@ class TouchADCtask : public FaderMonsterTask
 
     uint32_t enablePedalPrint{0};//{10};
     ExpressionPedal& expressionPedal;
+    bool tuningPedal{false}; // true if UI is set to "tuning pedal"
 };
 
 

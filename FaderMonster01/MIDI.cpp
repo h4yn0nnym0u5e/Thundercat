@@ -117,16 +117,17 @@ InterTaskRequest::Result MIDItask::doSendMIDI(MIDImessage& msg, uint32_t reqTime
     if (last != toSend)
     {
         uint8_t MIDIch = ctl.channel+1; // MIDI library uses 1-based channels
-        //* test code
+        /* test code
         t.cc(ctl.controlType, ctl.controlNum).toTarget();
         Serial.printf("[%lu]: MIDI: channel %d, cmd = %s, value = %d; took %luus ",
                     micros(),        MIDIch,    buf,      toSend,     took);
         //*/ 
         
         // actual MIDI!
+        bool resetSensing = true;
         switch (ctl.controlType)
         {
-            default: Serial.print('?'); break;
+            default: Serial.print('?'); resetSensing = false; break;
 
             case MIDIcontrolType::CC:   SerialMIDI.sendControlChange(ctl.controlNum, toSend, MIDIch); break;
             case MIDIcontrolType::PC:   SerialMIDI.sendProgramChange(toSend, MIDIch); break;
@@ -136,6 +137,8 @@ InterTaskRequest::Result MIDItask::doSendMIDI(MIDImessage& msg, uint32_t reqTime
 //            case MIDIcontrolType::NRPN:
             case MIDIcontrolType::BEND: SerialMIDI.sendPitchBend(toSend, MIDIch); break;
         }
+        if (resetSensing)
+            sensingTimer = 0;
         
         last = toSend; 
         Serial.println();                   
@@ -151,19 +154,17 @@ void MIDItask::run(void)
     // pin mode, which we almost certainly don't want to occur          //
     //////////////////////////////////////////////////////////////////////
 
-    int count=0, toSend=0;
     while (1)
     {
         requestPayload payload;
         uint32_t reqTime;
         if (pdPASS == reqQueue.getPayload(payload, 10, &reqTime)) // got MIDI message
             doSendMIDI(payload.message, reqTime);
-        if (--count < 0)
+
+        if (sensingTimer >= senseInterval)
         {
-            count = 9;
-            if (++toSend > 127)
-                toSend = 0;
-            SerialMIDI.sendControlChange(1, toSend, 3);
+            sensingTimer = 0;
+            SerialMIDI.sendActiveSensing();
         }
     }
 }
