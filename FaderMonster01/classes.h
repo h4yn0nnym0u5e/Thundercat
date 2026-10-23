@@ -257,7 +257,9 @@ class ExpressionPedal : public ResponsiveAnalogRead
     float lastValue, lastResponsiveValue, smooth;
     float scaleMin, scaleMax;
     float LRCpullup{11111.0f}, // close, probably
-          ampGain{8.22}; // maybe
+          ampGain{8.22}, // maybe
+          lastRes{1.0f};
+    int resCount{0};          
     
   public:
     ExpressionPedal(TwoWire& _wire, 
@@ -306,7 +308,23 @@ class ExpressionPedal : public ResponsiveAnalogRead
     float getLRCpullup(void) { return LRCpullup; }
     float getLRCresistance(void)
     {
-        return LRCpullup/((float) ADCmax2 / raw * 2.0f * ampGain - 1.0f);
+        float result = LRCpullup/((float) ADCmax2 / raw * 2.0f * ampGain - 1.0f);
+        if (fabs(result - lastRes) > 20.0f)
+            resCount++;
+        else 
+            resCount = 0;            
+        return result;
+    }
+    bool isNewLRCbutton(void)
+    {
+        bool result = false;
+        if (resCount > 2)
+        {
+            result = true;
+            lastRes = getLRCresistance();
+            resCount = 0;
+        }
+        return result;
     }
     float getValue(void) {return lastValue; };
     float getResponsiveValue(void) { return lastResponsiveValue; }
@@ -316,7 +334,7 @@ class ExpressionPedal : public ResponsiveAnalogRead
     float setValue(void);
     void  setGain(uint8_t g) 
     { 
-        Serial.printf("gain: %d\n", g);
+    // Serial.printf("gain: %d\n", g);
         mcp4018.setWiperByte(g); 
         gain = g;
     }
@@ -452,6 +470,7 @@ class MIDItask : public FaderMonsterTask
     int toInt(MIDIcontrolSetting& ctl, float value);
     static int lastValues[(int) CTL_COUNT];
     int& lastSent(MIDImessage& msg);
+    bool sendRaw(float value, MIDIreq& midiReq, int n, MIDI_e ctlSource);
     InterTaskRequest::Result sendMIDI(InterTaskRequest& req, MIDImessage& msg)
     {
         InterTaskRequest::Result result = InterTaskRequest::Result::done;
@@ -695,6 +714,7 @@ class TouchADCtask : public FaderMonsterTask
     void initTouch(void);
     void updateTouch(void);
     void pollTouch(void);
+    void pollPedal(void);
     void updateKeyStatuses(touchChipDriverWire& touch);
 
   public:
@@ -737,6 +757,10 @@ class TouchADCtask : public FaderMonsterTask
     }
     UBaseType_t messagesWaiting(void) { return reqQueue.messagesWaiting(); }
 
+    //------------------------------------------------------------------------
+    bool pedalPresent{false};
+    elapsedMillis em, detectEm;
+    MIDIreq pedalMIDIreq;
     uint32_t enablePedalPrint{0};//{10};
     ExpressionPedal& expressionPedal;
     bool tuningPedal{false}; // true if UI is set to "tuning pedal"
@@ -1107,12 +1131,7 @@ class StripTask : public FaderMonsterTask
  */
 class PotsTask : public FaderMonsterTask
 { 
-    //! record of MIDI request sent for each pot
-    static struct MIDIreq
-    {
-        InterTaskRequest req; //!< request status
-        int lastValue;        //!< last-sent value
-    } midiReqs[NUM_POTS];
+    static MIDIreq midiReqs[NUM_POTS];
 
     static ContinuousPot allPots[NUM_POTS]; //!< status for all pots
     static StripTask* stripTasks[NUM_POTS]; //!< pointers to strip tasks that "own" each pot
@@ -1148,20 +1167,10 @@ class PotsTask : public FaderMonsterTask
     //! Also sends a MIDI message if the value is different from the previous one.
     void notifyOwner(int n) //!< pot instance index
     { 
-        static elapsedMillis lastMIDI = 0;
         if (nullptr != stripTasks[n]) 
             stripTasks[n]->potChanged(); 
 
-        // this will actually use scene settings...
-        int newValue = (int) roundf(allPots[n].getCurrent() * 10000.0f);
-        if (midiReqs[n].lastValue != newValue && lastMIDI >= 10)
-        {
-            lastMIDI = 0; // try not to overwhelm Serial (for now)
-            midiReqs[n].lastValue = newValue;
-            //              strip, control, value
-            MIDImessage msg{n, CTL_POT, allPots[n].getCurrent()};
-            midiTask.sendMIDI(midiReqs[n].req, msg);
-        }
+        midiTask.sendRaw(allPots[n].getCurrent(), midiReqs[n], n, CTL_POT);
     }
 
     // debug stuff
@@ -1229,6 +1238,7 @@ class SmartKnobTask : public FaderMonsterTask
     SmartKnobConfigStackEntry configStack[SK_CONFIG_STACK_SIZE];
     int configStackPointer{0};
     bool configChangePending{false};
+    MIDIreq midiReq;
     //------------------------------------------------------------------------
 
   public:

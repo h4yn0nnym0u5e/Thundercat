@@ -1,7 +1,6 @@
 #include "header.h"
 
-//extern digital_pin_bitband_and_config_table_struct* digital_pin_to_info_PGM;
-static void setDriveStrength(void)
+[[maybe_unused]] static void setDriveStrength(void)
 {
 	const struct digital_pin_bitband_and_config_table_struct *p;
     uint8_t pin = MIDI_TX;
@@ -19,9 +18,8 @@ void MIDIbegin(void)
 {
     SerialMIDI.begin();
     pinMode(NOT_MIDI_RX,arduino::INPUT); // restore Rx to normal operation
-    setDriveStrength();
-    SerialMIDI.sendNoteOff(0x42, 0x12, 1);
-
+    //setDriveStrength();
+    //SerialMIDI.sendNoteOff(0x42, 0x12, 1);
 }
 
 //================================================================
@@ -108,7 +106,6 @@ InterTaskRequest::Result MIDItask::doSendMIDI(MIDImessage& msg, uint32_t reqTime
 {
     MIDIcontrolSetting& ctl = findSettings(msg);
     //*
-    uint32_t took = micros() - reqTime;
     char buf[20];
     Textifier t{buf,20};
     int& last = lastSent(msg);
@@ -117,7 +114,9 @@ InterTaskRequest::Result MIDItask::doSendMIDI(MIDImessage& msg, uint32_t reqTime
     if (last != toSend)
     {
         uint8_t MIDIch = ctl.channel+1; // MIDI library uses 1-based channels
+
         /* test code
+        uint32_t took = micros() - reqTime;
         t.cc(ctl.controlType, ctl.controlNum).toTarget();
         Serial.printf("[%lu]: MIDI: channel %d, cmd = %s, value = %d; took %luus ",
                     micros(),        MIDIch,    buf,      toSend,     took);
@@ -135,16 +134,49 @@ InterTaskRequest::Result MIDItask::doSendMIDI(MIDImessage& msg, uint32_t reqTime
             case MIDIcontrolType::NOTE: SerialMIDI.sendNoteOn(ctl.controlNum, toSend, MIDIch); break;
 //            case MIDIcontrolType::RPN:
 //            case MIDIcontrolType::NRPN:
-            case MIDIcontrolType::BEND: SerialMIDI.sendPitchBend(toSend, MIDIch); break;
+            case MIDIcontrolType::BEND: SerialMIDI.sendPitchBend(toSend + 8192, MIDIch); break;
         }
         if (resetSensing)
             sensingTimer = 0;
         
         last = toSend; 
-        Serial.println();                   
+//        Serial.println();                   
     }                    
     //*/
     return InterTaskRequest::Result::done;
+}
+
+
+// Send raw ±1.0 reading: MIDI task will use 
+// scene settings to convert appropriately.
+// We don't send changes of less than 1 part in 10,000; the MIDI
+// task may decimate further depending on whether it's sending
+// MIDI 1.0 or MIDI 2.0 messages.
+bool MIDItask::sendRaw(float value, MIDIreq& midiReq, int n, MIDI_e ctlSource)
+{
+    bool result = false;
+
+    int newValue = (int) roundf(value * 10000.0f);
+    if (midiReq.lastValue != newValue)
+    {
+        if (midiReq.lastTime >= 1000)
+        {
+            midiReq.lastTime = 0; // try not to overwhelm Serial (for now)
+            midiReq.lastValue = newValue;
+            //              strip, control, value
+            MIDImessage msg{n, ctlSource, value};
+            midiTask.sendMIDI(midiReq.req, msg);
+            midiReq.isPending = false;
+            result = true;
+        }
+        else // TODO: actually send pending reading!
+        {
+            midiReq.isPending = true;                
+            midiReq.pendingValue = value;
+        }
+    }
+
+    return result;
 }
 
 void MIDItask::run(void)

@@ -90,7 +90,10 @@ void SmartKnobTask::packetHandler(const uint8_t* buffer, size_t size)
             last_sub_position = smooth_sub_position;
             report.isInteger = false;
             if (lastConfigChange >= suspendFor)
+            {
                 superTask.sendSmartKnobReport(toSuper, report, 0);
+                midiTask.sendRaw(last_sub_position, midiReq, -1, CTL_SMARTKNOB);
+            }
         }
     }
     else // integer result
@@ -294,7 +297,7 @@ void SmartKnobTask::run(void)
     knobSerial.setStream(&SK_SERIAL);
     knobSerial.setPacketHandler(knobPacketHandler);
 
-    knobSendConfig(configs[0]); // send initial config
+    knobSendConfig(configs[2]); // send initial config
     Serial.printf("[%lu] SmartKnob ready\n", micros());
 
     while (1)

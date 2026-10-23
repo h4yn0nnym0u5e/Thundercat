@@ -426,13 +426,113 @@ int ExpressionPedal::autoCalibrate(float target, float range)
 //    Y88b.  888  888      X88 888 "88b 
 //     "Y888 "Y888888  88888P' 888  888 
 // 
+void TouchADCtask::pollPedal(void)
+{
+    // detect change of pedal
+    if (expressionPedal.isPresent() != pedalPresent)
+    {
+        pedalPresent = !pedalPresent;
+        if (pedalPresent)
+            detectEm = 0;
+        else 
+            Serial.println("Pedal unplugged");                
+    }
+
+    // detect newly plugged-in pedal
+    if (detectEm > 1000 && detectEm < 2000)
+    {
+        const char* pedalType = "No";
+
+        detectEm = 2000;
+        expressionPedal.autoDetect();
+        switch (expressionPedal.type)
+        {
+            default:
+                pedalType = "None (?)";
+                break;
+            
+            case ExpressionPedal::eType::expression:
+                pedalType = "Expression";
+                break;
+            
+            case ExpressionPedal::eType::singleSwitch:
+                pedalType = "Single switch";
+                break;
+            
+            case ExpressionPedal::eType::dualSwitch:
+                pedalType = "Dual switch";
+                break;
+            
+            case ExpressionPedal::eType::alesisLRC:
+                pedalType = "Alesis LRC";
+                expressionPedal.setAlesisLRCgain();
+                expressionPedal.setExprMode(false);
+                Serial.printf("Rpullup = %.3fk\n", expressionPedal.getLRCpullup() / 1000.0f);
+                break;
+        }
+        Serial.printf("[%u] %s pedal is present\n", micros(), pedalType);
+    }
+
+    // get new value, if any, and process it
+    if (expressionPedal && abdma1.interrupted())
+    {
+        static float raw;
+        static int updateCount = 0;
+        raw = expressionPedal.setValue();
+        updateCount++;
+        midiTask.sendRaw(expressionPedal.getScaled(), pedalMIDIreq, -1, CTL_PEDAL);
+
+        // debug: print pedal value occasionally
+        if (em >= 250)    
+        {
+            em = 0;
+            if (enablePedalPrint > 0)
+            {
+                Serial.printf("[%u] %d, Expr: %.3f; gain %d\n", micros(), updateCount, raw, expressionPedal.getGain());
+                enablePedalPrint--;
+                if (0 == enablePedalPrint)
+                    Serial.println("Pedal print stopped");
+            }
+        }
+
+        // debug: process LRC button change
+        if (ExpressionPedal::eType::alesisLRC == expressionPedal.type)
+        {
+            float newRes = expressionPedal.getLRCresistance();
+
+            if (expressionPedal.isNewLRCbutton())
+            {
+                const LRC::sButton& button = LRC::getButton(newRes);
+                if (LRC::eButton::INVALID != button.button)
+                {
+                    Serial.printf("LRC resistance is %.1f (raw = %d); button is '%s'\n", 
+                                    newRes, 
+                                    expressionPedal.getRaw(),
+                                    button.name
+                                );
+                }
+            }
+        }
+    }
+
+    // Hacky way of setting expression pedal gain
+    if (3 == smartKnobTask.whichConfig && tuningPedal)
+    {
+        static int lastSKpos = 127;
+        if (smartKnobTask.last_position != lastSKpos)
+        {
+            lastSKpos = smartKnobTask.last_position;
+            expressionPedal.setGain(lastSKpos / 2);
+            // Serial.printf("Set expr pot to 0x%02X\n", lastSKpos / 2);
+        }
+    }
+}
+
 void TouchADCtask::run(void)
 {
     uint32_t whichISR = 0;
     vTaskDelay(150);
     initTouch();
-    bool pedalPresent{false};
-    elapsedMillis em, detectEm;
 
     adc = new ADC();
     adc->adc0->setAveraging(8); // set number of averages
@@ -465,101 +565,7 @@ void TouchADCtask::run(void)
         pollTouch(); // generate state outputs, e.g. time long presses
         mainBacklight.update();
         scribbleBacklight.update();
-
-        if (expressionPedal.isPresent() != pedalPresent)
-        {
-            pedalPresent = !pedalPresent;
-            if (pedalPresent)
-                detectEm = 0;
-            else 
-                Serial.println("Pedal unplugged");                
-        }
-
-        if (detectEm > 1000 && detectEm < 2000)
-        {
-            const char* pedalType = "No";
-
-            detectEm = 2000;
-            expressionPedal.autoDetect();
-            switch (expressionPedal.type)
-            {
-                default:
-                    pedalType = "None (?)";
-                    break;
-                
-                case ExpressionPedal::eType::expression:
-                    pedalType = "Expression";
-                    break;
-                
-                case ExpressionPedal::eType::singleSwitch:
-                    pedalType = "Single switch";
-                    break;
-                
-                case ExpressionPedal::eType::dualSwitch:
-                    pedalType = "Dual switch";
-                    break;
-                
-                case ExpressionPedal::eType::alesisLRC:
-                    pedalType = "Alesis LRC";
-                    expressionPedal.setAlesisLRCgain();
-                    expressionPedal.setExprMode(false);
-                    Serial.printf("Rpullup = %.3fk\n", expressionPedal.getLRCpullup() / 1000.0f);
-                    break;
-            }
-            Serial.printf("[%u] %s pedal is present\n", micros(), pedalType);
-        }
-
-        if (expressionPedal && abdma1.interrupted())
-        {
-            static float raw;
-            static int updateCount = 0;
-            raw = expressionPedal.setValue();
-            updateCount++;
-
-            if (em >= 250)    
-            {
-                em = 0;
-                if (enablePedalPrint > 0)
-                {
-                    Serial.printf("[%u] %d, Expr: %.3f; gain %d\n", micros(), updateCount, raw, expressionPedal.getGain());
-                    enablePedalPrint--;
-                    if (0 == enablePedalPrint)
-                        Serial.println("Pedal print stopped");
-                }
-            }
-
-            if (ExpressionPedal::eType::alesisLRC == expressionPedal.type)
-            {
-                static float lastRes = 1.0f;
-                float newRes = expressionPedal.getLRCresistance();
-
-                if (fabs(newRes - lastRes) > 20.0f)
-                {
-                    const LRC::sButton& button = LRC::getButton(newRes);
-                    if (LRC::eButton::INVALID != button.button)
-                    {
-                        Serial.printf("LRC resistance is %.1f (raw = %d); button is '%s'\n", 
-                                        newRes, 
-                                        expressionPedal.getRaw(),
-                                        button.name
-                                    );
-                        lastRes = newRes;
-                    }
-                }
-            }
-        }
-
-        // Hacky way of setting expression pedal gain
-        if (3 == smartKnobTask.whichConfig && tuningPedal)
-        {
-            static int lastSKpos = 127;
-            if (smartKnobTask.last_position != lastSKpos)
-            {
-                lastSKpos = smartKnobTask.last_position;
-                expressionPedal.setGain(lastSKpos / 2);
-                // Serial.printf("Set expr pot to 0x%02X\n", lastSKpos / 2);
-            }
-        }
+        pollPedal();
 
         if (countBits)
         {

@@ -25,7 +25,7 @@ ContinuousPot PotsTask::allPots[NUM_POTS]
   };
 
 StripTask* PotsTask::stripTasks[NUM_POTS]{nullptr};
-PotsTask::MIDIreq PotsTask::midiReqs[NUM_POTS];
+MIDIreq PotsTask::midiReqs[NUM_POTS];
 
 static const int potMap[] = POT_MAP;
 
@@ -283,11 +283,20 @@ void PotsTask::updateADCs(void)
 
 
 // set up continuous pots in a consistent manner
-static void CPsetup(ContinuousPot& cp)
+static void CPsetup(ContinuousPot& cp, int range = 10000)
 {
+  if (10000 == range)
+  {
     cp.applyLimits(true);
     cp.setAccel(0.05f, 10.0f);
     cp.setScale(0.2f);
+  }
+  else
+  {
+    cp.applyLimits(true);
+    cp.setAccel(0.05f, 10.0f);
+    cp.setScale(1.0f);
+  }
 }
 
 /*
@@ -310,7 +319,7 @@ void PotsTask::run(void)
   bank.autoRst();                       // reset auto sequence
 
   for (int i=0;i<NUM_POTS;i++)
-    CPsetup(allPots[i]);
+    CPsetup(allPots[i], 127);
 
   // We use a PeriodicTimer to fire off an
   // interrupt / DMA controlled sequence of reads...

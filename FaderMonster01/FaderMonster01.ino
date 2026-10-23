@@ -200,8 +200,8 @@ InterTaskRequest::Result SuperTask::doProcessSmartKnob(void* pSKreport)
           flipUI(skReport.position);
         }
       }
-      else
-        Serial.printf("[%lu] : Position: %.3f\n", skReport.ms, skReport.sub_position);
+      //else
+      //  Serial.printf("[%lu] : Position: %.3f\n", skReport.ms, skReport.sub_position);
   }
 
   return InterTaskRequest::Result::done;
@@ -621,25 +621,6 @@ void SuperTask::loopFn(void)
           // request load and wait for it to complete
           sprintf(fileName, "scene-%c.csv", n);
           loadSettings(fileName);
-          /*
-          while (saveSettingsRequest.isBusy())
-            vTaskDelay(5);
-
-          // update strip colours  
-          uint8_t doneFlags = 0;
-          while (doneFlags != 0xFF)
-          {
-            int i = random(8);
-            uint8_t flag = 1<<i;
-            if (0 == (doneFlags & flag))
-            {
-              if (InterTaskRequest::Result::failed != StripTask::getStripTask(i).tftColourChanged())
-                doneFlags |= flag;
-              Serial.printf("%d ... ", i);
-            }
-          }
-          Serial.println();
-          */
         }
       }
         break;
@@ -827,8 +808,8 @@ void setup()
   /*
   pinMode(DBG1, arduino::OUTPUT);
   pinMode(DBG2, arduino::OUTPUT);
-  Serial8.begin(2'000'000);
-  pinMode(34,arduino::INPUT);
+  //Serial8.begin(2'000'000);
+  //pinMode(34,arduino::INPUT);
   pinMode(DBG3, arduino::OUTPUT);
   //*/
 

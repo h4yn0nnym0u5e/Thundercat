@@ -710,6 +710,9 @@ class ScribblePotArc : public UIclass
             bool retVal{false};
             StripControls& ctls = getStripControls();
             Textifier t{lastText, MAX_TEXT_LEN};
+            int ccValue = (lastPot + 1.0f)/2.0f
+                        *(ctls.pot.maxVal - ctls.pot.minVal+0.99f) 
+                        + ctls.pot.minVal;
 
             switch (ctls.pot.controlType)
             {
@@ -720,14 +723,12 @@ class ScribblePotArc : public UIclass
                     retVal = UIclass::setFloat(currentTrigger.trigger.potValue, lastText, sizeof lastText);
                     break;
 
-                case MIDIcontrolType::CC:
                 case MIDIcontrolType::PC:
+                    ccValue++; // program numbers are shown as 1 - 128
+                case MIDIcontrolType::CC:
                 case MIDIcontrolType::AT:
                 case MIDIcontrolType::NOTE:
                 {
-                    int ccValue = (lastPot + 1.0f)/2.0f
-                                *(ctls.pot.maxVal - ctls.pot.minVal+0.99f) 
-                                + ctls.pot.minVal;
                     retVal = t.i(ccValue).setPadding(pSprite).toTarget();
                     if (retVal)
                     {

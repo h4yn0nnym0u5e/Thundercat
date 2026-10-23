@@ -215,6 +215,15 @@ struct SmartKnobConfigStackEntry
     PB_SmartKnobConfig config;
 };
 
+//! record of MIDI request sent for each controller
+struct MIDIreq
+{
+    InterTaskRequest req;   //!< request status
+    int lastValue;          //!< last-sent value (float * 10000)
+    elapsedMicros lastTime; //!< time since last sent
+    float pendingValue;     //!< value if we couldn't send it
+    bool  isPending{false};
+};
 
 //     .d888                  888             
 //    d88P"                   888             
