@@ -63,8 +63,8 @@ stripsConfig.controls.0.fader.minVal, 0x0
 stripsConfig.controls.0.fader.maxVal, 0x7F
 stripsConfig.controls.0.fader.channel, 0x0
 stripsConfig.controls.0.pot.controlType, 0x7
-stripsConfig.controls.0.pot.controlNum, 0x2
-stripsConfig.controls.0.pot.name, "<unnamed>"
+stripsConfig.controls.0.pot.controlNum, 0x48
+stripsConfig.controls.0.pot.name, "Boing"
 stripsConfig.controls.0.pot.minVal, 0x0
 stripsConfig.controls.0.pot.maxVal, 0x7F
 stripsConfig.controls.0.pot.channel, 0x5
@@ -83,7 +83,7 @@ stripsConfig.controls.1.fader.maxVal, 0x7F
 stripsConfig.controls.1.fader.channel, 0x0
 stripsConfig.controls.1.pot.controlType, 0x6
 stripsConfig.controls.1.pot.controlNum, 0x2
-stripsConfig.controls.1.pot.name, "<unnamed>"
+stripsConfig.controls.1.pot.name, "Touchy"
 stripsConfig.controls.1.pot.minVal, 0x0
 stripsConfig.controls.1.pot.maxVal, 0x7F
 stripsConfig.controls.1.pot.channel, 0x0
@@ -102,7 +102,7 @@ stripsConfig.controls.2.fader.maxVal, 0x7F
 stripsConfig.controls.2.fader.channel, 0x0
 stripsConfig.controls.2.pot.controlType, 0x5
 stripsConfig.controls.2.pot.controlNum, 0x2
-stripsConfig.controls.2.pot.name, "<unnamed>"
+stripsConfig.controls.2.pot.name, "Patch"
 stripsConfig.controls.2.pot.minVal, 0x0
 stripsConfig.controls.2.pot.maxVal, 0x7F
 stripsConfig.controls.2.pot.channel, 0x6
@@ -121,7 +121,7 @@ stripsConfig.controls.3.fader.maxVal, 0x7F
 stripsConfig.controls.3.fader.channel, 0x0
 stripsConfig.controls.3.pot.controlType, 0x4
 stripsConfig.controls.3.pot.controlNum, 0x2
-stripsConfig.controls.3.pot.name, "<unnamed>"
+stripsConfig.controls.3.pot.name, "Bendr"
 stripsConfig.controls.3.pot.minVal, 0x0
 stripsConfig.controls.3.pot.maxVal, 0x7F
 stripsConfig.controls.3.pot.channel, 0x0
@@ -140,7 +140,7 @@ stripsConfig.controls.4.fader.maxVal, 0x7F
 stripsConfig.controls.4.fader.channel, 0x0
 stripsConfig.controls.4.pot.controlType, 0x5
 stripsConfig.controls.4.pot.controlNum, 0x2
-stripsConfig.controls.4.pot.name, "<unnamed>"
+stripsConfig.controls.4.pot.name, "stuff"
 stripsConfig.controls.4.pot.minVal, 0x0
 stripsConfig.controls.4.pot.maxVal, 0x7F
 stripsConfig.controls.4.pot.channel, 0x8
@@ -159,7 +159,7 @@ stripsConfig.controls.5.fader.maxVal, 0x7F
 stripsConfig.controls.5.fader.channel, 0x0
 stripsConfig.controls.5.pot.controlType, 0x3
 stripsConfig.controls.5.pot.controlNum, 0x12
-stripsConfig.controls.5.pot.name, "<unnamed>"
+stripsConfig.controls.5.pot.name, "Narp"
 stripsConfig.controls.5.pot.minVal, 0x0
 stripsConfig.controls.5.pot.maxVal, 0x7F
 stripsConfig.controls.5.pot.channel, 0x0
@@ -178,7 +178,7 @@ stripsConfig.controls.6.fader.maxVal, 0x7F
 stripsConfig.controls.6.fader.channel, 0x0
 stripsConfig.controls.6.pot.controlType, 0x2
 stripsConfig.controls.6.pot.controlNum, 0x2A
-stripsConfig.controls.6.pot.name, "<unnamed>"
+stripsConfig.controls.6.pot.name, "Rupert"
 stripsConfig.controls.6.pot.minVal, 0x0
 stripsConfig.controls.6.pot.maxVal, 0x7F
 stripsConfig.controls.6.pot.channel, 0x0
@@ -197,7 +197,7 @@ stripsConfig.controls.7.fader.maxVal, 0x7F
 stripsConfig.controls.7.fader.channel, 0x0
 stripsConfig.controls.7.pot.controlType, 0x1
 stripsConfig.controls.7.pot.controlNum, 0x7
-stripsConfig.controls.7.pot.name, "<unnamed>"
+stripsConfig.controls.7.pot.name, "Cecilia"
 stripsConfig.controls.7.pot.minVal, 0x0
 stripsConfig.controls.7.pot.maxVal, 0x7F
 stripsConfig.controls.7.pot.channel, 0x0

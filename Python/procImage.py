@@ -34,7 +34,11 @@ fnl = [
     "keycap54_tick.png",
     "radio_button_20.png",
     "fader_button.png",
-    "button_button.png"
+    "button_button.png",
+    "xctl_button_22.png",
+    "yctl_button_22.png",
+    "pedal_button_22.png",
+    "smartknob_button_22.png",
 ]
 
 # ofn = "images.cpp"

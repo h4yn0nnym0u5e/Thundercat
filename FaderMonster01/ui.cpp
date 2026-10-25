@@ -532,8 +532,8 @@ bool UIradioButton::draw(TFT_eSprite* pSprite)
             case setHit:
             case setLatched:
                 UIclass::makeCmap(cmap,selectedColour,colours.bg);
-                cmap[15] = colours.fg;
-                cmap[14] = TFT_eSPI::alphaBlend(128, colours.fg, selectedColour);
+                cmap[15] = colours.txt;
+                cmap[14] = TFT_eSPI::alphaBlend(128, colours.txt, selectedColour);
                 state = drawnLatched; // radio buttons can only be latched
                 break;
 
@@ -556,7 +556,7 @@ bool UIradioButton::draw(TFT_eSprite* pSprite)
 
 /**
  * Process a touch to see if it's selected a different radio button in a set.
- * If so, the button states will be set reay for the re-draw.
+ * If so, the button states will be set ready for the re-draw.
  * \return true if radio button set has changed
  */
 WHICHMEM
@@ -582,22 +582,32 @@ bool UIradioButton::processTouch(UIradioButton* buttons, int count, GTPoint& tou
  * \return true if it wasn't active before
  */
 WHICHMEM
-bool UIradioButton::setActive(UIradioButton* buttons, int count, int which)
+bool UIradioButton::setActive(UIradioButton* buttons,   //!< array of buttons to update
+                              int count,                //!< number of buttons in array
+                              int which)                //!< button to set active, or -1 for all inactive
 {
     bool result = false;
 
-    if (which >= 0 && !buttons[which].isActive()) // new active button
+    // should be just one active, but let's be defensive
+    // set all active buttons to normal
+    for (int j=0;j<count;j++)
     {
-        // should be just one active, but let's be defensive
-        // set all active buttons to normal
-        for (int j=0;j<count;j++)
+        if (j != which && buttons[j].isActive())
         {
-            if (j != which && buttons[j].isActive())
-                buttons[j].forceNormal();
+            buttons[j].setInactive();
+            result = true;
         }
-        buttons[which].setActive();
-        result = true;
     }
+
+    if (which >= 0)
+    {
+        if (!buttons[which].isActive()) // new active button
+        {
+            buttons[which].setActive();
+            result = true;
+        }
+    }
+
     return result;
 }
 
@@ -2112,7 +2122,7 @@ UIclass::State MainMIDIsettings::begin(TFT_eSprite& sprite, colours_t c)
     State result = State::push;
     UIclass::begin(sprite, c); // do standard setup
     setColours<UIradioButton>(ctlTypeButtons, numCtlTypes, c);
-    setColours<UIradioButton>(ctlSelectButtons, ctlsPerStrip, c);
+    setColours<UIradioButton>(ctlSelectButtons, numCtlSrcs, c);
     selectStrip(uiShared.strip,uiShared.control); // initialises pControl
     if (nullptr != uiShared.text)
     {
@@ -2150,12 +2160,9 @@ UIclass::State MainMIDIsettings::begin(TFT_eSprite& sprite, colours_t c)
     drawAll(pSprite, stripSelectButtons, NUM_POTS);
 
     // Strip control selection ---------------------------------
-    drawAll(pSprite, ctlSelectButtons, ctlsPerStrip);
+    drawAll(pSprite, ctlSelectButtons, numCtlSrcs);
 
     // Sliders
-    //ccNumSlider.setColours(c);
-    //ccNumSlider.setFont(FontSetter::SLIDER_LABEL);
-
     {
         Textifier t{ccNumText, 10};
         setCCnumLabel(t);
@@ -2239,12 +2246,12 @@ UIclass::State MainMIDIsettings::update(Trigger trigger)
                     result = State::next;
                     phase = pollStrips;
                 }
-                // control select radio buttons: pot / fader / button
-                else if (UIradioButton::processTouch(ctlSelectButtons, ctlsPerStrip, newPt))
+                // control source radio buttons: pot / fader / button / pedal / X / Y / SmartKnob
+                else if (UIradioButton::processTouch(ctlSelectButtons, numCtlSrcs, newPt))
                 {
                     selectStrip(stripSelectButtons[0].getActive(), ctlSelectButtons[0].getActive());
                     result = State::next;
-                    phase = pollSelect;
+                    phase = pollStrips; // source can change strip selection (on/off)
                 }
                 // CC number, if relevant
                 else if (ccNumSlider.isIn(newPt))
@@ -2332,8 +2339,8 @@ UIclass::State MainMIDIsettings::update(Trigger trigger)
                         break;
 
                 case pollSelect:
-                    result = UIradioButton::processDraw(pSprite, ctlSelectButtons, ctlsPerStrip);
-                    if (State::done == result)  // done pot / fader / button selection change...
+                    result = UIradioButton::processDraw(pSprite, ctlSelectButtons, numCtlSrcs);
+                    if (State::done == result)  // done pot / fader / button / ... selection change...
                         phase = pollCtls;       // ...they may have resulted in control button changes
                     else                        
                         break;

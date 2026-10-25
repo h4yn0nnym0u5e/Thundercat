@@ -396,10 +396,16 @@ public:
     virtual bool draw(TFT_eSprite* pSprite);
     bool isActive(void) { return 0 != (groupFlags & (1<<buttonNum));}
     void setActive(void) { state = setLatched; groupFlags = 1<<buttonNum; }
+    void setInactive(void) { forceNormal(); groupFlags &= ~(1<<buttonNum); }
     static bool processTouch(UIradioButton* buttons, int count, GTPoint& touch);
     static UIclass::State processDraw(TFT_eSprite* pSprite, UIradioButton* buttons, int count);
     static bool setActive(UIradioButton* buttons, int count, int which);
-    int getActive(void) { return 31 - __builtin_clz(groupFlags); }
+    int getActive(void) 
+    { 
+        return 0 != groupFlags
+                 ?(31 - __builtin_clz(groupFlags))
+                 :-1; 
+    }
 };
 //==================================================================
 //             888 d8b      888                  
@@ -1008,9 +1014,10 @@ class MainMIDIsettings : public UIclass
           drawingChannelNumSlider, drawingChannelNumLabel,
         } phase{idle};
     static constexpr int stripXspc{25}, ccYspc{24},
-                     ctlsPerStrip{NUM_STRIP_CONTROLS}, ctlX{230},
+                     ctlsPerStrip{NUM_STRIP_CONTROLS}, numCtlSrcs{ctlsPerStrip+4},
                      numCtlTypes{7}, // should pick this up somehow...
-                     MIDIchX{20}, ctlTypeX{MIDIchX + 50}, ccNumX{ctlTypeX + 115};
+                     ctlSrcX{20}, ctlSrcY{62}, ctlSrcdY{25},
+                     MIDIchX{ctlSrcX+25+20}, ctlTypeX{MIDIchX + 50}, ccNumX{ctlTypeX + 115};
     // strip select
 #define FMS_SC(n) faderMonsterSettings.stripsConfig.colours[n].scribble, \
                   faderMonsterSettings.stripsConfig.colours[n].scribble.fg
@@ -1034,7 +1041,7 @@ class MainMIDIsettings : public UIclass
     uint32_t groupFlags{0};
     UIradioButton ctlTypeButtons[numCtlTypes]  
     {
-        {buttonColours, rimColour, groupFlags, 0, ctlTypeX, 70, 80, 22, (char*) MIDIcontrolNames[1]}, // top left button
+        {buttonColours, rimColour, groupFlags, 0, ctlTypeX, ctlSrcY, 80, 22, (char*) MIDIcontrolNames[1]}, // top left button
         {buttonColours, rimColour, groupFlags, 1, 0,0,0,0, (char*) MIDIcontrolNames[2]}, 
         {buttonColours, rimColour, groupFlags, 2, 0,0,0,0, (char*) MIDIcontrolNames[3]}, 
         {buttonColours, rimColour, groupFlags, 3, 0,0,0,0, (char*) MIDIcontrolNames[4]}, 
@@ -1045,11 +1052,15 @@ class MainMIDIsettings : public UIclass
 
 
     uint32_t midiCtlFlags{0};
-    UIradioButton ctlSelectButtons[ctlsPerStrip]  
+    UIradioButton ctlSelectButtons[numCtlSrcs]  
     {
-        {buttonColours, rimColour, midiCtlFlags, 0, ctlX + 00, 35, 22, 22, nullptr, },
-        {buttonColours, rimColour, midiCtlFlags, 1, ctlX + 25, 35, 22, 22, nullptr, fader_button_info},
-        {buttonColours, rimColour, midiCtlFlags, 2, ctlX + 50, 35, 22, 22, nullptr, button_button_info},
+        {buttonColours, rimColour, midiCtlFlags, 0, ctlSrcX, ctlSrcY + ctlSrcdY*0, 22, 22, nullptr, },
+        {buttonColours, rimColour, midiCtlFlags, 1, ctlSrcX, ctlSrcY + ctlSrcdY*1, 22, 22, nullptr, fader_button_info},
+        {buttonColours, rimColour, midiCtlFlags, 2, ctlSrcX, ctlSrcY + ctlSrcdY*2, 22, 22, nullptr, button_button_info},
+        {buttonColours, rimColour, midiCtlFlags, 3, ctlSrcX, ctlSrcY + ctlSrcdY*3, 22, 22, nullptr, pedal_button_22_info},
+        {buttonColours, rimColour, midiCtlFlags, 4, ctlSrcX, ctlSrcY + ctlSrcdY*4, 22, 22, nullptr, smartknob_button_22_info},
+        {buttonColours, rimColour, midiCtlFlags, 5, ctlSrcX, ctlSrcY + ctlSrcdY*5, 22, 22, nullptr, xctl_button_22_info},
+        {buttonColours, rimColour, midiCtlFlags, 6, ctlSrcX, ctlSrcY + ctlSrcdY*6, 22, 22, nullptr, yctl_button_22_info}
     };
 
     void initSlider(UIslider& s, Textifier& t)
@@ -1156,17 +1167,24 @@ class MainMIDIsettings : public UIclass
     virtual InterTaskRequest& writeToDisplay(void) { return writeToMainLCD(); }
     void selectStrip(int n, int which = 0) 
     { 
+        if (which < 3 && n < 0) // no current strip, but selected a strip control source
+            n = 0;
+
         uiShared.strip = n;
         uiShared.control = which;
         StripControls& ctls = faderMonsterSettings.stripsConfig.controls[n];
 
-        UIradioButton::setActive(stripSelectButtons, NUM_POTS, n);
-        UIradioButton::setActive(ctlSelectButtons, ctlsPerStrip, which);
+        UIradioButton::setActive(stripSelectButtons, NUM_POTS, which<4?n:-1);
+        UIradioButton::setActive(ctlSelectButtons, numCtlSrcs, which);
         switch (which)
         {
             case 0: pControl = &ctls.pot; break;
             case 1: pControl = &ctls.fader; break;
             case 2: pControl = &ctls.button; break;
+            case 3: pControl = &faderMonsterSettings.miscControls.pedal; break;
+            case 4: pControl = &faderMonsterSettings.miscControls.smartknob; break;
+            case 5: pControl = &faderMonsterSettings.miscControls.touchX; break;
+            case 6: pControl = &faderMonsterSettings.miscControls.touchY; break;
         }
         UIradioButton::setActive(ctlTypeButtons, numCtlTypes, 
                                  (int) pControl->controlType - 1);
