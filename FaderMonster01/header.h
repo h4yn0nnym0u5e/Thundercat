@@ -19,6 +19,7 @@
 
 #define CONCAT(a,b,c) a##b##c
 
+#include "buildinfo.h"
 #include "hardware.h"
 #include "config.h"
 #include "crc32.h"

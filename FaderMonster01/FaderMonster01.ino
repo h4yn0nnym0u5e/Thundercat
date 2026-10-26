@@ -53,6 +53,30 @@ uint16_t* allocateDMAbuffer(int w, int h)
 }
 
 //================================================================
+#if defined(LIBRARY_LIST) // we have the hacky build recipe!
+struct LibInfo 
+{
+  const char *lib,*path,*version,*sha,*branch;
+  int modified;
+};
+
+struct SketchInfo 
+{
+  const char *path,*sha,*branch;
+  int modified;
+};
+
+
+LibInfo libinfo[]{
+#define LIBRARY_ENTRY(lib,path,version,sha,branch,mod) {lib,path,version,sha,branch,mod},
+  LIBRARY_LIST
+#undef LIBRARY_ENTRY
+};
+
+SketchInfo sketchInfo{SKETCH_INFO};
+#endif // defined(LIBRARY_LIST)
+
+//================================================================
 void cycleLED(elapsedMillis& em, int& colour, int ring, int led)
 {
   if (em >= 250)
@@ -794,15 +818,25 @@ void setup()
     SET_BIT(POWER_LED, 0);
   }
     
-  //pinMode(arduino::LED_BUILTIN, arduino::OUTPUT);
-  //digitalWrite(arduino::LED_BUILTIN,1);
 
   Serial.print("\n\n*************************************************************");
   Serial.printf("\n[%lu]\n" __FILE_NAME__ "; Teensyduino %.2f; " __DATE__ " " __TIME__ "\n", micros(), (float) TEENSYDUINO / 100.0f);
+#if defined(LIBRARY_LIST)
+  Serial.printf("branch: %s; SHA: %s%s\n", sketchInfo.branch, sketchInfo.sha, sketchInfo.modified?"; modified":"");
+#endif // defined(LIBRARY_LIST)
   {
     char buf[11];
     getSerialNumber(buf);
     Serial.printf("Teensy serial number is: %s\n", buf);
+
+#if defined(LIBRARY_LIST)
+    Serial.println("Libraries:");
+    for (int i=0;i<COUNT_OF(libinfo);i++)
+      Serial.printf("%22s @ %-12s; %30s (%7s%s)\n", 
+                    libinfo[i].lib, libinfo[i].version,
+                    libinfo[i].branch, libinfo[i].sha,
+                  libinfo[i].modified?"*":" ");
+#endif // defined(LIBRARY_LIST)
   }
   // debug pins for scope:
   /*
