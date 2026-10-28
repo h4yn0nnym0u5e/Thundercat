@@ -1,6 +1,8 @@
 
 #include "header.h"
 
+#define WHICHMEM FLASHMEM
+
 // AT42QT2120 touch sensor on fader caps:
 static AT42QT2120_Wire fadersWire{FADERS_TOUCH_I2C, FADERS_TOUCH_ADDR};
 static touchChipDriverWire fadersTouch{fadersWire, 0xFF0};
@@ -104,6 +106,7 @@ static void isrTouch(void)
 }
 
 
+WHICHMEM
 void TouchADCtask::updateKeyStatuses(touchChipDriverWire& touch)
 {
   int keyNum;

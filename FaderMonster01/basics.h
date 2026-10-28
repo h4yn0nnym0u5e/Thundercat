@@ -2,6 +2,19 @@
 #define _BASICS_H_
 
 // Essentials needed for various classes
+//=================================================
+// Hacky information functions
+struct LibInfo 
+{
+  const char *lib,*path,*version,*sha,*branch;
+  int modified;
+};
+
+struct SketchInfo 
+{
+  const char *path,*sha,*branch;
+  int modified;
+};
 
 //=================================================
 //#if !defined(constrain)

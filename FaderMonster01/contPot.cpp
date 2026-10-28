@@ -20,6 +20,7 @@ static int offset;
 #define DBG(x) if (debug) { offset += sprintf(dbgBuffer+offset, " %.6f ", x); }
 #define NL if (debug) { offset += sprintf(dbgBuffer+offset, "\n"); dbgWritten = true; offset = 0; }
 
+FLASHMEM
 float ContinuousPot::update(float a1, float a2)
 {
   float oldVal = current; // used to check if we've changed the value

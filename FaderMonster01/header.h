@@ -19,7 +19,6 @@
 
 #define CONCAT(a,b,c) a##b##c
 
-#include "buildinfo.h"
 #include "hardware.h"
 #include "config.h"
 #include "crc32.h"
@@ -32,6 +31,7 @@
 #include "contPot.h"
 #include "Touches.h"
 #include "basics.h" // #includes settings.h
+#include "buildinfo.h"
 extern FaderMonsterSettings faderMonsterSettings; // needed for UI
 #include "ui.h"
 #include "classes.h"

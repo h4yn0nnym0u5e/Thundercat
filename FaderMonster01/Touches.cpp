@@ -5,6 +5,7 @@
 #include "header.h"
 #include <Wire.h>
 
+#define WHICHMEM FLASHMEM
 /*
 AT42QT2120_Wire potsWire{POTS_TOUCH_I2C, POTS_TOUCH_ADDR};
 /*/
@@ -218,6 +219,7 @@ static void isrTouch(void)
 }
 
 
+WHICHMEM
 void TouchTask::updateKeyStatuses(touchChipDriverAsync& touch)
 {
   int keyNum;
