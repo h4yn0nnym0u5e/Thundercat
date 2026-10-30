@@ -367,9 +367,9 @@ enum class MIDIcontrolType : int
 
 #define TO_OFFSET_LEAF(mbr, typ) \
         { int mbrlen = strlen(#mbr); \
-        result.getter = get##typ; result.setter = set##typ;    \
         if (0 == strncmp(str, #mbr, mbrlen) && ('.' == str[mbrlen]  || 0 == str[mbrlen])) \
             { result.offset = (char*) &mbr - (char*) this; consumed += mbrlen+1; str += mbrlen;\
+              result.getter = get##typ; result.setter = set##typ;    \
                 break; }}
 
 #define TO_OFFSET_ARRAY(mbr) \

@@ -349,7 +349,13 @@ class ExpressionPedal : public ResponsiveAnalogRead
     { 
         if (max - min > 0.1f)
         {
-            scaleMin = min; scaleMax = max; 
+            scaleMin = min; scaleMax = max;
+
+            // prepare for re-start values save
+            faderMonsterLast.pedalSettings.gain     = gain; 
+            faderMonsterLast.pedalSettings.scaleMin = min; 
+            faderMonsterLast.pedalSettings.scaleMax = max; 
+
             Serial.printf("Scaling set: %.3f - %.3f\n", scaleMin, scaleMax);
         }
     }
@@ -708,7 +714,8 @@ class TouchADCtask : public FaderMonsterTask
     RequestQueue<TouchADCtask, requestPayload> reqQueue;
 
     InterTaskRequest::Result doCalibrateTouch(void*);
-    InterTaskRequest faderTouchReq;
+    InterTaskRequest::Result doPedalSettings(void*);
+    InterTaskRequest saveSettingsReq;
     //------------------------------------------------------------------------
 
     void initTouch(void);
@@ -743,6 +750,14 @@ class TouchADCtask : public FaderMonsterTask
         RequestQueue<TouchADCtask, requestPayload>::queueEntry entry{&req, payload};
         return reqQueue.request(entry);
     }
+    
+    InterTaskRequest::Result setPedalSettings(InterTaskRequest& req, PedalSettings& settings)
+    {
+        requestPayload payload{&TouchADCtask::doPedalSettings, &settings};
+        RequestQueue<TouchADCtask, requestPayload>::queueEntry entry{&req, payload};
+        return reqQueue.request(entry);
+    }
+    
     //------------------------------------------------------------------------
     
     touchChipDriverWire& touchChip;
@@ -756,6 +771,7 @@ class TouchADCtask : public FaderMonsterTask
         return TouchStatus::whichTouch(tch, keyStatuses);
     }
     UBaseType_t messagesWaiting(void) { return reqQueue.messagesWaiting(); }
+    void saveSettings(void);
 
     //------------------------------------------------------------------------
     bool pedalPresent{false};
@@ -890,7 +906,7 @@ class MainLCDtask : public FaderMonsterTask
     TFT_TYPE& tft;
     TFT_eSprite& sprite;
     //TFT_TYPE* ptft;
-    InterTaskRequest updateDirtyReq;
+    InterTaskRequest updateDirtyReq, miscReq;
     bool initComplete;
     bool loadWasManual;
     uint16_t* DMAbuffer;
@@ -1283,16 +1299,22 @@ class SmartKnobTask : public FaderMonsterTask
  */
 class Settings
 {
-    static offsetResult testToOffset(char* str);
+    static offsetResult testToOffset(char* str, CfgBaseOffset& cfgbo);
     static void testToCSV(Stream& s,
-               CfgBaseOffset& cfgbo, //!< structure to save
-               char* buf,            //!< text buffer: must be big enough!
-               const int bufOff=0);  //!< where to append
-    static void loadFromCSV(File& s,
-               CfgBaseOffset& cfgbo); //!< structure to load)
+                        CfgBaseOffset& cfgbo, //!< structure to save
+                        char* buf,            //!< text buffer: must be big enough!
+                        const int bufOff=0);  //!< where to append
+    static int loadFromCSV(File& s,
+                        CfgBaseOffset& cfgbo); //!< structure to load)
   public:
-    static void save(Stream& s);
-    static void load(File& s, FaderMonsterSettings& f);
+    static void save(Stream& s, CfgBaseOffset& f);
+    static int  load(File& s, CfgBaseOffset& f);
+    static char* safe_strncpy(char* dst, const char* src, size_t num)
+    {
+        strncpy(dst, src, num-1);
+        dst[num-1] = 0; // what should have been the case for the original
+        return dst;
+    }
 };
 
 #endif // !defined(_CLASSES_H_)

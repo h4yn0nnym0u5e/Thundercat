@@ -1921,6 +1921,7 @@ UIclass::State MainExprTune::update(Trigger trigger)
                     if (set.isLifted())
                     {
                         touchADCtask.expressionPedal.setScale(min+0.003f, max-0.003f);
+                        touchADCtask.saveSettings();
                     }
                     phase = pollButtons;
                 }  

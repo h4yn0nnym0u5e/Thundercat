@@ -72,6 +72,21 @@ d1 = {
             {"type": "MiscControls", "name": "miscControls", "doc": "settings for miscellaneous MIDI controls"},
             {"type": "TFTcolours", "name": "mainColours", "doc": "settings for main LCD"}
         ],
+
+    "PedalSettings": 
+        [
+            "pedal settings",
+            {"type": "int", "name": "gain", "doc": "gain (raw digital pot value)"},
+            {"type": "float", "name": "scaleMin", "doc": "minimum expected ADC value"},
+            {"type": "float", "name": "scaleMax", "doc": "maximum expected ADC value"},
+        ],
+
+    "FaderMonsterLast": 
+        [
+            "record of last selected items",
+            {"type": "char", "name": "scene",  "default": '"scene-0.csv"', "count": "-MAX_NAME_LENGTH", "doc": "selected scene file name"}, # char array, but treated as one item
+            {"type": "PedalSettings", "name": "pedalSettings", "doc": "pedal settings"},
+        ],
 }
 
 types = set()
@@ -96,7 +111,8 @@ defValues = {'MIDIcontrolType': 'MIDIcontrolType::CC',
              'pattern_t': '0', 
              'int': '0', 
              'uint16_t': '0', 
-             'char': '0'}
+             'char': '0',
+             'float': '0.0f'}
 
 def listToMembers(l,td):
     global types
@@ -173,8 +189,9 @@ def dictToClasses(d):
             const = ""
             if "" != sep and "" != defaults[i]:
                 defv = f" = {defaults[i].strip('{}')}"
-                if "char" == memberTypes[i]:
-                    const = "const "
+
+            if "char" == memberTypes[i]:
+                const = "const "
                     
             if "" == sizes[i]: # generate init code fragment
                 params += f"{sep}{const}{memberTypes[i]} _{names[i]}{defv}"
@@ -182,7 +199,10 @@ def dictToClasses(d):
                 initSep = ", "
             else: # can't initialize arrays - do in code
                 params += f"{sep}{const}{memberTypes[i]} _{names[i]}[{sizes[i]}]{defv}"
-                initCode += f"      for (int i = 0; i < {sizes[i]}; i++) {names[i]}[i] = _{names[i]}[i];\n"
+                if "char"  == memberTypes[i]:
+                    initCode += f"      strncpy({names[i]}, _{names[i]}, {sizes[i]}); {names[i]}[{sizes[i]} - 1] = '0';\n"
+                else:                    
+                    initCode += f"      for (int i = 0; i < {sizes[i]}; i++) {names[i]}[i] = _{names[i]}[i];\n"
             sep = ", "
 
         s += myAdd(f"    {t}({params})") # constructor with parameters
@@ -317,6 +337,8 @@ printInitBraces(d1, "FaderMonsterSettings")
 myPrint("\n#endif\n")
 myPrint("/*")
 printAllPaths(d1,"FaderMonsterSettings","") # creates leaves and setTypes
+myPrint("")
+printAllPaths(d1,"FaderMonsterLast","") # more (?) leaves and setTypes
 myPrint("")
 myPrint(sorted(setTypes, key = str.lower))
 myPrint("")

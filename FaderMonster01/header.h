@@ -33,6 +33,7 @@
 #include "basics.h" // #includes settings.h
 #include "buildinfo.h"
 extern FaderMonsterSettings faderMonsterSettings; // needed for UI
+extern FaderMonsterLast faderMonsterLast;
 #include "ui.h"
 #include "classes.h"
 

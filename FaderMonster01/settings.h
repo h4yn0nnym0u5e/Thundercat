@@ -6,7 +6,7 @@
 
 #define TO_OFFSET_LEAF_ARRAY(...)
 
-// types: ['cfgButtonLED', 'cfgRingLEDs', 'FaderMonsterSettings', 'MIDIcontrolSetting', 'MiscControls', 'StripColours', 'StripControls', 'StripSettings', 'TFTcolours']
+// types: ['cfgButtonLED', 'cfgRingLEDs', 'FaderMonsterLast', 'FaderMonsterSettings', 'MIDIcontrolSetting', 'MiscControls', 'PedalSettings', 'StripColours', 'StripControls', 'StripSettings', 'TFTcolours']
 #if 0
 { {
      {{ /* colour, */ /* pattern, */}, { /* colour, */}, { /* fg, */ /* bg, */ /* txt, */}, }, 
@@ -99,9 +99,15 @@ uint16_t mainColours.fg
 uint16_t mainColours.bg
 uint16_t mainColours.txt
 
-['char', 'int', 'MIDIcontrolType', 'pattern_t', 'uint16_t']
+char scene
+pedalSettings
+int pedalSettings.gain
+float pedalSettings.scaleMin
+float pedalSettings.scaleMax
 
-51 leaves:
+['char', 'float', 'int', 'MIDIcontrolType', 'pattern_t', 'uint16_t']
+
+55 leaves:
 "stripsConfig.colours.1.ringLEDs.colour", // 0
 "stripsConfig.colours.1.ringLEDs.pattern", // 1
 "stripsConfig.colours.1.buttonLED.colour", // 2
@@ -153,12 +159,17 @@ uint16_t mainColours.txt
 "mainColours.fg", // 48
 "mainColours.bg", // 49
 "mainColours.txt", // 50
+"scene", // 51
+"pedalSettings.gain", // 52
+"pedalSettings.scaleMin", // 53
+"pedalSettings.scaleMax", // 54
 
 */
 //========================================
 union settingsTypes
 {
     char char_value;
+    float float_value;
     int int_value;
     MIDIcontrolType MIDIcontrolType_value;
     pattern_t pattern_t_value;
@@ -166,12 +177,14 @@ union settingsTypes
 };
 
 extern bool setchar(void* dst, const char* src);
+extern bool setfloat(void* dst, const char* src);
 extern bool setint(void* dst, const char* src);
 extern bool setMIDIcontrolType(void* dst, const char* src);
 extern bool setpattern_t(void* dst, const char* src);
 extern bool setuint16_t(void* dst, const char* src);
 
 extern bool getchar(char* dst, void* src);
+extern bool getfloat(char* dst, void* src);
 extern bool getint(char* dst, void* src);
 extern bool getMIDIcontrolType(char* dst, void* src);
 extern bool getpattern_t(char* dst, void* src);
@@ -276,7 +289,7 @@ class MIDIcontrolSetting : public CfgBaseOffset
     const char* getName(int n) { return n<0?className:memberNames[n]; }
     MIDIcontrolSetting(MIDIcontrolType _controlType, int _controlNum = 2, const char _name[MAX_NAME_LENGTH] = "<unnamed>", int _minVal = 0, int _maxVal = 127, int _channel = 0)
     : controlType{_controlType}, controlNum{_controlNum}, minVal{_minVal}, maxVal{_maxVal}, channel{_channel}    {
-      for (int i = 0; i < MAX_NAME_LENGTH; i++) name[i] = _name[i];
+      strncpy(name, _name, MAX_NAME_LENGTH); name[MAX_NAME_LENGTH - 1] = '0';
     }
     MIDIcontrolSetting() {}
 
@@ -466,6 +479,70 @@ class FaderMonsterSettings : public CfgBaseOffset
             TO_OFFSET(stripsConfig);
             TO_OFFSET(miscControls);
             TO_OFFSET(mainColours);
+        } while (0);
+        return result;
+    }
+};
+
+//! pedal settings
+class PedalSettings : public CfgBaseOffset
+{
+  public:
+    static constexpr const char* className{"PedalSettings"};
+    const char* getName(int n) { return n<0?className:memberNames[n]; }
+    PedalSettings(int _gain, float _scaleMin = 0.0f, float _scaleMax = 0.0f)
+    : gain{_gain}, scaleMin{_scaleMin}, scaleMax{_scaleMax} {}
+    PedalSettings() {}
+
+    int gain{0}; //!< gain (raw digital pot value)
+    float scaleMin{0.0f}; //!< minimum expected ADC value
+    float scaleMax{0.0f}; //!< maximum expected ADC value
+
+    static constexpr const char* memberNames[]{"gain", "scaleMin", "scaleMax"};
+    int getMemberCount(void) { return 3; }
+
+    //-------------------------------------------------
+    virtual offsetResult toOffset(const char* str, int& consume)
+    {
+        offsetResult result{-1, 1, 0, nullptr, nullptr}; // not found
+        [[maybe_unused]] int consumed = 0;
+        do
+        {
+            TO_OFFSET_LEAF(gain, int);
+            TO_OFFSET_LEAF(scaleMin, float);
+            TO_OFFSET_LEAF(scaleMax, float);
+        } while (0);
+        return result;
+    }
+};
+
+//! record of last selected items
+class FaderMonsterLast : public CfgBaseOffset
+{
+  public:
+    static constexpr const char* className{"FaderMonsterLast"};
+    const char* getName(int n) { return n<0?className:memberNames[n]; }
+    FaderMonsterLast(const char _scene[MAX_NAME_LENGTH], PedalSettings _pedalSettings)
+    : pedalSettings{_pedalSettings}    {
+      strncpy(scene, _scene, MAX_NAME_LENGTH); scene[MAX_NAME_LENGTH - 1] = '0';
+    }
+    FaderMonsterLast() {}
+
+    char scene[MAX_NAME_LENGTH]{"scene-0.csv"}; //!< selected scene file name
+    PedalSettings pedalSettings; //!< pedal settings
+
+    static constexpr const char* memberNames[]{"scene", "pedalSettings"};
+    int getMemberCount(void) { return 2; }
+
+    //-------------------------------------------------
+    virtual offsetResult toOffset(const char* str, int& consume)
+    {
+        offsetResult result{-1, 1, 0, nullptr, nullptr}; // not found
+        [[maybe_unused]] int consumed = 0;
+        do
+        {
+            TO_OFFSET_LEAF(scene, char);
+            TO_OFFSET(pedalSettings);
         } while (0);
         return result;
     }

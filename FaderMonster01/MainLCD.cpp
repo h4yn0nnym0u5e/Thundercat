@@ -225,8 +225,12 @@ InterTaskRequest::Result MainLCDtask::doUpdateDirty(void* pDisplay)
 }
 
 // record and restore last-used settings
-static const char* settingsRecord = "lastSettings.txt";
+static const char* settingsRecord = "lastSettings.csv";
 
+/**
+ * Record current settings for later restoration on re-boot.
+ * If the fileName is non-null it's used as the current scene filename
+ */
 WHICHMEM
 bool MainLCDtask::recordLastSetting(const char* fileName)
 {
@@ -236,11 +240,18 @@ taskENTER_CRITICAL();
 taskEXIT_CRITICAL();
   if (f)
   {
-    size_t nameLen = strlen(fileName);
+    if (nullptr == fileName)
+      fileName = "<pedal settings>";
+    else
+      Settings::safe_strncpy(faderMonsterLast.scene, fileName, sizeof faderMonsterLast.scene);
+
+    // write to the file
+    Settings::save(f, faderMonsterLast);
+
 taskENTER_CRITICAL();
-    f.write(fileName, nameLen+1); // write the terminating null character, too!
     f.close();
 taskEXIT_CRITICAL();
+
     Serial.printf("Wrote '%s' to '%s'\n", fileName, settingsRecord);
     result = true;
   }
@@ -256,24 +267,21 @@ taskENTER_CRITICAL();
 taskEXIT_CRITICAL();
   if (f)
   {
-    char buf[40];
+    int fields = Settings::load(f, faderMonsterLast);
 taskENTER_CRITICAL();
-    size_t len = f.read(buf, sizeof buf-1);
     f.close();
 taskEXIT_CRITICAL();
-    if (len > 0)
+    if (fields > 0)
     {
-      buf[len+1] = 0;
-   
       loadWasManual = false;
-      result = doLoadSettings(buf) == InterTaskRequest::Result::done;
+      result = doLoadSettings(faderMonsterLast.scene) == InterTaskRequest::Result::done;
     }
-    else
-      Serial.printf("Failed to read from %s\n", settingsRecord);
   }
 
-  return result;
+  if (!result)
+    Serial.printf("Failed to read from %s\n", settingsRecord);
 
+  return result;
 }
 
 // save settings to CSV file
@@ -281,26 +289,33 @@ WHICHMEM
 InterTaskRequest::Result MainLCDtask::doSaveSettings(void* _fileName)
 {
   const char* fileName = (char*) _fileName;
-  InterTaskRequest::Result result = InterTaskRequest::Result::failed;
+  bool ok = false;
 
-  Serial.printf("Save to '%s'\n", fileName);
-
-taskENTER_CRITICAL();
-  File f = FRAMfs.open(fileName,FILE_WRITE_BEGIN); // overwrite
-taskEXIT_CRITICAL();
-  if (f)
+  if (nullptr != fileName)
   {
-    Settings::save(f);
+    Serial.printf("Save to '%s'\n", fileName);
+
 taskENTER_CRITICAL();
-    f.truncate(f.position());
-    f.close();
+    File f = FRAMfs.open(fileName,FILE_WRITE_BEGIN); // overwrite
 taskEXIT_CRITICAL();
-    result = InterTaskRequest::Result::done;
-
-    recordLastSetting(fileName);
+    if (f)
+    {
+      Settings::save(f, faderMonsterSettings);
+taskENTER_CRITICAL();
+      f.truncate(f.position());
+      f.close();
+taskEXIT_CRITICAL();
+      ok = true;
+    }
   }
+  else
+    ok = true;
 
-  return result;
+  if (ok)
+    ok = recordLastSetting(fileName);
+
+  return ok ? InterTaskRequest::Result::done 
+            : InterTaskRequest::Result::failed;
 }
 
 // load settings from CSV file
@@ -604,6 +619,7 @@ taskEXIT_CRITICAL();
     }
     Serial.print("    "); // indent...
     restoreLastSetting(); // ...this!
+    touchADCtask.setPedalSettings(miscReq, faderMonsterLast.pedalSettings);
   }
   // ---------------------------------------------------------------------
 
@@ -611,6 +627,7 @@ taskEXIT_CRITICAL();
   Serial.printf("[%d] main LCD ready\n", micros());
   initComplete = true;
 }
+
 
 void MainLCDtask::run(void)
 {

@@ -418,6 +418,16 @@ int ExpressionPedal::autoCalibrate(float target, float range)
     return result;
 }
 
+InterTaskRequest::Result TouchADCtask::doPedalSettings(void* context)
+{
+    PedalSettings& settings = *(PedalSettings*) context;
+
+    expressionPedal.setScale(settings.scaleMin, settings.scaleMax);
+    expressionPedal.setGain(settings.gain);
+
+    return InterTaskRequest::Result::done;
+}
+
 //=========================================================================
 //
 //    888                      888      
@@ -429,6 +439,11 @@ int ExpressionPedal::autoCalibrate(float target, float range)
 //    Y88b.  888  888      X88 888 "88b 
 //     "Y888 "Y888888  88888P' 888  888 
 // 
+void TouchADCtask::saveSettings(void)
+{
+    mainLCDtask.saveSettings(saveSettingsReq, nullptr, 0); // just pedal stuff, scene is unchanged
+}
+
 void TouchADCtask::pollPedal(void)
 {
     // detect change of pedal
@@ -528,6 +543,12 @@ void TouchADCtask::pollPedal(void)
             expressionPedal.setGain(lastSKpos / 2);
             // Serial.printf("Set expr pot to 0x%02X\n", lastSKpos / 2);
         }
+    }
+
+    if (saveSettingsReq.isFinished()) // must have saved settings
+    {
+        Serial.printf("Save pedal settings %s\n", saveSettingsReq.isFailed()?"failed":"succeeded");
+        saveSettingsReq.setInactive();
     }
 }
 

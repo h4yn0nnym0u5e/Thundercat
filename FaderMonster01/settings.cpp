@@ -61,6 +61,15 @@ FLASHMEM bool setint(void* dst, const char* src)
   return ok;
 }
 
+//! floating point number
+FLASHMEM bool setfloat(void* dst, const char* src) 
+{ 
+  bool ok = false;
+  ok = sscanf(src, "%f", (float*) dst) == 1;
+
+  return ok;
+}
+
 /**
  * Set character array from source buffer.
  * Removes leading and trailing quotation marks if present.
@@ -105,6 +114,7 @@ FLASHMEM bool setuint16_t(void* dst, const char* src)
 //     "Y88P"                                                  
 // 
 FLASHMEM bool getint(char* dst, void* src) { sprintf(dst, "0x%X", *(int*) src); return false; }
+FLASHMEM bool getfloat(char* dst, void* src) { sprintf(dst, "%.5f", *(float*) src); return false; }
 FLASHMEM bool getchar(char* dst, void* src) { sprintf(dst, "\"%s\"", (char*) src); return false; }
 FLASHMEM bool getpattern_t(char* dst, void* src) 
 { 
@@ -132,10 +142,11 @@ FLASHMEM bool getuint16_t(char* dst, void* src) { sprintf(dst, "0x%04X", *(uint1
 //
 
 FLASHMEM
-offsetResult Settings::testToOffset(char* str)
+offsetResult Settings::testToOffset(char* str, CfgBaseOffset& cfgbo)
 {
-    FaderMonsterSettings* dummyFMS{&faderMonsterSettings}; // get a thing of a type
-    // char* base = (char*) dummyFMS;
+    //FaderMonsterSettings* dummyFMS{&faderMonsterSettings}; 
+    CfgBaseOffset* dummyFMS = &cfgbo; // get a thing of a type
+
     int dummy;
     offsetResult offsetS = dummyFMS->toOffset(str, dummy);
     /*
@@ -162,7 +173,7 @@ void Settings::testToCSV(Stream& s,
   if (0 == bufOff)
   {
 taskENTER_CRITICAL();
-    s.printf("\nCSV for %s settings\n", cfgbo.getName(-1));
+    s.printf("\nCSV for %s settings; %d items\n", cfgbo.getName(-1), mc);
 taskEXIT_CRITICAL();
   }
 
@@ -171,7 +182,7 @@ taskEXIT_CRITICAL();
     int dummy;
     const char* nm = cfgbo.getName(i);
     offsetResult ofs = cfgbo.toOffset(nm, dummy); // information on this member
-    //Serial.printf("%s has %d elements of size %d\n", nm, ofs.count, ofs.size);
+//Serial.printf("%s has %d elements of size %d\n", nm, ofs.count, ofs.size);
     for (int n=0;n<ofs.count;n++) // deal with array members
     {
       int newOff;
@@ -204,13 +215,14 @@ taskEXIT_CRITICAL();
 }
 
 FLASHMEM
-void Settings::loadFromCSV(File& s,
-                           CfgBaseOffset& cfgbo)
+int Settings::loadFromCSV(File& s,
+                          CfgBaseOffset& cfgbo)
 {
     [[maybe_unused]] char* base = (char*) &cfgbo;
     offsetResult offsetS;
     char buf[300];
     int offset = 0, avail = 0;
+    int result = -1; // total failure
 
     do 
     {
@@ -219,6 +231,7 @@ taskENTER_CRITICAL();
 taskEXIT_CRITICAL();
         char* comma = (char*) memchr(buf, ',', sizeof buf);
         char* eol   = (char*) memchr(buf, '\n', sizeof buf);
+
         if (nullptr == eol) // badly-formed file - give up
             break;
 
@@ -230,7 +243,7 @@ taskEXIT_CRITICAL();
 
             *comma = 0;                     // terminate the element path
             *eol = 0;                       // and the value
-            offsetS = testToOffset(buf);    // find the info about it
+            offsetS = testToOffset(buf, cfgbo);    // find the info about it
             if (nullptr != offsetS.setter)
             {
                 do
@@ -239,7 +252,10 @@ taskEXIT_CRITICAL();
                 } while (*comma == ' ' && comma < eol);
                 valueOK = offsetS.setter(&bitBucket, comma); // get the value
                 if (valueOK) // actually load to structure!
+                {
                     offsetS.setter(base + offsetS.offset, comma);
+                    if (0 == ++result) ++result;
+                }
                 offsetS.getter(valueAsString, &bitBucket);
             }
             if (offsetS.offset > 464'000) // how much to print
@@ -253,21 +269,23 @@ taskEXIT_CRITICAL();
         avail -= eol - buf + 1;       // how much we currently have
         if (avail < 5) break; // magic - 'n,1\n' could be a setting!
     } while (1);
+
+    return result; // count of fields loaded
 }
 
 FLASHMEM 
-void Settings::save(Stream& s)
+void Settings::save(Stream& s, CfgBaseOffset& f)
 {
     char buf[300];
     CSVlineCount = 0;
-    testToCSV(s, faderMonsterSettings, buf);
+    testToCSV(s, f, buf);
 taskENTER_CRITICAL();
     s.printf("// %d settings lines\n\n", CSVlineCount);
 taskEXIT_CRITICAL();
 }
 
 FLASHMEM 
-void Settings::load(File& s, FaderMonsterSettings& f)
+int Settings::load(File& s, CfgBaseOffset& f)
 {
-    loadFromCSV(s,f);
+    return loadFromCSV(s,f);
 }

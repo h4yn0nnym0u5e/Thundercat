@@ -33,6 +33,7 @@ static StripControls stripControls[8];
 static MiscControls miscControls;
 
 FaderMonsterSettings faderMonsterSettings{{stripColours,stripControls}, miscControls, mainColours};
+FaderMonsterLast faderMonsterLast{{"scene-1.csv"}, {66, -0.777f, +0.777f}};
 
 //================================================================
 // one source of truth on where / how to allocate a 
@@ -232,7 +233,7 @@ void pollPowerButton(void)
 
   if (isChanged)
   {
-    Serial.printf("Power button status is %d\n", e);
+// Serial.printf("Power button status is %d\n", e);
 
     switch (e)
     {
@@ -244,7 +245,7 @@ void pollPowerButton(void)
         {
           hadLongPress = true;
           SET_BIT(POWER_LED,0); // clear power LED B.1 output
-          Serial.println("Release to power off");
+          Serial.print("Release to power off");
         }
         break;
 
@@ -255,7 +256,7 @@ void pollPowerButton(void)
       case TouchStatus::eStatus::OFF: // released after power-up etc.
         if (hadLongPress)
         {
-          Serial.print("Off ... ");
+          Serial.print(" ... ");
           vTaskDelay(1000);
 
           Serial.print("6V ... ");
@@ -598,8 +599,10 @@ void SuperTask::loopFn(void)
           sprintf(fileName, "scene-%c.csv", n);
           mainLCDtask.saveSettings(saveSettingsRequest, fileName);
         }
+        else if ('x' == n)
+          Settings::save(Serial, faderMonsterLast);
         else
-          Settings::save(Serial);
+          Settings::save(Serial, faderMonsterSettings);
       }
         break;
 
