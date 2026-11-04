@@ -822,8 +822,8 @@ class MainTestScroller : public UIclass
     enum {idle, drawingScroll};
     void scrollUp(void);
     TFT_eSprite* anSpr;
-    static constexpr int lc{5}, lh{30}, // 6 lines, 30 pixels high
-              sx{20}, sy{55}, sw{100}, sh{lc*lh},
+    static constexpr int lc{7}, lh{26}, // 6 lines, 30 pixels high
+              sx{20}, sy{35}, sw{100}, sh{lc*lh},
               ah{(lc+2)*lh}; // height of animation sprite used area
     int scrollPos{0};
     void drawLineText(int n)
@@ -833,7 +833,7 @@ class MainTestScroller : public UIclass
         n = (n+lc/2) % (lc+2);
         anSpr->setTextPadding(sw);
         anSpr->drawString(buf,3,3+lh*n);
-Serial.printf("[%.3f]: %s @ %d\n", (float) millis() / 1000, buf, lh*n);
+// Serial.printf("[%.3f]: %s @ %d\n", (float) millis() / 1000, buf, lh*n);
     }
 
   public:

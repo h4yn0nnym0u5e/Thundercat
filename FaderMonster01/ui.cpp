@@ -972,10 +972,11 @@ UIclass::State MainTestScroller::begin(TFT_eSprite& sprite, colours_t c)
     anSpr->fillRect(0,0,sw,ah,colours.bg);
     anSpr->setTextColor(colours.txt, colours.bg, true);
     FontSetter::loadFont(*anSpr, FontSetter::RADIO_LABEL);
-Serial.println("-----------------");
-    for (int i=0;i<4;i++)
+
+// Serial.println("-----------------");
+    for (int i=0;i<(lc+2)/2+1;i++)
         drawLineText(i);
-Serial.println("-----------------");
+// Serial.println("-----------------");
 
     return State::push; // need to update display
 }
@@ -1032,16 +1033,13 @@ void MainTestScroller::scrollUp(void)
     // see if we need to put text in:
     if (0 == scrollPos % lh)
     {
-        int lineNum = scrollPos / lh + 4;
+        int lineNum = scrollPos / lh + (lc+2)/2+1;
         drawLineText(lineNum);
-        anSpr->drawFastHLine(0,ah-1,sw,TFT_RED);
-        anSpr->drawFastHLine(0,0   ,sw,TFT_GREEN);
-        anSpr->drawFastVLine(1,0   ,ah,TFT_ORANGE2);
     }
 
     // animation sprite has extra lines top and bottom
     // to allow for partially-visible lines
-    int topLine = (scrollPos+lh) % ah;
+    int topLine = (scrollPos) % ah;
     int botLine = topLine+sh;
     if (botLine <= ah) // can just blast animation sprite to screen
     {
@@ -1059,7 +1057,7 @@ void MainTestScroller::scrollUp(void)
 
     pSprite->resetViewport();
 
-    scrollPos += 2;;
+    scrollPos += 2; // increment MUST divide lh (line height) or Bad Stuff Happens!
 }
 
 
