@@ -359,9 +359,13 @@ bool SuperTask::processUI(void)
       case MAIN_UI_MainColourPicker:
         new(_ui.space) MainColourPicker; // placement new
         break;
-
+/*
       case MAIN_UI_MainTestRects:
         new(_ui.space) MainTestRects; 
+        break;
+*/
+      case MAIN_UI_MainTestScroller:
+        new(_ui.space) MainTestScroller; 
         break;
 
       case MAIN_UI_MainQwerty:

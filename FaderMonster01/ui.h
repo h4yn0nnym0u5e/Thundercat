@@ -807,6 +807,42 @@ class MainTestRects : public UIclass
     virtual uint32_t poll(void);
 };
 
+//==================================================================
+//                                      888 888                  
+//                                      888 888                  
+//                                      888 888                  
+//    .d8888b   .d8888b 888d888 .d88b.  888 888  .d88b.  888d888 
+//    88K      d88P"    888P"  d88""88b 888 888 d8P  Y8b 888P"   
+//    "Y8888b. 888      888    888  888 888 888 88888888 888     
+//         X88 Y88b.    888    Y88..88P 888 888 Y8b.     888     
+//     88888P'  "Y8888P 888     "Y88P"  888 888  "Y8888  888     
+// 
+class MainTestScroller : public UIclass 
+{
+    enum {idle, drawingScroll};
+    void scrollUp(void);
+    TFT_eSprite* anSpr;
+    static constexpr int lc{5}, lh{30}, // 6 lines, 30 pixels high
+              sx{20}, sy{55}, sw{100}, sh{lc*lh},
+              ah{(lc+2)*lh}; // height of animation sprite used area
+    int scrollPos{0};
+    void drawLineText(int n)
+    {
+        char buf[20];
+        sprintf(buf,"Line %d", n+1);
+        n = (n+lc/2) % (lc+2);
+        anSpr->setTextPadding(sw);
+        anSpr->drawString(buf,3,3+lh*n);
+Serial.printf("[%.3f]: %s @ %d\n", (float) millis() / 1000, buf, lh*n);
+    }
+
+  public:
+    virtual State begin(TFT_eSprite& sprite, colours_t c);
+    virtual State update(Trigger trigger);
+    virtual InterTaskRequest& writeToDisplay(void) { return writeToMainLCD(); }
+    virtual uint32_t poll(void);
+};
+
 //------------------------------------------------------------------
 //                     888                           8888888b.  d8b          888                       
 //                     888                           888   Y88b Y8P          888                       
@@ -1196,9 +1232,11 @@ class MainMIDIsettings : public UIclass
 //==================================================================
 class MainDummy : public UIclass {};
 
+//     MAIN_UI_ENTRY(MainTestRects, testRects)
+
 #define MAIN_UI_LIST \
     MAIN_UI_ENTRY(MainColourPicker, colourPicker) \
-    MAIN_UI_ENTRY(MainTestRects, testRects) \
+    MAIN_UI_ENTRY(MainTestScroller, testScroller) \
     MAIN_UI_ENTRY(MainQwerty, qwerty) \
     MAIN_UI_ENTRY(MainExprTune, expr) \
     MAIN_UI_ENTRY(MainSceneLoad, scene) \

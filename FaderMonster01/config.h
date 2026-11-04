@@ -81,6 +81,9 @@
 
 // ============== Main LCD ==============
 #define MAIN_TFT_ROTATION 1
+// animation sprite canvas size: 320x480 = 307,200 bytes (in PSRAM!)
+#define ANIMATION_WIDTH   320
+#define ANIMATION_HEIGHT  480
 
 #define TFT_ORANGE2      0xFD00      /* 255, 160,   0 */
 

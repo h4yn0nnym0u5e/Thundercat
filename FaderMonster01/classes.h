@@ -905,6 +905,7 @@ class MainLCDtask : public FaderMonsterTask
     // TFT-related stuff
     TFT_TYPE& tft;
     TFT_eSprite& sprite;
+    TFT_eSprite& animationSprite;
     //TFT_TYPE* ptft;
     InterTaskRequest updateDirtyReq, miscReq;
     bool initComplete;
@@ -939,10 +940,11 @@ class MainLCDtask : public FaderMonsterTask
             
               TFT_TYPE& _tft,
               TFT_eSprite& _spr,
+              TFT_eSprite& _aspr,
               int _queueLength)
     : FaderMonsterTask{_name, _stackDepth, _params, _priority},
       reqQueue{_queueLength},
-      tft{_tft}, sprite{_spr},
+      tft{_tft}, sprite{_spr}, animationSprite{_aspr},
       DMAbuffer{nullptr}
     {}
    
@@ -952,6 +954,7 @@ class MainLCDtask : public FaderMonsterTask
     void setDMAbuffer(uint16_t* buf) { DMAbuffer = buf; }
     bool tftInitComplete(void) { return initComplete; }
     TFT_eSprite& getSprite(void) { return sprite; }
+    TFT_eSprite& getAnimationSprite(void) { return animationSprite; }
 
     bool pauseOutput{false}; // temporary hack...
     bool zapScreen{false}; // as is this

@@ -16,6 +16,7 @@ FlexIOSPI SPIflex(MAINLCD_SPI_PINS, -1); // Setup on (int mosiPin, int misoPin, 
 
 static TFT_eSPI tft = TFT_eSPI(240,320,SPIflex,MAINLCD_CS);
 static TFT_eSprite sprite{&tft}; // sprite for off-screen rendering
+static TFT_eSprite animationSprite{&tft}; // sprite for animation
 
 LittleFS_SPIFram FRAMfs;
 
@@ -535,12 +536,15 @@ void MainLCDtask::init(void)
   sprite.getTFTarea(w,h);
   Serial.printf("Main LCD is %dx%d\n",w,h);
   sprite.createInPSRAM(true);
+  animationSprite.createInPSRAM(true);
 taskENTER_CRITICAL();
   sprite.createSprite(w,h);
+  animationSprite.createSprite(ANIMATION_WIDTH,ANIMATION_HEIGHT);
 taskEXIT_CRITICAL();
                 
   // basic settings
   sprite.setSpriteSwapBytes(true);
+  animationSprite.setSpriteSwapBytes(true);
   // ---------------------------------------------------------------------
   // Start the filesystem
   if (initFS())
@@ -656,5 +660,6 @@ void MainLCDtask::run(void)
 MainLCDtask mainLCDtask{"mainLCD", 768, nullptr, 
                         1,            // display updates are a fairly low priority
                         tft, sprite,  // actual tft and sprite objects
+                        animationSprite,
                         NUM_POTS*4    // allow for 4 requests per strip
                        }; 

@@ -948,6 +948,122 @@ void MainTestRects::randomRect(void)
 }
 
 //==================================================================
+//                                      888 888                  
+//                                      888 888                  
+//                                      888 888                  
+//    .d8888b   .d8888b 888d888 .d88b.  888 888  .d88b.  888d888 
+//    88K      d88P"    888P"  d88""88b 888 888 d8P  Y8b 888P"   
+//    "Y8888b. 888      888    888  888 888 888 88888888 888     
+//         X88 Y88b.    888    Y88..88P 888 888 Y8b.     888     
+//     88888P'  "Y8888P 888     "Y88P"  888 888  "Y8888  888     
+//
+WHICHMEM
+UIclass::State MainTestScroller::begin(TFT_eSprite& sprite, colours_t c)
+{
+    UIclass::begin(sprite, c);
+
+    // set up screen sprite...
+    pSprite->fillScreen(colours.bg);
+    pSprite->fillRect(sx-2,sy-2,sw+4,sh+4,TFT_BLACK); // lazy!
+
+    // ...and animation sprite
+    anSpr = &mainLCDtask.getAnimationSprite();
+    anSpr->fillScreen(TFT_NAVY);
+    anSpr->fillRect(0,0,sw,ah,colours.bg);
+    anSpr->setTextColor(colours.txt, colours.bg, true);
+    FontSetter::loadFont(*anSpr, FontSetter::RADIO_LABEL);
+Serial.println("-----------------");
+    for (int i=0;i<4;i++)
+        drawLineText(i);
+Serial.println("-----------------");
+
+    return State::push; // need to update display
+}
+
+WHICHMEM
+uint32_t MainTestScroller::poll(void)
+{
+    uint32_t result = interval;
+    if (intervalElapsed(40'000)) // every 40ms (25fps)
+    //if (intervalElapsed(20'000)) // every 20ms (50fps)
+    {
+        state = State::next; // do next (and only) step
+        phase = drawingScroll;
+    }
+    return result;
+}
+
+WHICHMEM
+UIclass::State MainTestScroller::update(Trigger trigger)
+{
+    State result = State::push; 
+
+    switch (trigger.type)
+    {
+        default: // we don't react to that trigger type
+            // Serial.print("meh ");
+            result = State::done;
+            break;
+
+        //----------------------------------------------------------------------
+        case Trigger::eTriggerType::nextPhase:
+            switch (phase)
+            {
+                default:    // nothing pending
+                    result = State::done;
+                    break;
+
+                case drawingScroll:
+                    phase = idle;
+                    scrollUp();
+                    break;
+            }
+            break;
+    }
+
+    state = result; // hang on to result for later
+
+    return result;
+}
+
+WHICHMEM
+void MainTestScroller::scrollUp(void)
+{
+    // see if we need to put text in:
+    if (0 == scrollPos % lh)
+    {
+        int lineNum = scrollPos / lh + 4;
+        drawLineText(lineNum);
+        anSpr->drawFastHLine(0,ah-1,sw,TFT_RED);
+        anSpr->drawFastHLine(0,0   ,sw,TFT_GREEN);
+        anSpr->drawFastVLine(1,0   ,ah,TFT_ORANGE2);
+    }
+
+    // animation sprite has extra lines top and bottom
+    // to allow for partially-visible lines
+    int topLine = (scrollPos+lh) % ah;
+    int botLine = topLine+sh;
+    if (botLine <= ah) // can just blast animation sprite to screen
+    {
+        pSprite->setViewport(sx,sy,sw,sh); // datum is still screen top left
+        anSpr->pushToSprite(pSprite, 0,-topLine);
+    }
+    else
+    {
+        int partH = ah - topLine;
+        pSprite->setViewport(sx,sy,sw,partH); 
+        anSpr->pushToSprite(pSprite, 0,-topLine);
+        pSprite->setViewport(sx,sy+partH,sw,sh-partH);
+        anSpr->pushToSprite(pSprite, 0,0);
+    }
+
+    pSprite->resetViewport();
+
+    scrollPos += 2;;
+}
+
+
+//==================================================================
 //
 //                     888                           8888888b.  d8b          888                       
 //                     888                           888   Y88b Y8P          888                       
