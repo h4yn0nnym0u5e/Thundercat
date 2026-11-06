@@ -641,7 +641,6 @@ class UIscroller : public UIelement
   private:
     TFT_eSprite* anSpr{nullptr};
     const int lc, lh, // line count and height
-              //sx{20}, sy{35}, sw{100}, sh{lc*lh},
               ah{(lc+2)*lh}, // height of animation sprite used area
               maxLen; // maximum length of a text element
     char* pElements;  // array holding current text elements: must be (lc+2)*(maxLen+1) long
@@ -675,8 +674,10 @@ class UIscroller : public UIelement
                 res = sameFail;
         }
 
+/*
 if (ScrollerResult::ok == res || ScrollerResult::last == res || ScrollerResult::fail == res) 
     Serial.printf("Got element %d to %08X\n", n, (uint32_t) buffer);
+*/
 
         return res;
     }
@@ -699,6 +700,20 @@ if (ScrollerResult::ok == res || ScrollerResult::last == res || ScrollerResult::
     ScrollerResult setScrollpos(int px); // update text and animation sprite
     void draw(TFT_eSprite* pSprite); // draw animation sprite into screen sprite
     bool drawElement(int n);         // draw the text for an element into the animation sprite
+    static ScrollerResult fixResult(ScrollerResult result, bool isLast)
+    {
+        if (isLast)
+        {
+            if (ScrollerResult::same == result)
+                result = ScrollerResult::sameLast;
+            else
+            {
+                result = ScrollerResult::last;
+// Serial.println("Last line");
+            }
+        }
+        return result;
+    }
 };
 
 //==================================================================

@@ -827,8 +827,8 @@ bool UIscroller::drawElement(int n)
     {
         int row = toRow(n);
         anSpr->drawString(getPelement(row),3,3+lh*row);
-char* buffer = getPelement(row);
-Serial.printf("Render '%s' from %08X to %d\n", buffer, (uint32_t) buffer, 3+lh*row);
+//char* buffer = getPelement(row);
+//Serial.printf("Render '%s' from %08X to %d\n", buffer, (uint32_t) buffer, 3+lh*row);
         result = true;
     }
 
@@ -1073,8 +1073,18 @@ void MainTestRects::randomRect(void)
 //         X88 Y88b.    888    Y88..88P 888 888     888  Y8b.          X88 Y88b.  
 //     88888P'  "Y8888P 888     "Y88P"  888 888     888   "Y8888   88888P'  "Y888 
 // 
+/**
+ * Get text for a given element of a scrollbox.
+ * \return  'ok' if set, 
+ *          'same' if unchanged, 
+ *          'last' if set and element n is the last, 
+ *          'sameLast' if unchanged and last
+ *          'fail' if out of valid range
+ */
 WHICHMEM
-ScrollerResult lineNumTextGen(int n, char* buffer, int maxl)
+ScrollerResult lineNumTextGen(int n,        //!< element number
+                              char* buffer, //!< storage for text
+                              int maxl)     //!< max space in storage
 {
     ScrollerResult result = ScrollerResult::fail;
     const int maxLine{24};
@@ -1089,25 +1099,18 @@ ScrollerResult lineNumTextGen(int n, char* buffer, int maxl)
             if (0 != strcmp(myBuf, buffer))
             {
                 strcpy(buffer, myBuf);
-    Serial.printf("Put '%s' in %08X\n", buffer, (uint32_t) buffer);
+// Serial.printf("Put '%s' in %08X\n", buffer, (uint32_t) buffer);
                 result = ScrollerResult::ok;
             }
             else
             {
-    //Serial.printf("'%s' already in %08X\n", buffer, (uint32_t) buffer);
+// Serial.printf("'%s' already in %08X\n", buffer, (uint32_t) buffer);
                 result = ScrollerResult::same;
             }
 
-            if (maxLine == n)
-            {
-                if (ScrollerResult::same == result)
-                    result = ScrollerResult::sameLast;
-                else
-                {
-                    result = ScrollerResult::last;
-Serial.println("Last line");
-                }                
-            }
+            // fix up result; replaces 'same' with 'sameLast' if 
+            // it's the last element and the text is unchanged
+            result = UIscroller::fixResult(result, maxLine == n);
         }
     }
 
@@ -1193,11 +1196,11 @@ void MainTestScroller::scrollUp(void)
     if (ScrollerResult::last == scroller.setScrollpos(newPos))
     {
         limit = newPos + (lc/2 + 1)*lh;
-Serial.printf("Limit is %d\n", limit);        
+// Serial.printf("Limit is %d\n", limit);        
     }
     // ...now render to the screen sprite
     scroller.draw(pSprite);
-Serial.print('.');    
+// Serial.print('.');    
 }
 
 
