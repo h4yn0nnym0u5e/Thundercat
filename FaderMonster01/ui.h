@@ -193,6 +193,7 @@ class UIelement
           drawnNormal, drawnHit, drawnLatched, drawnBlank,
            setNormal,   setHit,   setLatched,   setBlank} 
             state {notDrawn};
+    bool lifted{true};  //!< touch was lifted rather than being slid out
   public:
     TFTcolours colours; // copied from reference at construction time
     int x,y,w,h;
@@ -217,6 +218,9 @@ class UIelement
         else
             FontSetter::setFreeFont(*pSprite, font); // nullptr is safe
     }
+
+    virtual bool isIn(GTPoint& pt);
+    bool isLifted(void) { return lifted; }
 };
 
 //==================================================================
@@ -254,7 +258,6 @@ class UIbutton : public UIelement
         return result;
     }
 
-    bool lifted{true};  //!< touch was lifted rather than being slid out
     /**
      * Set lifted and state values depending on whether touch is inside button.
      * \result true if touch is in, OR if just exited and re-draw is needed
@@ -262,8 +265,6 @@ class UIbutton : public UIelement
     bool setLifted(bool in,     //!< touch is in button's active area
                    GTPoint& pt) //!< touch point - used to see if touch just ended
     {
-        lifted = in && 255 == pt.reserved; // "in" the button, but actually touch has ended
-
         // work out if a re-draw is indicated
         if (in)
         {
@@ -908,12 +909,13 @@ class MainTestRects : public UIclass
 // 
 class MainTestScroller : public UIclass 
 {
-    enum {idle, drawingScroll};
+    enum {idle, drawingScroll, drawingTouch};
     void scrollUp(void);
     
     static constexpr int lc{7}, lh{26}, theStep{2};
     int incr{theStep};
     int limit{-1};
+    int touchStart{-1}; // starting Y for touch: -1 if not started
     char buffer[(MAX_NAME_LENGTH+1)*(lc+2)];
     UIscroller scroller{ColoursRGB, 
                         20,35,100, lh,lc,
@@ -923,6 +925,8 @@ class MainTestScroller : public UIclass
     virtual State update(Trigger trigger);
     virtual InterTaskRequest& writeToDisplay(void) { return writeToMainLCD(); }
     virtual uint32_t poll(void);
+
+    void setScrollpos(int newPos);
 };
 
 //------------------------------------------------------------------

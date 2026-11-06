@@ -440,10 +440,21 @@ bool UIbutton::draw(TFT_eSprite* pSprite)
 }
 
 WHICHMEM
-bool UIbutton::isIn(GTPoint& pt)
+bool UIelement::isIn(GTPoint& pt)
 {
     bool result = pt.x >= x && pt.x <= x+w
                && pt.y >= y && pt.y <= y+h;
+
+    lifted = result && 255 == pt.reserved; // "in" the element, but actually touch has ended
+
+    return result;
+}
+
+
+WHICHMEM
+bool UIbutton::isIn(GTPoint& pt)
+{
+    bool result = UIelement::isIn(pt);
 
     result = setLifted(result, pt);
 
@@ -1131,6 +1142,7 @@ UIclass::State MainTestScroller::begin(TFT_eSprite& sprite, colours_t c)
     scroller.setFont(FontSetter::RADIO_LABEL);
     scroller.begin(mainLCDtask.getAnimationSprite());
 
+    phase = drawingScroll;
     return (state = State::push); // need to update display
 }
 
@@ -1140,10 +1152,28 @@ uint32_t MainTestScroller::poll(void)
     uint32_t result = interval;
     if (intervalElapsed(40'000)) // every 40ms (25fps)
     //if (intervalElapsed(20'000)) // every 20ms (50fps)
+    /*
     {
         state = State::next; // do next (and only) step
         phase = drawingScroll;
     }
+    /*/
+    {
+        int sp = scroller.getScrollpos(); // scroll position
+        int error = sp - (sp/lh)*lh;      // #pixels off exact alignment
+
+        if (-1 == touchStart && 0 != error) // no touch, and misaligned
+        {
+            if (error < lh/2) // in top half...
+                incr = -1;
+            else
+                incr = +1;
+
+            state = State::next;
+            phase = drawingScroll;                
+        }
+    }
+    //*/
     return result;
 }
 
@@ -1156,12 +1186,43 @@ UIclass::State MainTestScroller::update(Trigger trigger)
     {
         default: // we don't react to that trigger type
             break;
+        //----------------------------------------------------------------------
+        case Trigger::eTriggerType::touchPoint:
+        {
+            GTPoint& newPt = trigger.trigger.touchPoint;
+            if (isNewTouch(trigger))
+            {
+                currentTrigger = trigger; // keep the trigger and value(s)
+                result = State::next;
+
+                if (scroller.isIn(newPt) && !scroller.isLifted())
+                {
+                    if (-1 == touchStart)
+                        touchStart = scroller.getScrollpos() + newPt.y;
+                    else
+                    {
+                        setScrollpos(touchStart - newPt.y); // deals with limits
+                        phase = drawingTouch;
+                    }
+Serial.printf("Touch at Y=%d; scrollPos=%d\n", newPt.y, scroller.getScrollpos());
+                }
+                else
+                    touchStart = -1;
+            }
+        }
+            break;
 
         //----------------------------------------------------------------------
         case Trigger::eTriggerType::nextPhase:
             switch (phase)
             {
                 default:    // nothing pending
+                    break;
+
+                case drawingTouch:
+                    scroller.draw(pSprite);
+                    phase = idle;
+                    result = State::push;
                     break;
 
                 case drawingScroll:
@@ -1176,6 +1237,20 @@ UIclass::State MainTestScroller::update(Trigger trigger)
     return (state = result); // hang on to result for later
 }
 
+
+WHICHMEM
+void MainTestScroller::setScrollpos(int newPos)
+{
+    if (newPos < 0) newPos = 0;
+    if (limit > 0 && newPos >= limit) newPos = limit;
+
+    if (ScrollerResult::last == scroller.setScrollpos(newPos))
+    {
+        limit = newPos + (lc/2 + 1)*lh;
+// Serial.printf("Limit is %d\n", limit);        
+    }
+}
+
 WHICHMEM
 void MainTestScroller::scrollUp(void)
 {
@@ -1184,20 +1259,15 @@ void MainTestScroller::scrollUp(void)
     int newPos = scroller.getScrollpos() + incr;
     if (newPos <= 0) 
     {
-        newPos = 0;
         incr = theStep;
         limit = -1;
     }
     if (limit > 0 && newPos >= limit)
     {
-        newPos = limit;
         incr = -theStep;
     }
-    if (ScrollerResult::last == scroller.setScrollpos(newPos))
-    {
-        limit = newPos + (lc/2 + 1)*lh;
-// Serial.printf("Limit is %d\n", limit);        
-    }
+    setScrollpos(newPos);
+
     // ...now render to the screen sprite
     scroller.draw(pSprite);
 // Serial.print('.');    
