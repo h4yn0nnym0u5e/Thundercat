@@ -215,7 +215,7 @@ class UIelement
         if (nullptr != smoothFont)
             FontSetter::loadFont(*pSprite, smoothFont);
         else
-            FontSetter::setFreeFont(*pSprite, font);
+            FontSetter::setFreeFont(*pSprite, font); // nullptr is safe
     }
 };
 
@@ -626,6 +626,80 @@ class UIslider : public UIelement
     int getValue(void) { return value; }
 };
 
+//==================================================================
+//                                      888 888                  
+//                                      888 888                  
+//                                      888 888                  
+//    .d8888b   .d8888b 888d888 .d88b.  888 888  .d88b.  888d888 
+//    88K      d88P"    888P"  d88""88b 888 888 d8P  Y8b 888P"   
+//    "Y8888b. 888      888    888  888 888 888 88888888 888     
+//         X88 Y88b.    888    Y88..88P 888 888 Y8b.     888     
+//     88888P'  "Y8888P 888     "Y88P"  888 888  "Y8888  888     
+//
+class UIscroller : public UIelement
+{
+  private:
+    TFT_eSprite* anSpr{nullptr};
+    const int lc, lh, // line count and height
+              //sx{20}, sy{35}, sw{100}, sh{lc*lh},
+              ah{(lc+2)*lh}, // height of animation sprite used area
+              maxLen; // maximum length of a text element
+    char* pElements;  // array holding current text elements: must be (lc+2)*(maxLen+1) long
+
+    int toRow(int n) { n = (n+lc/2) % (lc+2); n += n<0?(lc+2):0; return n; }
+    char* getPelement(int n) { return pElements + toRow(n)*(maxLen+1); }
+    ScrollerResult (*rawGetElement)(int n, char* buffer, int maxl);
+
+    /**
+     * Fill in the text for a given element.
+     */
+    ScrollerResult getElement(int n)
+    {
+        ScrollerResult res = ScrollerResult::ok;
+        char* buffer = getPelement(toRow(n));
+        bool wasBlank = 0 == *buffer;
+
+        if (n >= 0) 
+            res = (*rawGetElement)(n, buffer, maxLen);
+        else
+        {
+            *buffer = 0;
+            if (wasBlank)
+                res = same;
+        }
+
+        if (ScrollerResult::fail == res)
+        {
+            *buffer = 0;
+            if (wasBlank)
+                res = sameFail;
+        }
+
+if (ScrollerResult::ok == res || ScrollerResult::last == res || ScrollerResult::fail == res) 
+    Serial.printf("Got element %d to %08X\n", n, (uint32_t) buffer);
+
+        return res;
+    }
+
+    int scrollPos{0}; // scroll position in pixels
+    int lastItem{-1};
+  public:
+    UIscroller( TFTcolours& _c,
+                int _x, int _y, int _w, int _lh, int _lc,
+                char* _pElements, int _maxLen, 
+                ScrollerResult _get(int, char*, int),
+                const GFXfont* _f = nullptr, const uint8_t* _s = nullptr
+              )
+            : UIelement(_c, _x, _y, _w, _lh*_lc, _f, nullptr),
+            lc{_lc}, lh{_lh}, ah{(lc+2)*lh}, maxLen{_maxLen},
+            pElements{_pElements}, rawGetElement{_get}
+            {}
+    void begin(TFT_eSprite& _anSpr, int initPos = 0);
+    int  getScrollpos(void) { return scrollPos; }
+    ScrollerResult setScrollpos(int px); // update text and animation sprite
+    void draw(TFT_eSprite* pSprite); // draw animation sprite into screen sprite
+    bool drawElement(int n);         // draw the text for an element into the animation sprite
+};
 
 //==================================================================
 /**
@@ -808,34 +882,27 @@ class MainTestRects : public UIclass
 };
 
 //==================================================================
-//                                      888 888                  
-//                                      888 888                  
-//                                      888 888                  
-//    .d8888b   .d8888b 888d888 .d88b.  888 888  .d88b.  888d888 
-//    88K      d88P"    888P"  d88""88b 888 888 d8P  Y8b 888P"   
-//    "Y8888b. 888      888    888  888 888 888 88888888 888     
-//         X88 Y88b.    888    Y88..88P 888 888 Y8b.     888     
-//     88888P'  "Y8888P 888     "Y88P"  888 888  "Y8888  888     
+//                                      888 888 88888888888                888    
+//                                      888 888     888                    888    
+//                                      888 888     888                    888    
+//    .d8888b   .d8888b 888d888 .d88b.  888 888     888   .d88b.  .d8888b  888888 
+//    88K      d88P"    888P"  d88""88b 888 888     888  d8P  Y8b 88K      888    
+//    "Y8888b. 888      888    888  888 888 888     888  88888888 "Y8888b. 888    
+//         X88 Y88b.    888    Y88..88P 888 888     888  Y8b.          X88 Y88b.  
+//     88888P'  "Y8888P 888     "Y88P"  888 888     888   "Y8888   88888P'  "Y888 
 // 
 class MainTestScroller : public UIclass 
 {
     enum {idle, drawingScroll};
     void scrollUp(void);
-    TFT_eSprite* anSpr;
-    static constexpr int lc{7}, lh{26}, // 6 lines, 30 pixels high
-              sx{20}, sy{35}, sw{100}, sh{lc*lh},
-              ah{(lc+2)*lh}; // height of animation sprite used area
-    int scrollPos{0};
-    void drawLineText(int n)
-    {
-        char buf[20];
-        sprintf(buf,"Line %d", n+1);
-        n = (n+lc/2) % (lc+2);
-        anSpr->setTextPadding(sw);
-        anSpr->drawString(buf,3,3+lh*n);
-// Serial.printf("[%.3f]: %s @ %d\n", (float) millis() / 1000, buf, lh*n);
-    }
-
+    
+    static constexpr int lc{7}, lh{26}, theStep{2};
+    int incr{theStep};
+    int limit{-1};
+    char buffer[(MAX_NAME_LENGTH+1)*(lc+2)];
+    UIscroller scroller{ColoursRGB, 
+                        20,35,100, lh,lc,
+                        buffer, MAX_NAME_LENGTH, lineNumTextGen};
   public:
     virtual State begin(TFT_eSprite& sprite, colours_t c);
     virtual State update(Trigger trigger);

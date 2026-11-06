@@ -34,6 +34,7 @@
 #include "buildinfo.h"
 extern FaderMonsterSettings faderMonsterSettings; // needed for UI
 extern FaderMonsterLast faderMonsterLast;
+extern ScrollerResult lineNumTextGen(int n, char* buffer, int maxl);
 #include "ui.h"
 #include "classes.h"
 

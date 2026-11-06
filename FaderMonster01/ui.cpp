@@ -718,6 +718,122 @@ bool UIslider::isIn(GTPoint& pt)
 
     return result;
 }
+
+//==================================================================
+//                                      888 888                  
+//                                      888 888                  
+//                                      888 888                  
+//    .d8888b   .d8888b 888d888 .d88b.  888 888  .d88b.  888d888 
+//    88K      d88P"    888P"  d88""88b 888 888 d8P  Y8b 888P"   
+//    "Y8888b. 888      888    888  888 888 888 88888888 888     
+//         X88 Y88b.    888    Y88..88P 888 888 Y8b.     888     
+//     88888P'  "Y8888P 888     "Y88P"  888 888  "Y8888  888     
+//
+void UIscroller::begin(TFT_eSprite& _anSpr, int initPos)
+{
+    anSpr = &_anSpr;
+    setFont(anSpr); // assumes font has been selected, but safe if not
+    anSpr->fillRect(0,0,w,ah,colours.bg);
+    anSpr->setTextColor(colours.txt, colours.bg, true);
+
+    // initialise to blanks
+    for (int i=0;i<lc;i++)
+        *getPelement(i) = 0;
+
+    // fill in initial view
+    scrollPos = initPos-1; // scroll position is the centre element
+    setScrollpos(scrollPos++);
+}
+
+/**
+ * Draw animation sprite into the rendering sprite
+ */
+void UIscroller::draw(TFT_eSprite* pSprite)
+{
+    // animation sprite has extra lines top and bottom
+    // to allow for partially-visible lines
+    int topLine = scrollPos % ah;
+    int botLine = topLine + h;
+    if (botLine <= ah) // can just blast animation sprite to screen
+    {
+        pSprite->setViewport(x, y, w, h); // datum is still screen top left
+        anSpr->pushToSprite(pSprite, 0, -topLine);
+    }
+    else
+    {
+        int partH = ah - topLine;
+        pSprite->setViewport(x, y, w, partH); 
+        anSpr->pushToSprite(pSprite, 0, -topLine);
+        pSprite->setViewport(x, y + partH, w, h - partH);
+        anSpr->pushToSprite(pSprite, 0, 0);
+    }
+
+    pSprite->resetViewport();
+}
+
+
+/**
+ * Set a new scroll position
+ * \return true if a re-draw is needed
+ */
+ScrollerResult UIscroller::setScrollpos(int px) //!< new position in pixels
+{
+    ScrollerResult result = ok;
+    bool gotLast = false;
+
+    if (px != scrollPos)
+    {
+        int delta = px > scrollPos ? 1 : -1;
+        int rowThen = px / lh 
+                    + delta * (lc/2+1); // top or bottom row of new area
+
+        // get elements and re-draw for all changes - may 
+        // be none if we've only scrolled by a few pixels
+        for (int i=0;i<lc+2;i++)
+        {
+            result = getElement(rowThen); // fill new text into buffer...
+            if (same != result            // ...and if it's changed ...
+             && sameLast != result
+             && sameFail != result)
+                drawElement(rowThen);     // ...draw it
+            else
+                break;
+
+            if (last == result /* || sameLast != result */)
+            {
+                lastItem = rowThen;
+                gotLast = true;
+            }
+            rowThen -= delta;
+        }
+
+        scrollPos = px;
+        if (gotLast)
+            result = last;
+    }
+
+    return result;
+}
+
+/**
+ * Draw a string into the animation sprite
+ */
+bool UIscroller::drawElement(int n)
+{
+    bool result = false;
+
+    anSpr->setTextPadding(w);
+    if (n >= -(lc/2+1))
+    {
+        int row = toRow(n);
+        anSpr->drawString(getPelement(row),3,3+lh*row);
+char* buffer = getPelement(row);
+Serial.printf("Render '%s' from %08X to %d\n", buffer, (uint32_t) buffer, 3+lh*row);
+        result = true;
+    }
+
+    return result;
+}
 //==================================================================
 //
 //                              d8b 888      888      888          
@@ -948,15 +1064,56 @@ void MainTestRects::randomRect(void)
 }
 
 //==================================================================
-//                                      888 888                  
-//                                      888 888                  
-//                                      888 888                  
-//    .d8888b   .d8888b 888d888 .d88b.  888 888  .d88b.  888d888 
-//    88K      d88P"    888P"  d88""88b 888 888 d8P  Y8b 888P"   
-//    "Y8888b. 888      888    888  888 888 888 88888888 888     
-//         X88 Y88b.    888    Y88..88P 888 888 Y8b.     888     
-//     88888P'  "Y8888P 888     "Y88P"  888 888  "Y8888  888     
-//
+//                                      888 888 88888888888                888    
+//                                      888 888     888                    888    
+//                                      888 888     888                    888    
+//    .d8888b   .d8888b 888d888 .d88b.  888 888     888   .d88b.  .d8888b  888888 
+//    88K      d88P"    888P"  d88""88b 888 888     888  d8P  Y8b 88K      888    
+//    "Y8888b. 888      888    888  888 888 888     888  88888888 "Y8888b. 888    
+//         X88 Y88b.    888    Y88..88P 888 888     888  Y8b.          X88 Y88b.  
+//     88888P'  "Y8888P 888     "Y88P"  888 888     888   "Y8888   88888P'  "Y888 
+// 
+WHICHMEM
+ScrollerResult lineNumTextGen(int n, char* buffer, int maxl)
+{
+    ScrollerResult result = ScrollerResult::fail;
+    const int maxLine{24};
+
+    if (n >= 0)
+    {
+        if (n <= maxLine)
+        {
+            char myBuf[maxl+2];
+            snprintf(myBuf, maxl, "Line %d", n+1);
+            myBuf[maxl] = 0;
+            if (0 != strcmp(myBuf, buffer))
+            {
+                strcpy(buffer, myBuf);
+    Serial.printf("Put '%s' in %08X\n", buffer, (uint32_t) buffer);
+                result = ScrollerResult::ok;
+            }
+            else
+            {
+    //Serial.printf("'%s' already in %08X\n", buffer, (uint32_t) buffer);
+                result = ScrollerResult::same;
+            }
+
+            if (maxLine == n)
+            {
+                if (ScrollerResult::same == result)
+                    result = ScrollerResult::sameLast;
+                else
+                {
+                    result = ScrollerResult::last;
+Serial.println("Last line");
+                }                
+            }
+        }
+    }
+
+    return result;
+}
+
 WHICHMEM
 UIclass::State MainTestScroller::begin(TFT_eSprite& sprite, colours_t c)
 {
@@ -964,21 +1121,14 @@ UIclass::State MainTestScroller::begin(TFT_eSprite& sprite, colours_t c)
 
     // set up screen sprite...
     pSprite->fillScreen(colours.bg);
-    pSprite->fillRect(sx-2,sy-2,sw+4,sh+4,TFT_BLACK); // lazy!
+    pSprite->fillRect(scroller.x-2,scroller.y-2,scroller.w+4,scroller.h+4,TFT_BLACK); // lazy!
 
-    // ...and animation sprite
-    anSpr = &mainLCDtask.getAnimationSprite();
-    anSpr->fillScreen(TFT_NAVY);
-    anSpr->fillRect(0,0,sw,ah,colours.bg);
-    anSpr->setTextColor(colours.txt, colours.bg, true);
-    FontSetter::loadFont(*anSpr, FontSetter::RADIO_LABEL);
+    // ...and scroller with its animation sprite
+    scroller.setColours(c);
+    scroller.setFont(FontSetter::RADIO_LABEL);
+    scroller.begin(mainLCDtask.getAnimationSprite());
 
-// Serial.println("-----------------");
-    for (int i=0;i<(lc+2)/2+1;i++)
-        drawLineText(i);
-// Serial.println("-----------------");
-
-    return State::push; // need to update display
+    return (state = State::push); // need to update display
 }
 
 WHICHMEM
@@ -997,13 +1147,11 @@ uint32_t MainTestScroller::poll(void)
 WHICHMEM
 UIclass::State MainTestScroller::update(Trigger trigger)
 {
-    State result = State::push; 
+    State result = State::done; 
 
     switch (trigger.type)
     {
         default: // we don't react to that trigger type
-            // Serial.print("meh ");
-            result = State::done;
             break;
 
         //----------------------------------------------------------------------
@@ -1011,53 +1159,45 @@ UIclass::State MainTestScroller::update(Trigger trigger)
             switch (phase)
             {
                 default:    // nothing pending
-                    result = State::done;
                     break;
 
                 case drawingScroll:
-                    phase = idle;
                     scrollUp();
+                    phase = idle;
+                    result = State::push;
                     break;
             }
             break;
     }
 
-    state = result; // hang on to result for later
-
-    return result;
+    return (state = result); // hang on to result for later
 }
 
 WHICHMEM
 void MainTestScroller::scrollUp(void)
 {
-    // see if we need to put text in:
-    if (0 == scrollPos % lh)
+    // Increment MUST divide lh (line height) or Bad Stuff Happens!
+    // The setScrollpos() method updates the stored text and animation sprite...
+    int newPos = scroller.getScrollpos() + incr;
+    if (newPos <= 0) 
     {
-        int lineNum = scrollPos / lh + (lc+2)/2+1;
-        drawLineText(lineNum);
+        newPos = 0;
+        incr = theStep;
+        limit = -1;
     }
-
-    // animation sprite has extra lines top and bottom
-    // to allow for partially-visible lines
-    int topLine = (scrollPos) % ah;
-    int botLine = topLine+sh;
-    if (botLine <= ah) // can just blast animation sprite to screen
+    if (limit > 0 && newPos >= limit)
     {
-        pSprite->setViewport(sx,sy,sw,sh); // datum is still screen top left
-        anSpr->pushToSprite(pSprite, 0,-topLine);
+        newPos = limit;
+        incr = -theStep;
     }
-    else
+    if (ScrollerResult::last == scroller.setScrollpos(newPos))
     {
-        int partH = ah - topLine;
-        pSprite->setViewport(sx,sy,sw,partH); 
-        anSpr->pushToSprite(pSprite, 0,-topLine);
-        pSprite->setViewport(sx,sy+partH,sw,sh-partH);
-        anSpr->pushToSprite(pSprite, 0,0);
+        limit = newPos + (lc/2 + 1)*lh;
+Serial.printf("Limit is %d\n", limit);        
     }
-
-    pSprite->resetViewport();
-
-    scrollPos += 2; // increment MUST divide lh (line height) or Bad Stuff Happens!
+    // ...now render to the screen sprite
+    scroller.draw(pSprite);
+Serial.print('.');    
 }
 
 

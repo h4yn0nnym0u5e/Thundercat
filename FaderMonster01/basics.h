@@ -390,6 +390,7 @@ enum class MIDIcontrolType : int
 #include "settings.h"
 
 typedef TFTcolours colours_t;
+extern TFTcolours ColoursRGB;
 
 //================================================================
 //
@@ -575,5 +576,7 @@ class Textifier
         return s(_s);
     }  
 };
+
+typedef enum {ok, same, last, sameLast, fail, sameFail} ScrollerResult;
 
 #endif // !defined(_BASICS_H_)

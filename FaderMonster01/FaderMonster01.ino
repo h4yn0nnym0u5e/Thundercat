@@ -34,6 +34,7 @@ static MiscControls miscControls;
 
 FaderMonsterSettings faderMonsterSettings{{stripColours,stripControls}, miscControls, mainColours};
 FaderMonsterLast faderMonsterLast{{"scene-1.csv"}, {66, -0.777f, +0.777f}};
+TFTcolours ColoursRGB{TFT_RED, TFT_GREEN, TFT_BLUE};
 
 //================================================================
 // one source of truth on where / how to allocate a 
