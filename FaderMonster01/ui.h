@@ -66,6 +66,7 @@ class UIclass
 {
     friend class UIbutton;
     friend class UIgraphicButton;
+    friend class UIscroller;
 
     static InterTaskRequest autoFail;
   protected:
@@ -100,6 +101,8 @@ class UIclass
                     const char* txt, int xoff, int yoff);
     bool isNewTouch(Trigger trigger);
     void drawHeader(const char* txt);
+    void drawHeaderText(const char* txt, int x = 2, int y = 2);
+    void shadeArea(int x, int y, int w, int h, uint16_t colour, uint8_t start, uint8_t end, bool vertical = true);
 
     // utilities
     /**
@@ -169,6 +172,7 @@ class UIclass
     {
         int strip, control;
         char* text;
+        int scrollDemoPos{0};
     };
     static UIshared uiShared;        
 
@@ -646,21 +650,21 @@ class UIscroller : public UIelement
               maxLen; // maximum length of a text element
     char* pElements;  // array holding current text elements: must be (lc+2)*(maxLen+1) long
 
-    int toRow(int n) { n = (n+lc/2) % (lc+2); n += n<0?(lc+2):0; return n; }
-    char* getPelement(int n) { return pElements + toRow(n)*(maxLen+1); }
-    ScrollerResult (*rawGetElement)(int n, char* buffer, int maxl);
+    int toRow(int e) { int r = (e+lc/2) % (lc+2); r += r<0?(lc+2):0; return r; }
+    char* getPelement(int e) { return pElements + toRow(e)*(maxLen+1); }
+    ScrollerResult (*rawGetElement)(int e, char* buffer, int maxl);
 
     /**
      * Fill in the text for a given element.
      */
-    ScrollerResult getElement(int n)
+    ScrollerResult getElement(int e)
     {
         ScrollerResult res = ScrollerResult::ok;
-        char* buffer = getPelement(toRow(n));
+        char* buffer = getPelement(e); // toRow(n));
         bool wasBlank = 0 == *buffer;
 
-        if (n >= 0) 
-            res = (*rawGetElement)(n, buffer, maxLen);
+        if (e >= 0) 
+            res = (*rawGetElement)(e, buffer, maxLen);
         else
         {
             *buffer = 0;
@@ -698,9 +702,21 @@ if (ScrollerResult::ok == res || ScrollerResult::last == res || ScrollerResult::
             {}
     void begin(TFT_eSprite& _anSpr, int initPos = 0);
     int  getScrollpos(void) { return scrollPos; }
-    ScrollerResult setScrollpos(int px); // update text and animation sprite
-    void draw(TFT_eSprite* pSprite); // draw animation sprite into screen sprite
-    bool drawElement(int n);         // draw the text for an element into the animation sprite
+    //int  getScrollError(void) { return scrollPos - (scrollPos/lh)*lh; }
+    int  getScrollError(void) 
+    { 
+        int error = scrollPos - (scrollPos/lh)*lh; 
+        if (error != 0) // amount and direction to correct to nearest
+            error = (error < lh/2 ? 0 : lh) - error;
+//if (error) Serial.printf("pos: %d; error: %d\n", scrollPos, error);
+
+        return error;
+    }
+    ScrollerResult setScrollpos(int px, bool force = false); // update text and animation sprite
+    bool drawElement(int e);         // draw the text for an element into the animation sprite
+    char* getCurrentElement(void) { return getPelement(getCurrentElementNumber()); }
+    int getCurrentElementNumber(void) { return (scrollPos+lh/2)/lh; }
+    int getLastElementNumber(void) { return lastItem; }
     static ScrollerResult fixResult(ScrollerResult result, bool isLast)
     {
         if (isLast)
@@ -715,6 +731,18 @@ if (ScrollerResult::ok == res || ScrollerResult::last == res || ScrollerResult::
         }
         return result;
     }
+    bool isDifferent(ScrollerResult res) 
+    { 
+        return !(
+               res == ScrollerResult::same
+            || res == ScrollerResult::sameFail
+            || res == ScrollerResult::sameLast
+        );
+    }
+
+    // methods that need a screen sprite or UIclass
+    void draw(TFT_eSprite* pSprite); // draw animation sprite into screen sprite
+    void shadeEnds(UIclass& uiClass, uint16_t colour, uint8_t start, uint8_t end, int eh = -1);
 };
 
 //==================================================================
@@ -909,16 +937,21 @@ class MainTestRects : public UIclass
 // 
 class MainTestScroller : public UIclass 
 {
-    enum {idle, drawingScroll, drawingTouch};
+    enum {idle, drawingScroll, drawingTouch, drawingHeader};
     void scrollUp(void);
+    void drawHeaderText(void);
     
     static constexpr int lc{7}, lh{26}, theStep{2};
-    int incr{theStep};
+    int incr{0};
+    bool incrementing{false};
     int limit{-1};
+    int lastElementNum{-1};
+    int lastHeaderWidth{0};
+    int headerX, headerY; // set in begin()
     int touchStart{-1}; // starting Y for touch: -1 if not started
     char buffer[(MAX_NAME_LENGTH+1)*(lc+2)];
     UIscroller scroller{ColoursRGB, 
-                        20,35,100, lh,lc,
+                        20,35+(240-lh*lc-35)/2,100, lh,lc,
                         buffer, MAX_NAME_LENGTH, lineNumTextGen};
   public:
     virtual State begin(TFT_eSprite& sprite, colours_t c);

@@ -297,7 +297,7 @@ void SmartKnobTask::run(void)
     knobSerial.setStream(&SK_SERIAL);
     knobSerial.setPacketHandler(knobPacketHandler);
 
-    knobSendConfig(configs[2]); // send initial config
+    knobSendConfig(configs[4]); // send initial config
     Serial.printf("[%lu] SmartKnob ready\n", micros());
 
     while (1)

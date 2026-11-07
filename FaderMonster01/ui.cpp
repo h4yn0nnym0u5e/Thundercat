@@ -32,10 +32,55 @@ void UIclass::drawHeader(const char* txt)
 {
     // draw heading 
     pSprite->fillRect(0,0,pSprite->width(), TITLE_HEIGHT, TFT_BLACK);
+    drawHeaderText(txt);
+}
+
+WHICHMEM
+void UIclass::drawHeaderText(const char* txt, int x, int y)
+{
     FontSetter::loadFont(*pSprite, FontSetter::TITLE_BAR);
-    pSprite->setTextColor(colours.fg, TFT_BLACK);
-    pSprite->drawString(txt,2,2);
+    pSprite->setTextColor(colours.fg, TFT_BLACK, true);
+    pSprite->drawString(txt,x,y);
 } 
+
+WHICHMEM
+void UIclass::shadeArea(int x, int y, int w, int h, uint16_t colour, uint8_t start, uint8_t end, bool vertical)
+{
+    // uint16_t alphaBlend(uint8_t alpha, uint16_t fgc, uint16_t bgc); // alpha=0 => all bgc
+    float alpha = start, delta = end-start;
+    if (vertical)
+    {
+        delta /= h;
+        while (h)
+        {
+            uint8_t b = (uint8_t) alpha;
+            for (int i=0;i<w;i++)
+            {
+                uint16_t newColour = TFT_eSPI::alphaBlend(b, colour, pSprite->readPixel(x+i,y));
+                pSprite->drawPixel(x+i,y,newColour);
+            }
+            h--;
+            y++;
+            alpha += delta;
+        }
+    }
+    else
+    {
+        delta /= w;
+        while (w)
+        {
+            uint8_t b = (uint8_t) alpha;
+            for (int i=0;i<h;i++)
+            {
+                uint16_t newColour = TFT_eSPI::alphaBlend(b, colour, pSprite->readPixel(x,y+i));
+                pSprite->drawPixel(x,y+i,newColour);
+            }
+            w--;
+            x++;
+            alpha += delta;
+        }
+    }
+}
 
 /**
  * Return true if trigger is a touch at a new point, or an un-touch,
@@ -752,8 +797,11 @@ void UIscroller::begin(TFT_eSprite& _anSpr, int initPos)
         *getPelement(i) = 0;
 
     // fill in initial view
-    scrollPos = initPos-1; // scroll position is the centre element
-    setScrollpos(scrollPos++);
+    scrollPos = initPos; // scroll position is the centre element
+//Serial.print("begin ... ");    
+    int error = getScrollError();   // may be off a bit
+    scrollPos += error;             // make it on the nose
+    setScrollpos(scrollPos, true); // force-draw all elements in the right place
 }
 
 /**
@@ -787,14 +835,15 @@ void UIscroller::draw(TFT_eSprite* pSprite)
  * Set a new scroll position
  * \return true if a re-draw is needed
  */
-ScrollerResult UIscroller::setScrollpos(int px) //!< new position in pixels
+ScrollerResult UIscroller::setScrollpos(int px, //!< new position in pixels
+                                        bool force /* false */) //!< update every element
 {
     ScrollerResult result = ok;
     bool gotLast = false;
 
-    if (px != scrollPos)
+    if (px != scrollPos || force)
     {
-        int delta = px > scrollPos ? 1 : -1;
+        int delta = px >= scrollPos ? 1 : -1; // force sets 1
         int rowThen = px / lh 
                     + delta * (lc/2+1); // top or bottom row of new area
 
@@ -803,14 +852,13 @@ ScrollerResult UIscroller::setScrollpos(int px) //!< new position in pixels
         for (int i=0;i<lc+2;i++)
         {
             result = getElement(rowThen); // fill new text into buffer...
-            if (same != result            // ...and if it's changed ...
-             && sameLast != result
-             && sameFail != result)
+            if (isDifferent(result)       // ...and if it's changed ...
+             || force)                    // ...or we're forced to draw all...
                 drawElement(rowThen);     // ...draw it
             else
-                break;
+                break; // same, infer the rest haven't changed
 
-            if (last == result /* || sameLast != result */)
+            if (last == result)
             {
                 lastItem = rowThen;
                 gotLast = true;
@@ -829,21 +877,28 @@ ScrollerResult UIscroller::setScrollpos(int px) //!< new position in pixels
 /**
  * Draw a string into the animation sprite
  */
-bool UIscroller::drawElement(int n)
+bool UIscroller::drawElement(int e)
 {
     bool result = false;
 
     anSpr->setTextPadding(w);
-    if (n >= -(lc/2+1))
+    if (e >= -(lc/2+1))
     {
-        int row = toRow(n);
-        anSpr->drawString(getPelement(row),3,3+lh*row);
+        int row = toRow(e);
+        anSpr->drawString(getPelement(e),3,3+lh*row);
 //char* buffer = getPelement(row);
 //Serial.printf("Render '%s' from %08X to %d\n", buffer, (uint32_t) buffer, 3+lh*row);
         result = true;
     }
 
     return result;
+}
+
+void UIscroller::shadeEnds(UIclass& uiClass, uint16_t colour, uint8_t start, uint8_t end, int eh)
+{
+    if (-1 == eh) eh = lh;
+    uiClass.shadeArea(x,y,     w,eh, colour,end,start);
+    uiClass.shadeArea(x,y+h-eh,w,eh, colour,start,end);
 }
 //==================================================================
 //
@@ -1140,7 +1195,13 @@ UIclass::State MainTestScroller::begin(TFT_eSprite& sprite, colours_t c)
     // ...and scroller with its animation sprite
     scroller.setColours(c);
     scroller.setFont(FontSetter::RADIO_LABEL);
-    scroller.begin(mainLCDtask.getAnimationSprite());
+    scroller.begin(mainLCDtask.getAnimationSprite(), uiShared.scrollDemoPos);
+    uiShared.scrollDemoPos = scroller.getScrollpos(); // can be changed by begin()
+
+    // draw heading 
+    drawHeader(superTask.headerText);
+    headerX = pSprite->getCursorX();
+    headerY = pSprite->getCursorY();
 
     phase = drawingScroll;
     return (state = State::push); // need to update display
@@ -1159,18 +1220,34 @@ uint32_t MainTestScroller::poll(void)
     }
     /*/
     {
-        int sp = scroller.getScrollpos(); // scroll position
-        int error = sp - (sp/lh)*lh;      // #pixels off exact alignment
+// static int cc = 0;        
+        int error = scroller.getScrollError();  // #pixels off exact alignment
 
         if (-1 == touchStart && 0 != error) // no touch, and misaligned
         {
-            if (error < lh/2) // in top half...
+            if (error < 0) // in top half...
                 incr = -1;
             else
                 incr = +1;
-
+/*                
+Serial.printf("%d ", error);
+if (++cc > 20)
+{
+    Serial.println();
+    cc = 0;
+}
+*/    
+            incrementing = true;
             state = State::next;
             phase = drawingScroll;                
+        }
+        else 
+        {
+            if (incrementing)
+            {
+                incrementing = false; // all done
+// Serial.printf("Stopped at '%s'\n", scroller.getCurrentElement()); 
+            }
         }
     }
     //*/
@@ -1204,10 +1281,14 @@ UIclass::State MainTestScroller::update(Trigger trigger)
                         setScrollpos(touchStart - newPt.y); // deals with limits
                         phase = drawingTouch;
                     }
-Serial.printf("Touch at Y=%d; scrollPos=%d\n", newPt.y, scroller.getScrollpos());
+// Serial.printf("Touch at Y=%d; scrollPos=%d\n", newPt.y, scroller.getScrollpos());
                 }
                 else
+                {
                     touchStart = -1;
+                    // this is unreliable for some reason!
+                    //incrementing = true; // make poll() say where we stopped
+                }
             }
         }
             break;
@@ -1221,15 +1302,31 @@ Serial.printf("Touch at Y=%d; scrollPos=%d\n", newPt.y, scroller.getScrollpos())
 
                 case drawingTouch:
                     scroller.draw(pSprite);
-                    phase = idle;
+                    scroller.shadeEnds(*this, TFT_BLACK, 0, 192, lh*3/2);
+                    phase = drawingHeader;
                     result = State::push;
                     break;
 
                 case drawingScroll:
                     scrollUp();
-                    phase = idle;
+                    phase = drawingHeader;
                     result = State::push;
                     break;
+
+                case drawingHeader:
+                {
+                    int currentElementNum = scroller.getCurrentElementNumber();
+
+                    if (lastElementNum != currentElementNum) // different element is selected...
+                    {
+                        lastElementNum = currentElementNum;
+                        drawHeaderText();
+                        result = State::push;
+                    }
+                    phase = idle;
+                }
+                    break;
+
             }
             break;
     }
@@ -1246,9 +1343,10 @@ void MainTestScroller::setScrollpos(int newPos)
 
     if (ScrollerResult::last == scroller.setScrollpos(newPos))
     {
-        limit = newPos + (lc/2 + 1)*lh;
-// Serial.printf("Limit is %d\n", limit);        
+        limit = (scroller.getLastElementNumber() /* + lc/2 + 1*/)*lh;
+// Serial.printf("Limit is %d (element %d)\n", limit, scroller.getLastElementNumber());        
     }
+    uiShared.scrollDemoPos = newPos; // stash for later return
 }
 
 WHICHMEM
@@ -1270,10 +1368,22 @@ void MainTestScroller::scrollUp(void)
 
     // ...now render to the screen sprite
     scroller.draw(pSprite);
+    scroller.shadeEnds(*this, TFT_BLACK, 0, 192, lh*3/2);
 // Serial.print('.');    
 }
 
+WHICHMEM
+void MainTestScroller::drawHeaderText(void)
+{
+    // pad to last width and draw text
+    pSprite->setTextPadding(lastHeaderWidth);
+    UIclass::drawHeaderText(scroller.getCurrentElement(), headerX, headerY);
+    pSprite->setTextPadding(0);
 
+    // stash this text's width ready for next draw
+    // textWidth() doesn't seem to work with smoothed font
+    lastHeaderWidth = pSprite->getCursorX() - headerX;
+}
 //==================================================================
 //
 //                     888                           8888888b.  d8b          888                       

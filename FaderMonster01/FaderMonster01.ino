@@ -366,6 +366,7 @@ bool SuperTask::processUI(void)
         break;
 */
       case MAIN_UI_MainTestScroller:
+        sprintf(headerText,"Select: ");
         new(_ui.space) MainTestScroller; 
         break;
 
