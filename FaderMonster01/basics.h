@@ -298,10 +298,10 @@ class PathPtr
 {
   public:
     char* path;
-    bool operator<(const PathPtr& r) const { return strcmp(path, r.path) < 0;}
-    bool operator>(const PathPtr& r) const { return r < *this; }
-    //bool operator<=(const PathPtr& r) { return !(*this > r); } // (const PathPtr&)
-    //bool operator>=(const PathPtr& r) { return !(r < *this); }
+    bool operator<(const PathPtr& r)  const { return strcmp(path, r.path) < 0;}
+    bool operator>(const PathPtr& r)  const { return r < *this; }
+    bool operator<=(const PathPtr& r) const { return !(*this > r); } // (const PathPtr&)
+    bool operator>=(const PathPtr& r) const { return !(r < *this); }
 };
 
 class FileSys
@@ -316,6 +316,7 @@ class FileSys
     int loadPaths(FS& fs, const char* path, const char* extn = nullptr);
     int getCount(void) { return count; }
     char* getPath(int n) { return (n < count) ? pPaths[n].path : nullptr; }
+    int getPathNumber(const char* path);
 };
 
 //================================================================

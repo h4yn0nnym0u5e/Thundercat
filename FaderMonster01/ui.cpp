@@ -40,6 +40,7 @@ void UIclass::drawHeaderText(const char* txt, int x, int y)
 {
     FontSetter::loadFont(*pSprite, FontSetter::TITLE_BAR);
     pSprite->setTextColor(colours.fg, TFT_BLACK, true);
+    pSprite->setTextDatum(TL_DATUM);
     pSprite->drawString(txt,x,y);
 } 
 
@@ -471,6 +472,8 @@ bool UIbutton::draw(TFT_eSprite* pSprite)
 
         pSprite->fillRoundRect(x,y,w,h,5,colours.fg);
         pSprite->fillRoundRect(x+2,y+2,w-4,h-4,4,bg);
+        drawLabel(pSprite, CC_DATUM, x+w/2+labXoff,y+h/2+labYoff, txt, bg);
+        /*
         if (nullptr != label)
         {
             FontSetter::setFreeFont(*pSprite,font);
@@ -478,6 +481,7 @@ bool UIbutton::draw(TFT_eSprite* pSprite)
             pSprite->setTextColor(txt, bg);
             pSprite->drawString(label,x+w/2+labXoff,y+h/2+labYoff);
         }
+            */
 
         result = true;
     }
@@ -1207,12 +1211,10 @@ ScrollerResult fileSysTextGen(int n,        //!< element number
             if (0 != strcmp(myBuf, buffer))
             {
                 strcpy(buffer, myBuf);
-// Serial.printf("Put '%s' in %08X\n", buffer, (uint32_t) buffer);
                 result = ScrollerResult::ok;
             }
             else
             {
-// Serial.printf("'%s' already in %08X\n", buffer, (uint32_t) buffer);
                 result = ScrollerResult::same;
             }
 
@@ -1223,6 +1225,14 @@ ScrollerResult fileSysTextGen(int n,        //!< element number
     }
 
     return result;
+}
+
+WHICHMEM
+void MainTestScroller::buttonBegin(UIbutton& but)
+{
+    but.setColours(colours);
+    but.setFont(FontSetter::RADIO_LABEL);
+    but.draw(pSprite);
 }
 
 WHICHMEM
@@ -1237,6 +1247,10 @@ UIclass::State MainTestScroller::begin(TFT_eSprite& sprite, colours_t c)
     // ...and scroller with its animation sprite
     scroller.setColours(c);
     scroller.setFont(FontSetter::RADIO_LABEL);
+
+    // start scroller at loaded scene, if possible
+    uiShared.scrollDemoPos = fileSys.getPathNumber(faderMonsterLast.scene + 2) * lh;
+    if (uiShared.scrollDemoPos < 0) uiShared.scrollDemoPos = 0;
     scroller.begin(mainLCDtask.getAnimationSprite(), uiShared.scrollDemoPos);
     uiShared.scrollDemoPos = scroller.getScrollpos(); // can be changed by begin()
 
@@ -1244,6 +1258,12 @@ UIclass::State MainTestScroller::begin(TFT_eSprite& sprite, colours_t c)
     drawHeader(superTask.headerText);
     headerX = pSprite->getCursorX();
     headerY = pSprite->getCursorY();
+
+    // buttons
+    buttonBegin(load);
+    buttonBegin(save);
+    buttonBegin(rename);
+    buttonBegin(delFile);
 
     phase = drawingScroll;
     return (state = State::push); // need to update display
@@ -1297,6 +1317,24 @@ if (++cc > 20)
 }
 
 WHICHMEM
+bool MainTestScroller::buttonDoAction(UIbutton& but, GTPoint& newPt, char* buf, State& result)
+{
+    bool retVal = false;
+
+    if (but.isIn(newPt))
+    {
+        if (but.isLifted())
+        {
+            sprintf(buf,"s/%s.csv",scroller.getCurrentElement());
+            retVal = true;
+            result = State::push;
+        }
+        phase = pollButtons;
+    }     
+    return retVal;
+}
+
+WHICHMEM
 UIclass::State MainTestScroller::update(Trigger trigger)
 {
     State result = State::done; 
@@ -1313,7 +1351,9 @@ UIclass::State MainTestScroller::update(Trigger trigger)
             {
                 currentTrigger = trigger; // keep the trigger and value(s)
                 result = State::next;
+                char buf[30]; // used for button actions
 
+                //------------------------------------------------------
                 if (scroller.isIn(newPt) && !scroller.isLifted())
                 {
                     if (-1 == touchStart)
@@ -1331,6 +1371,21 @@ UIclass::State MainTestScroller::update(Trigger trigger)
                     // this is unreliable for some reason!
                     //incrementing = true; // make poll() say where we stopped
                 }
+
+                //------------------------------------------------------
+                if (buttonDoAction(load, newPt, buf, result))
+                {
+Serial.printf("Load %s\n", buf);
+                    superTask.loadSettings(buf);
+                }
+                
+                if (buttonDoAction(save, newPt, buf, result))
+                {
+Serial.printf("Save %s\n", buf);
+                    superTask.saveSettings(buf);
+                }
+                
+                
             }
         }
             break;
@@ -1342,6 +1397,16 @@ UIclass::State MainTestScroller::update(Trigger trigger)
                 default:    // nothing pending
                     break;
 
+                // at least one button has changed: poll until we've done them all
+                case pollButtons:
+                    if (load.draw(pSprite)) { result = State::push; break; }
+                    if (save.draw(pSprite)) { result = State::push; break; }
+                    if (rename.draw(pSprite)) { result = State::push; break; }
+                    if (delFile.draw(pSprite)) { result = State::push; break; }
+                    // none left - back to idle and fall through
+                    phase = idle;
+                    break;
+                    
                 case drawingTouch:
                     scroller.draw(pSprite);
                     scroller.shadeEnds(*this, TFT_BLACK, 0, 192, lh*3/2);
@@ -2317,9 +2382,9 @@ UIclass::State MainExprTune::begin(TFT_eSprite& sprite, colours_t c)
     pSprite->fillRect(barX,barY,barW, barH, colours.bg);
 
     // buttons
-    set.setColours(c); set.draw(pSprite);
-    clear.setColours(c); clear.draw(pSprite);
-    autocal.setColours(c); autocal.draw(pSprite);
+    set.setColours(c); set.setFont(FontSetter::RADIO_LABEL); set.draw(pSprite);
+    clear.setColours(c); clear.setFont(FontSetter::RADIO_LABEL); clear.draw(pSprite);
+    autocal.setColours(c); autocal.setFont(FontSetter::RADIO_LABEL); autocal.draw(pSprite);
 
     return (state = result); // save and return state
 }
@@ -2552,7 +2617,7 @@ UIclass::State MainSceneLoad::update(Trigger trigger)
                         if (sceneButtons[i].isLifted())
                         {
                             char buf[30];
-                            sprintf(buf,"%s.csv",sceneButtons[i].label);
+                            sprintf(buf,"s/%s.csv",sceneButtons[i].label);
 Serial.printf("Load %s\n", buf);
                             superTask.loadSettings(buf);
                             result = State::push;

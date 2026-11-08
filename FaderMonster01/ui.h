@@ -172,7 +172,7 @@ class UIclass
     {
         int strip, control;
         char* text;
-        int scrollDemoPos{0};
+        int scrollDemoPos;
     };
     static UIshared uiShared;        
 
@@ -198,6 +198,7 @@ class UIelement
            setNormal,   setHit,   setLatched,   setBlank} 
             state {notDrawn};
     bool lifted{true};  //!< touch was lifted rather than being slid out
+    enum {none, free, smooth} fontType;
   public:
     TFTcolours colours; // copied from reference at construction time
     int x,y,w,h;
@@ -218,9 +219,15 @@ class UIelement
     virtual void setFont(TFT_eSprite* pSprite)
     {
         if (nullptr != smoothFont)
+        {
             FontSetter::loadFont(*pSprite, smoothFont);
+            fontType = smooth;
+        }
         else
+        {
             FontSetter::setFreeFont(*pSprite, font); // nullptr is safe
+            fontType = (nullptr == font)?none:free;
+        }
     }
 
     virtual bool isIn(GTPoint& pt);
@@ -255,6 +262,10 @@ class UIbutton : public UIelement
                 pSprite->setTextColor(txt);
             else                
                 pSprite->setTextColor(txt, bg, true);
+
+            // not sure that smooth fonts honour the datum properly    
+            if (smooth == fontType && CC_DATUM == datum)
+                y += pSprite->fontHeight() / 3;
             pSprite->drawString(label,x,y);
 
             result = true;
@@ -937,11 +948,13 @@ class MainTestRects : public UIclass
 // 
 class MainTestScroller : public UIclass 
 {
-    enum {idle, drawingScroll, drawingTouch, drawingHeader};
+    enum {idle, drawingScroll, drawingTouch, drawingHeader,
+          pollButtons};
     void scrollUp(void);
     void drawHeaderText(void);
     
     static constexpr int lc{7}, lh{26}, theStep{2};
+
     int incr{0};
     bool incrementing{false};
     int limit{-1};
@@ -950,9 +963,19 @@ class MainTestScroller : public UIclass
     int headerX, headerY; // set in begin()
     int touchStart{-1}; // starting Y for touch: -1 if not started
     char buffer[(MAX_NAME_LENGTH+1)*(lc+2)];
+
     UIscroller scroller{ColoursRGB, 
-                        20,35+(240-lh*lc-35)/2,100, lh,lc,
+                        15,35+(240-lh*lc-35)/2,130, lh,lc,
                         buffer, MAX_NAME_LENGTH, fileSysTextGen};
+
+    static constexpr int bx{160}, by{50}, bw{70}, bh{70}, bg{5};
+    UIbutton load   {colours, bx,       by,       bw,bh, (char*) "Load"};
+    UIbutton save   {colours, bx+bw+bg, by,       bw,bh, (char*) "Save"};
+    UIbutton rename {colours, bx,       by+bh+bg, bw,bh, (char*) "Rename"};
+    UIbutton delFile{colours, bx+bw+bg, by+bh+bg, bw,bh, (char*) "Delete"};
+    void buttonBegin(UIbutton&);
+    bool buttonDoAction(UIbutton&, GTPoint&, char*, State&);
+
   public:
     virtual State begin(TFT_eSprite& sprite, colours_t c);
     virtual State update(Trigger trigger);

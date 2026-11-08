@@ -1,0 +1,10 @@
+
+CSV for FaderMonsterLast settings; 2 items
+scene, "s/scene-0.csv"
+pedalSettings.gain, 0x37
+pedalSettings.scaleMin, -0.77938
+pedalSettings.scaleMax, 0.97641
+// 4 settings lines
+
+
+

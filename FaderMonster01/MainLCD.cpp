@@ -153,6 +153,20 @@ taskEXIT_CRITICAL();
   return count;    
 }
 
+int FileSys::getPathNumber(const char* path)
+{
+  int result = -1;
+Serial.printf("Looking for %s ... ", path);
+  if (nullptr != path)
+    for (int i=0;i < count && result < 0;i++)
+    {
+      if (0 == strcmp(path, pPaths[i].path))
+        result = i;
+    }
+Serial.printf("%sfound at %d\n", result < 0 ? "not":"", result);
+  return result;    
+}
+
  
 //----------------------------------------------------------------------------
 //
@@ -340,6 +354,9 @@ taskEXIT_CRITICAL();
     Serial.printf("Wrote '%s' to '%s'\n", fileName, settingsRecord);
     result = true;
   }
+  else
+    Serial.printf("Failed to write '%s' to '%s'\n", fileName, settingsRecord);
+
   return result;
 }
 
@@ -347,6 +364,7 @@ WHICHMEM
 bool MainLCDtask::restoreLastSetting(void)
 {
   bool result = false;
+  const char* badString = settingsRecord;
 taskENTER_CRITICAL();
   File f = FRAMfs.open(settingsRecord, FILE_READ);
 taskEXIT_CRITICAL();
@@ -356,15 +374,17 @@ taskEXIT_CRITICAL();
 taskENTER_CRITICAL();
     f.close();
 taskEXIT_CRITICAL();
+    badString = "field count";
     if (fields > 0)
     {
       loadWasManual = false;
       result = doLoadSettings(faderMonsterLast.scene) == InterTaskRequest::Result::done;
+      badString = faderMonsterLast.scene;
     }
   }
 
   if (!result)
-    Serial.printf("Failed to read from %s\n", settingsRecord);
+    Serial.printf("Failed to read from %s\n", badString);
 
   return result;
 }
@@ -431,6 +451,18 @@ taskEXIT_CRITICAL();
 }
 
 
+// re-load the file list
+WHICHMEM
+InterTaskRequest::Result MainLCDtask::doUpdateFileList(void* _fileMatch)
+{
+  const FileMatch& fileMatch = *((FileMatch*) _fileMatch);
+  InterTaskRequest::Result result = InterTaskRequest::Result::failed;
+
+  fileSys.loadPaths(FRAMfs, fileMatch.path, fileMatch.extn);
+
+  return result;
+}
+
 //========================================================================
 //
 //                      888      888 d8b          
@@ -494,6 +526,16 @@ InterTaskRequest& MainLCDtask::loadSettings(InterTaskRequest& req,  // request t
     requestPayload payload{&MainLCDtask::doLoadSettings, fileName};
     opIsSave = false;
     loadWasManual = true;
+    return sendPayload(req, payload, timeout);
+}
+
+
+WHICHMEM
+InterTaskRequest& MainLCDtask::updateFileList(InterTaskRequest& req,  // request to be filled in
+                                              FileMatch& match,       // path and extension
+                                              TickType_t timeout)
+{
+    requestPayload payload{&MainLCDtask::doUpdateFileList, &match};
     return sendPayload(req, payload, timeout);
 }
 
@@ -681,34 +723,8 @@ taskEXIT_CRITICAL();
       }
     }
     
-    /*
-    { // list scenes at startup ... maybe
-taskENTER_CRITICAL();
-      File dir = FRAMfs.open("/");
-taskEXIT_CRITICAL();
-      if (dir)
-      {
-        File entry;
-        Serial.println("    Opened root OK");
-        while (1)
-        {
-taskENTER_CRITICAL();
-          entry = dir.openNextFile();
-taskEXIT_CRITICAL();
-          if (!entry)
-            break;
-
-          if (!entry.isDirectory() && 0 == strncmp(entry.name(), "scene", 5))
-            Serial.printf("      %s\n", entry.name());
-taskENTER_CRITICAL();
-          entry.close();
-taskEXIT_CRITICAL();
-        }
-      }
-    }
-    */
-
-    fileSys.loadPaths(FRAMfs, "/", "csv");
+    // list scenes at startup
+    fileSys.loadPaths(FRAMfs, "s/", "csv"); // needed for scene scroller!
     for (int i=0;i<fileSys.getCount();i++)
       Serial.printf("      %s\n", fileSys.getPath(i));
 

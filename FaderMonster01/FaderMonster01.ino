@@ -462,21 +462,29 @@ void SuperTask::popUI(void)
 //                          888                       
 //
 extern FlexIOSPI SPIflex;
-static char fileName[30];
+static char fileName[MAX_FILE_PATH+1];
 uint8_t bits;
 bool countBits;
 int ADCcount;
+
 
 WHICHMEM
 void SuperTask::loadSettings(char* name)
 {
     if (name != fileName)
-    {
-        strncpy(fileName, name, sizeof fileName - 1);
-        fileName[sizeof fileName - 1] = 0;
-    }
+        Settings::safe_strncpy(fileName, name, sizeof fileName - 1);
     mainLCDtask.loadSettings(saveSettingsRequest, fileName);
     doneFlags &= ~((1<<(NUM_POTS+1))-1); // clear the bottom 9 "done" flags
+}
+
+
+WHICHMEM
+void SuperTask::saveSettings(char* name)
+{
+    if (name != fileName)
+    if (name != fileName)
+        Settings::safe_strncpy(fileName, name, sizeof fileName - 1);
+    mainLCDtask.saveSettings(saveSettingsRequest, fileName);
 }
     
 
@@ -599,14 +607,24 @@ void SuperTask::loopFn(void)
 
       case 's': // save scene
       {
-        char n = Serial.read();
-        if (n >= '0' && n <= '9')
+        char num[4]; 
+        int i;
+
+        for (i=0;i<3;i++)
         {
-          sprintf(fileName, "scene-1%c.csv", n);
+          num[i] = Serial.read();
+          if (num[i] < 32)
+            break;
+        }
+        num[i] = 0; // terminate
+
+        if ('!' == num[0])
+          Settings::save(Serial, faderMonsterLast);
+        else if (num[0] > 0)
+        {
+          sprintf(fileName, "s/scene-%s.csv", num);
           mainLCDtask.saveSettings(saveSettingsRequest, fileName);
         }
-        else if ('x' == n)
-          Settings::save(Serial, faderMonsterLast);
         else
           Settings::save(Serial, faderMonsterSettings);
       }
@@ -625,13 +643,20 @@ void SuperTask::loopFn(void)
 
       case 'l': // load scene
       {
-        char n = Serial.read();
-        if (n >= '0' && n <= '9')
+        char num[4]; 
+        int i;
+
+        for (i=0;i<3;i++)
         {
-          // request load and wait for it to complete
-          sprintf(fileName, "scene-%c.csv", n);
-          loadSettings(fileName);
+          num[i] = Serial.read();
+          if (num[i] < 32)
+            break;
         }
+        num[i] = 0; // terminate
+
+        // request load and wait for it to complete
+        sprintf(fileName, "s/scene-%s.csv", num);
+        loadSettings(fileName);
       }
         break;
 

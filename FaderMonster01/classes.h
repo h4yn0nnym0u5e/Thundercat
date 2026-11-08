@@ -553,6 +553,7 @@ class SuperTask : public FaderMonsterTask
     //------------------------------------------------------------------------
     // stuff for UI to do actions
     void loadSettings(char* name);
+    void saveSettings(char* name);
     //------------------------------------------------------------------------
     // stuff to allow another task to make async requests:
     InterTaskRequest& updateMainTouch(InterTaskRequest& req, GTPoint& touchPoint, TickType_t timeout = 0);
@@ -886,6 +887,10 @@ class ScribbleTask : public FaderMonsterTask
 //  
 class MainLCDtask : public FaderMonsterTask
 { 
+  public:
+    struct FileMatch {char* path, *extn; };
+
+  private:
     //------------------------------------------------------------------------
     // stuff to deal with async requests from another task:
     typedef InterTaskRequest::Result (MainLCDtask::* RequestExecutor)(void*);
@@ -901,6 +906,7 @@ class MainLCDtask : public FaderMonsterTask
     InterTaskRequest::Result doUpdateDirty(void* pScribble);
     InterTaskRequest::Result doSaveSettings(void* fileName);
     InterTaskRequest::Result doLoadSettings(void* fileName);
+    InterTaskRequest::Result doUpdateFileList(void* fileMatch);
     //------------------------------------------------------------------------
     // TFT-related stuff
     TFT_TYPE& tft;
@@ -966,6 +972,8 @@ class MainLCDtask : public FaderMonsterTask
     InterTaskRequest& updateDirty(InterTaskRequest& req, TFT_eSprite& scribble, TickType_t timeout = 0);
     InterTaskRequest& saveSettings(InterTaskRequest& req, char* fileName, TickType_t timeout = 0);
     InterTaskRequest& loadSettings(InterTaskRequest& req, char* fileName, TickType_t timeout = 0);
+    InterTaskRequest& updateFileList(InterTaskRequest& req, FileMatch& match, TickType_t timeout = 0);
+    
 };
 
 //             888            d8b          
