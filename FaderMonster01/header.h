@@ -35,6 +35,7 @@
 extern FaderMonsterSettings faderMonsterSettings; // needed for UI
 extern FaderMonsterLast faderMonsterLast;
 extern ScrollerResult lineNumTextGen(int n, char* buffer, int maxl);
+extern ScrollerResult fileSysTextGen(int n, char* buffer, int maxl);
 #include "ui.h"
 #include "classes.h"
 
@@ -58,6 +59,7 @@ extern void MIDIbegin(void);
 extern ContinuousPot allPots[NUM_POTS];
 //typedef RingLEDs<NUM_POTS> FaderMonsterRingLEDs; 
 extern  RingLEDs<NUM_POTS> rings;
+extern FileSys fileSys;
 
 
 // hacky things to be got rid of later. Probably.

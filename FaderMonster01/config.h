@@ -104,6 +104,13 @@
 
 #define MAIN_UI_STACK_SIZE 5
 
+// -------------- FileSys --------------
+// This is in the MainLCD file, because 
+// it shares the FlexIOSPI bus
+#define MAX_FILES     100  // allow loading up to this many file paths...
+#define MAX_FILE_PATH  40  // ...of this length each
+// need (4+MAX_FILE_PATH) * MAX_FILES storage; say 4400 bytes
+
 // ============== Port expanders ==============
 // expander pin assignments in expanders.h
 

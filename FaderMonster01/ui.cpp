@@ -1184,6 +1184,48 @@ ScrollerResult lineNumTextGen(int n,        //!< element number
 }
 
 WHICHMEM
+ScrollerResult fileSysTextGen(int n,        //!< element number
+                              char* buffer, //!< storage for text
+                              int maxl)     //!< max space in storage
+{
+    ScrollerResult result = ScrollerResult::fail;
+    const int maxLine{fileSys.getCount()-1};
+
+    if (n >= 0)
+    {
+        if (n <= maxLine)
+        {
+            char fnBuf[MAX_FILE_PATH];
+            strcpy(fnBuf, fileSys.getPath(n));
+            Settings::safe_zapchar(fnBuf, '.', 0);   // terminate at extension separator
+            char* leaf = strrchr(fnBuf, '/');        // start at path separator...
+            leaf = nullptr == leaf ? fnBuf : leaf+1; // ...actually, just after
+
+            char myBuf[maxl+2];
+            snprintf(myBuf, maxl, "%s", leaf);
+            myBuf[maxl] = 0;
+            if (0 != strcmp(myBuf, buffer))
+            {
+                strcpy(buffer, myBuf);
+// Serial.printf("Put '%s' in %08X\n", buffer, (uint32_t) buffer);
+                result = ScrollerResult::ok;
+            }
+            else
+            {
+// Serial.printf("'%s' already in %08X\n", buffer, (uint32_t) buffer);
+                result = ScrollerResult::same;
+            }
+
+            // fix up result; replaces 'same' with 'sameLast' if 
+            // it's the last element and the text is unchanged
+            result = UIscroller::fixResult(result, maxLine == n);
+        }
+    }
+
+    return result;
+}
+
+WHICHMEM
 UIclass::State MainTestScroller::begin(TFT_eSprite& sprite, colours_t c)
 {
     UIclass::begin(sprite, c);

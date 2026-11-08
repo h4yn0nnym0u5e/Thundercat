@@ -28,6 +28,8 @@ T constrain(T v, T l, T u)
 }
 //#endif // !defined(constrain)
 
+//================================================================
+//
 //                                                        888    
 //                                                        888    
 //                                                        888    
@@ -92,6 +94,8 @@ class InterTaskRequest
     uint32_t overallTime(void)   { return finished - requested; } // 
 };
 
+//================================================================
+//
 //                              .d88888b.                                      
 //                             d88P" "Y88b                                     
 //                             888     888                                     
@@ -205,6 +209,8 @@ class RequestQueue
     UBaseType_t messagesWaiting(void) { return uxQueueMessagesWaiting(queue); }
 };
 
+//================================================================
+//
 //     .d8888b.                                 888    888    d8P                    888      
 //    d88P  Y88b                                888    888   d8P                     888      
 //    Y88b.                                     888    888  d8P                      888      
@@ -238,6 +244,8 @@ struct MIDIreq
     bool  isPending{false};
 };
 
+//================================================================
+//
 //     .d888                  888             
 //    d88P"                   888             
 //    888                     888             
@@ -272,6 +280,46 @@ class FontSetter
     static constexpr const uint8_t* TITLE_BAR{NotoSansRegular24};
 };
 
+//================================================================
+//
+//     .d888 d8b 888                                     
+//    d88P"  Y8P 888                                     
+//    888        888                                     
+//    888888 888 888  .d88b.  .d8888b  888  888 .d8888b  
+//    888    888 888 d8P  Y8b 88K      888  888 88K      
+//    888    888 888 88888888 "Y8888b. 888  888 "Y8888b. 
+//    888    888 888 Y8b.          X88 Y88b 888      X88 
+//    888    888 888  "Y8888   88888P'  "Y88888  88888P' 
+//                                          888          
+//                                     Y8b d88P          
+//                                      "Y88P"           
+//
+class PathPtr
+{
+  public:
+    char* path;
+    bool operator<(const PathPtr& r) const { return strcmp(path, r.path) < 0;}
+    bool operator>(const PathPtr& r) const { return r < *this; }
+    //bool operator<=(const PathPtr& r) { return !(*this > r); } // (const PathPtr&)
+    //bool operator>=(const PathPtr& r) { return !(r < *this); }
+};
+
+class FileSys
+{
+    int max, maxPathSize, count{-1};
+    PathPtr* pPaths;
+    char* pathBuffer;
+  public:
+    FileSys(PathPtr* _pPaths, int _max, char* _pathBuffer, int _maxPathSize)
+    : max{_max}, maxPathSize{_maxPathSize}, pPaths{_pPaths}, pathBuffer{_pathBuffer}
+    {}
+    int loadPaths(FS& fs, const char* path, const char* extn = nullptr);
+    int getCount(void) { return count; }
+    char* getPath(int n) { return (n < count) ? pPaths[n].path : nullptr; }
+};
+
+//================================================================
+//
 //                      888    888    d8b                            
 //                      888    888    Y8P                            
 //                      888    888                                   

@@ -952,7 +952,7 @@ class MainTestScroller : public UIclass
     char buffer[(MAX_NAME_LENGTH+1)*(lc+2)];
     UIscroller scroller{ColoursRGB, 
                         20,35+(240-lh*lc-35)/2,100, lh,lc,
-                        buffer, MAX_NAME_LENGTH, lineNumTextGen};
+                        buffer, MAX_NAME_LENGTH, fileSysTextGen};
   public:
     virtual State begin(TFT_eSprite& sprite, colours_t c);
     virtual State update(Trigger trigger);

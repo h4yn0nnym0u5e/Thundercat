@@ -602,7 +602,7 @@ void SuperTask::loopFn(void)
         char n = Serial.read();
         if (n >= '0' && n <= '9')
         {
-          sprintf(fileName, "scene-%c.csv", n);
+          sprintf(fileName, "scene-1%c.csv", n);
           mainLCDtask.saveSettings(saveSettingsRequest, fileName);
         }
         else if ('x' == n)

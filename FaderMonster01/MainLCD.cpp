@@ -69,6 +69,90 @@ bool MainLCDtask::initFS(void)
     
   return ok;    
 }
+
+//================================================================
+//
+//     .d888 d8b 888                                     
+//    d88P"  Y8P 888                                     
+//    888        888                                     
+//    888888 888 888  .d88b.  .d8888b  888  888 .d8888b  
+//    888    888 888 d8P  Y8b 88K      888  888 88K      
+//    888    888 888 88888888 "Y8888b. 888  888 "Y8888b. 
+//    888    888 888 Y8b.          X88 Y88b 888      X88 
+//    888    888 888  "Y8888   88888P'  "Y88888  88888P' 
+//                                          888          
+//                                     Y8b d88P          
+//                                      "Y88P"           
+//
+// Could be any filesystem; buffers could be PSRAM
+#define NAME_BUFFER_SIZE (MAX_FILES*(MAX_FILE_PATH+1))
+static char  nameBuffer[NAME_BUFFER_SIZE];
+static PathPtr pNames[MAX_FILES];
+FileSys fileSys(pNames, MAX_FILES, nameBuffer, MAX_FILE_PATH);
+#undef NAME_BUFFER_SIZE
+
+int FileSys::loadPaths(FS& fs, const char* path, const char* extn /* nullptr */)
+{
+  int extl = nullptr == extn ? 0 : strlen(extn);
+taskENTER_CRITICAL();
+  File dir = fs.open(path);
+taskEXIT_CRITICAL();
+  if (dir)
+  {
+    File entry;
+
+    count = 0;
+
+    Serial.printf("    Opened %s OK\n", path);
+    while (1)
+    {
+taskENTER_CRITICAL();
+      entry = dir.openNextFile();
+taskEXIT_CRITICAL();
+      if (!entry)
+        break;
+
+      do
+      {
+        if (entry.isDirectory())
+          break;
+
+        const char* p = entry.name();
+        int l = strlen(p);
+
+        if (0 != extl)
+        {
+          if (extl+2 > l) // no room for 'x.extn', can't match!
+            break;
+          if (0 != strcmp(p+l-extl, extn))  // extension doesn't match
+            break;
+          if ('.' != p[l-extl-1]) // no dot separator
+            break;
+        }
+
+        if (l > maxPathSize) // path too long for an entry
+          break;
+
+        // all OK, make a new entry
+        pPaths[count].path = pathBuffer+count*(maxPathSize+1);
+        strcpy(pPaths[count].path, p);
+        count++;
+      } while (0);
+      
+taskENTER_CRITICAL();
+      entry.close();
+taskEXIT_CRITICAL();
+      if (count >= max) // run out of room?
+        break;
+    }
+    dir.close();
+  }
+  else
+    count = -1;
+
+  return count;    
+}
+
  
 //----------------------------------------------------------------------------
 //
@@ -597,6 +681,7 @@ taskEXIT_CRITICAL();
       }
     }
     
+    /*
     { // list scenes at startup ... maybe
 taskENTER_CRITICAL();
       File dir = FRAMfs.open("/");
@@ -621,6 +706,12 @@ taskEXIT_CRITICAL();
         }
       }
     }
+    */
+
+    fileSys.loadPaths(FRAMfs, "/", "csv");
+    for (int i=0;i<fileSys.getCount();i++)
+      Serial.printf("      %s\n", fileSys.getPath(i));
+
     Serial.print("    "); // indent...
     restoreLastSetting(); // ...this!
     touchADCtask.setPedalSettings(miscReq, faderMonsterLast.pedalSettings);

@@ -1318,6 +1318,14 @@ class Settings
         dst[num-1] = 0; // what should have been the case for the original
         return dst;
     }
+
+    static char* safe_zapchar(char* dst, char was, char is)
+    {
+        char* p = strchr(dst, was);
+        if (nullptr != p) *p = is;
+        return dst;
+    }
+
 };
 
 #endif // !defined(_CLASSES_H_)
