@@ -933,7 +933,7 @@ class MainLCDtask : public FaderMonsterTask
     //------------------------------------------------------------------------
     // LittleFS-related stuff
     bool initFS(void);
-    bool recordLastSetting(const char* fileName);
+    bool recordLastSetting(const char* fileName, int tries = 1); // because more doesn't help...
     bool restoreLastSetting(void);
     //------------------------------------------------------------------------
 

@@ -15,7 +15,7 @@ DMAMEM PB_SmartKnobConfig UIsmartConfig;
  * Shared UI structure, used when flipping 
  * between UI classes
  */
-/* static */ UIclass::UIshared UIclass::uiShared{0,0,nullptr};
+/* static */ UIclass::UIshared UIclass::uiShared; // defaults in class declaration
 //==========================================================================
 //
 //    888     888 8888888         888                            
@@ -706,7 +706,7 @@ bool UIgraphicButton::isIn(GTPoint& p, int threshold)
         pixel = (offset & 1)?(pixel&0x0F):(pixel>>4);
         result = pixel >= threshold;
     }
-
+    lifted = result && 255 == p.reserved; // "in" the element, but actually touch has ended
     result = setLifted(result, p);
 
     return result;
@@ -1228,7 +1228,7 @@ ScrollerResult fileSysTextGen(int n,        //!< element number
 }
 
 WHICHMEM
-void MainTestScroller::buttonBegin(UIbutton& but)
+void MainSceneFiler::buttonBegin(UIbutton& but)
 {
     but.setColours(colours);
     but.setFont(FontSetter::RADIO_LABEL);
@@ -1236,7 +1236,7 @@ void MainTestScroller::buttonBegin(UIbutton& but)
 }
 
 WHICHMEM
-UIclass::State MainTestScroller::begin(TFT_eSprite& sprite, colours_t c)
+UIclass::State MainSceneFiler::begin(TFT_eSprite& sprite, colours_t c)
 {
     UIclass::begin(sprite, c);
 
@@ -1270,7 +1270,7 @@ UIclass::State MainTestScroller::begin(TFT_eSprite& sprite, colours_t c)
 }
 
 WHICHMEM
-uint32_t MainTestScroller::poll(void)
+uint32_t MainSceneFiler::poll(void)
 {
     uint32_t result = interval;
     if (intervalElapsed(40'000)) // every 40ms (25fps)
@@ -1317,7 +1317,7 @@ if (++cc > 20)
 }
 
 WHICHMEM
-bool MainTestScroller::buttonDoAction(UIbutton& but, GTPoint& newPt, char* buf, State& result)
+bool MainSceneFiler::buttonDoAction(UIbutton& but, GTPoint& newPt, char* buf, State& result)
 {
     bool retVal = false;
 
@@ -1335,7 +1335,7 @@ bool MainTestScroller::buttonDoAction(UIbutton& but, GTPoint& newPt, char* buf, 
 }
 
 WHICHMEM
-UIclass::State MainTestScroller::update(Trigger trigger)
+UIclass::State MainSceneFiler::update(Trigger trigger)
 {
     State result = State::done; 
 
@@ -1443,7 +1443,7 @@ Serial.printf("Save %s\n", buf);
 
 
 WHICHMEM
-void MainTestScroller::setScrollpos(int newPos)
+void MainSceneFiler::setScrollpos(int newPos)
 {
     if (newPos < 0) newPos = 0;
     if (limit > 0 && newPos >= limit) newPos = limit;
@@ -1457,7 +1457,7 @@ void MainTestScroller::setScrollpos(int newPos)
 }
 
 WHICHMEM
-void MainTestScroller::scrollUp(void)
+void MainSceneFiler::scrollUp(void)
 {
     // Increment MUST divide lh (line height) or Bad Stuff Happens!
     // The setScrollpos() method updates the stored text and animation sprite...
@@ -1480,7 +1480,7 @@ void MainTestScroller::scrollUp(void)
 }
 
 WHICHMEM
-void MainTestScroller::drawHeaderText(void)
+void MainSceneFiler::drawHeaderText(void)
 {
     // pad to last width and draw text
     pSprite->setTextPadding(lastHeaderWidth);
@@ -1752,7 +1752,7 @@ UIclass::State MainColourPicker::begin(TFT_eSprite& sprite, colours_t c)
 
     pSprite->fillScreen(TFT_BLACK);
     hueCircle(hueX,hueY, 100,80, TFT_BLACK);            // hue circle
-    hue = markHue(hueX,hueY, 100,80, 13, PI/2, mx, my); // mark to get initial hue
+    hue = markHue(hueX,hueY, 100,80, 13, oldAngle, mx, my); // mark to get initial hue
     gradients(240,280, 20,20,200, hue);                 // text and background gradients
 
     // gradient markers

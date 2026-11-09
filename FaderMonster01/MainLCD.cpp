@@ -156,14 +156,14 @@ taskEXIT_CRITICAL();
 int FileSys::getPathNumber(const char* path)
 {
   int result = -1;
-Serial.printf("Looking for %s ... ", path);
+// Serial.printf("Looking for %s ... ", path);
   if (nullptr != path)
     for (int i=0;i < count && result < 0;i++)
     {
       if (0 == strcmp(path, pPaths[i].path))
         result = i;
     }
-Serial.printf("%sfound at %d\n", result < 0 ? "not":"", result);
+// Serial.printf("%sfound at %d\n", result < 0 ? "not":"", result);
   return result;    
 }
 
@@ -324,38 +324,48 @@ InterTaskRequest::Result MainLCDtask::doUpdateDirty(void* pDisplay)
 }
 
 // record and restore last-used settings
-static const char* settingsRecord = "lastSettings.csv";
+static const char* settingsRecord = "lastSettings.csv", *settingsTmp = "lastSettings.tmp";
 
+//----------------------------------------------------------------------------
 /**
  * Record current settings for later restoration on re-boot.
  * If the fileName is non-null it's used as the current scene filename
  */
 WHICHMEM
-bool MainLCDtask::recordLastSetting(const char* fileName)
+bool MainLCDtask::recordLastSetting(const char* fileName, int tries /* 3 */)
 {
   bool result = false;
-taskENTER_CRITICAL();
-  File f = FRAMfs.open(settingsRecord, FILE_WRITE_BEGIN);
-taskEXIT_CRITICAL();
-  if (f)
+
+  while (0 != tries && !result)
   {
-    if (nullptr == fileName)
-      fileName = "<pedal settings>";
-    else
-      Settings::safe_strncpy(faderMonsterLast.scene, fileName, sizeof faderMonsterLast.scene);
+taskENTER_CRITICAL();
+    FRAMfs.remove(settingsTmp); // just in case
+    File f = FRAMfs.open(settingsTmp, FILE_WRITE_BEGIN);
+taskEXIT_CRITICAL();
+    if (f)
+    {
+      if (nullptr == fileName)
+        fileName = "<pedal settings>";
+      else
+        Settings::safe_strncpy(faderMonsterLast.scene, fileName, sizeof faderMonsterLast.scene);
 
-    // write to the file
-    Settings::save(f, faderMonsterLast);
+      // write to the file
+      Settings::save(f, faderMonsterLast);
 
 taskENTER_CRITICAL();
-    f.close();
+      f.close();
+      result = FRAMfs.remove(settingsRecord) && FRAMfs.rename(settingsTmp, settingsRecord);
 taskEXIT_CRITICAL();
+    }
 
-    Serial.printf("Wrote '%s' to '%s'\n", fileName, settingsRecord);
-    result = true;
+    if (result)
+      Serial.printf("Wrote '%s' to '%s'\n", fileName, settingsRecord);
+    else
+      Serial.printf("Failed to write '%s' to '%s'\n", fileName, settingsRecord);
+
+    tries--;
+    if (!result) vTaskDelay(2);
   }
-  else
-    Serial.printf("Failed to write '%s' to '%s'\n", fileName, settingsRecord);
 
   return result;
 }

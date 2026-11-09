@@ -170,8 +170,14 @@ class UIclass
     static constexpr int TITLE_HEIGHT{30};
     struct UIshared
     {
+        // colour picker
+        float hueAngle{PI/2}, textLevel{0.66f}, bgLevel{0.66f};
+
+        // MIDI settings
         int strip, control;
         char* text;
+
+        // scene filer
         int scrollDemoPos;
     };
     static UIshared uiShared;        
@@ -946,7 +952,7 @@ class MainTestRects : public UIclass
 //         X88 Y88b.    888    Y88..88P 888 888     888  Y8b.          X88 Y88b.  
 //     88888P'  "Y8888P 888     "Y88P"  888 888     888   "Y8888   88888P'  "Y888 
 // 
-class MainTestScroller : public UIclass 
+class MainSceneFiler : public UIclass 
 {
     enum {idle, drawingScroll, drawingTouch, drawingHeader,
           pollButtons};
@@ -1008,9 +1014,9 @@ class MainColourPicker : public UIclass
     // working variables
     const int mr{13}; // hue marker radius
     const int hueX{120}, hueY{120}; // centre of hue circle
-    float textLevel{0.66f}, bgLevel{0.66f};
+    float& textLevel{uiShared.textLevel}, &bgLevel{uiShared.bgLevel};
     int dx, dy, mx, my;
-    float touchRadius, touchAngle, oldAngle, newLevel;
+    float touchRadius, touchAngle, &oldAngle{uiShared.hueAngle}, newLevel;
     bool gradientOnly; // no hue change, just draw a gradient and example
 
     // the actual result!
@@ -1378,7 +1384,7 @@ class MainDummy : public UIclass {};
 
 #define MAIN_UI_LIST \
     MAIN_UI_ENTRY(MainColourPicker, colourPicker) \
-    MAIN_UI_ENTRY(MainTestScroller, testScroller) \
+    MAIN_UI_ENTRY(MainSceneFiler, testScroller) \
     MAIN_UI_ENTRY(MainQwerty, qwerty) \
     MAIN_UI_ENTRY(MainExprTune, expr) \
     MAIN_UI_ENTRY(MainSceneLoad, scene) \

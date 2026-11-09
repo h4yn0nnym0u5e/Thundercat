@@ -365,9 +365,9 @@ bool SuperTask::processUI(void)
         new(_ui.space) MainTestRects; 
         break;
 */
-      case MAIN_UI_MainTestScroller:
+      case MAIN_UI_MainSceneFiler:
         sprintf(headerText,"Select: ");
-        new(_ui.space) MainTestScroller; 
+        new(_ui.space) MainSceneFiler; 
         break;
 
       case MAIN_UI_MainQwerty:
