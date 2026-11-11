@@ -1134,15 +1134,15 @@ void MainTestRects::randomRect(void)
 }
 
 //==================================================================
-//                                      888 888 88888888888                888    
-//                                      888 888     888                    888    
-//                                      888 888     888                    888    
-//    .d8888b   .d8888b 888d888 .d88b.  888 888     888   .d88b.  .d8888b  888888 
-//    88K      d88P"    888P"  d88""88b 888 888     888  d8P  Y8b 88K      888    
-//    "Y8888b. 888      888    888  888 888 888     888  88888888 "Y8888b. 888    
-//         X88 Y88b.    888    Y88..88P 888 888     888  Y8b.          X88 Y88b.  
-//     88888P'  "Y8888P 888     "Y88P"  888 888     888   "Y8888   88888P'  "Y888 
-// 
+//                                                8888888888 d8b 888                  
+//                                                888        Y8P 888                  
+//                                                888            888                  
+//    .d8888b   .d8888b .d88b.  88888b.   .d88b.  8888888    888 888  .d88b.  888d888 
+//    88K      d88P"   d8P  Y8b 888 "88b d8P  Y8b 888        888 888 d8P  Y8b 888P"   
+//    "Y8888b. 888     88888888 888  888 88888888 888        888 888 88888888 888     
+//         X88 Y88b.   Y8b.     888  888 Y8b.     888        888 888 Y8b.     888     
+//     88888P'  "Y8888P "Y8888  888  888  "Y8888  888        888 888  "Y8888  888     
+//
 /**
  * Get text for a given element of a scrollbox.
  * \return  'ok' if set, 
@@ -1248,9 +1248,11 @@ UIclass::State MainSceneFiler::begin(TFT_eSprite& sprite, colours_t c)
     scroller.setColours(c);
     scroller.setFont(FontSetter::RADIO_LABEL);
 
-    // start scroller at loaded scene, if possible
-    uiShared.scrollDemoPos = fileSys.getPathNumber(faderMonsterLast.scene + 2) * lh;
-    if (uiShared.scrollDemoPos < 0) uiShared.scrollDemoPos = 0;
+    // start scroller at last-selected, or loaded scene, if possible
+    if (uiShared.scrollDemoPos < 0) // hasn't been set before
+        uiShared.scrollDemoPos = fileSys.getPathNumber(faderMonsterLast.scene + 2) * lh;
+    if (uiShared.scrollDemoPos < 0) // loaded not in list...
+        uiShared.scrollDemoPos = 0; // ...just set to top
     scroller.begin(mainLCDtask.getAnimationSprite(), uiShared.scrollDemoPos);
     uiShared.scrollDemoPos = scroller.getScrollpos(); // can be changed by begin()
 
@@ -1266,6 +1268,29 @@ UIclass::State MainSceneFiler::begin(TFT_eSprite& sprite, colours_t c)
     buttonBegin(delFile);
 
     phase = drawingScroll;
+
+    // begin() called after file rename or name change on save?
+    // we've now set up all thre required information...
+Serial.printf("Shared text: %s; reason: %d\n", uiShared.text, uiShared.reason);
+    if (nullptr != uiShared.text)
+    {
+        switch (uiShared.reason)
+        {
+            default: // oops: all the wrong reasons!
+                break;
+
+            case UIshared::renameFile:
+Serial.printf("Rename '%s' to '%s'\n", scroller.getCurrentElement(), uiShared.text);
+                break;
+
+            case UIshared::saveFile:
+Serial.printf("Save '%s'\n", uiShared.text);
+                break;
+
+        }
+        MainQwerty::unset();
+    }
+
     return (state = State::push); // need to update display
 }
 
@@ -1316,8 +1341,17 @@ if (++cc > 20)
     return result;
 }
 
+/**
+ * Process a button.
+ * Checks to see if touch is inside it; if so, it may need re-drawing so
+ * phase is set to pollButtons.
+ * \return true if touch lifted in button; file path was written to the provided buffer
+ */
 WHICHMEM
-bool MainSceneFiler::buttonDoAction(UIbutton& but, GTPoint& newPt, char* buf, State& result)
+bool MainSceneFiler::buttonDoAction(UIbutton& but,  //<! button we're checking
+                                    GTPoint& newPt, //<! screen touch info
+                                    char* buf,      //<! space for file path, if relevant
+                                    State& result)  //<! UI state 
 {
     bool retVal = false;
 
@@ -1332,6 +1366,37 @@ bool MainSceneFiler::buttonDoAction(UIbutton& but, GTPoint& newPt, char* buf, St
         phase = pollButtons;
     }     
     return retVal;
+}
+
+WHICHMEM
+static bool renameFileCheck(const char* fileName, char* headerText)
+{
+    bool result = false;
+
+    char buf[MAX_FILE_PATH+1];
+    sprintf(buf, "%s.csv", fileName); // we know it's a CSV file
+    int fileNum = fileSys.getPathNumber(buf); // does it exist?
+    char* star = strchr(headerText, '*');
+
+    if (fileNum < 0) // doesn't exist
+    {
+        if (nullptr != star) // currently have a star...
+        {
+            *star = 0;      // ...remove it
+            result = true;
+        }
+    }
+    else // proposed name does exist 
+    {
+        if (nullptr == star) // no star...
+        {
+            star = headerText + strlen(headerText);
+            sprintf(star, "*"); // ...put one in
+            result = true;
+        }
+    }
+
+    return result;
 }
 
 WHICHMEM
@@ -1351,7 +1416,7 @@ UIclass::State MainSceneFiler::update(Trigger trigger)
             {
                 currentTrigger = trigger; // keep the trigger and value(s)
                 result = State::next;
-                char buf[30]; // used for button actions
+                char buf[MAX_FILE_PATH+1]; // used for button actions
 
                 //------------------------------------------------------
                 if (scroller.isIn(newPt) && !scroller.isLifted())
@@ -1384,6 +1449,15 @@ Serial.printf("Load %s\n", buf);
 Serial.printf("Save %s\n", buf);
                     superTask.saveSettings(buf);
                 }
+
+                if (buttonDoAction(rename, newPt, buf, result))
+                {
+                    strcpy(superTask.enteredText, scroller.getCurrentElement()); // initial value
+                    MainQwerty::setup(UIshared::renameFile, superTask.enteredText, renameFileCheck);
+                    sprintf(superTask.headerText, "Rename %s*", uiShared.text);
+                    superTask.pushUI(MAIN_UI_MainQwerty); // push to keyboard; will pop back with result
+                }
+
                 
                 
             }
@@ -2042,14 +2116,24 @@ void MainQwerty::drawKeyboard(int& n)
     tempCmap = nullptr;
 }
 
+/**
+ * Re-draw the entered text string
+ * \return true if header needs re-drawing too
+ */
 WHICHMEM
-void MainQwerty::drawEntry(char* s)
+bool MainQwerty::drawEntry(char* s)
 {
+    bool result = nullptr != uiShared.updateHeader
+               && (*uiShared.updateHeader)(s, superTask.headerText);
+    bool redText = nullptr != strchr(superTask.headerText, '*');
+
     FontSetter::loadFont(*pSprite,FontSetter::TEXT_ENTRY); // cheap if already loaded
     pSprite->setTextDatum(TL_DATUM);
-    pSprite->setTextColor(colours.fg, colours.bg, true); // no background fill
+    pSprite->setTextColor(redText?TFT_RED:colours.fg, colours.bg, true); // no background fill
     pSprite->drawString(s,xo+xh+15,yo+yh+2);
     pSprite->setTextPadding(0);
+
+    return result;
 }
 
 WHICHMEM
@@ -2198,6 +2282,7 @@ UIclass::State MainQwerty::update(Trigger trigger)
 
                 case drawingBuffer:
                 {
+                    phase = idle;
                     if (!keyIsActioned)
                     {
                         Textifier t{entryBuffer, sizeof entryBuffer};
@@ -2206,7 +2291,7 @@ UIclass::State MainQwerty::update(Trigger trigger)
                         switch (currentKey)
                         {
                             default:
-                                t.c(currentKey); // apennd new keystroke
+                                t.c(currentKey); // append new keystroke
                                 break;
 
                             case '\x12': // back-arrow
@@ -2215,32 +2300,35 @@ UIclass::State MainQwerty::update(Trigger trigger)
 
                             case 0:
                             case '\x01' ... '\x03':
+                                // done in drawingKeyboard phase
                                 break;
 
                             case '\x14': // cross
-                                result = State::abandon;
-                                superTask.popUI();
-                                break;
-
-                            case '\n': // tick -> newline
-                                strcpy(superTask.enteredText, entryBuffer);
-                                superTask.popUI();
-                                result = State::accept;
+                            case '\x13': // tick
+                            case '\n':   // tick -> newline
+                                // never get here, touch trigger already popped UI
                                 break;
                         }
                         
                         // draw if needed; have to load font to set padding
                         FontSetter::loadFont(*pSprite,FontSetter::TEXT_ENTRY);
                         pSprite->setTextDatum(TL_DATUM);
-                        if (t.setPadding(pSprite).toTarget())
+                        if (t.setPadding(pSprite).toTarget()) // did text buffer change?
                         {
-                            drawEntry(t.get());
+                            if (drawEntry(t.get())) // yes, draw, and maybe...
+                                phase = drawingHeader; // ...request header re-draw
                             result = State::push;
                         }
                     }
                     currentKey = 0;
                     keyIsActioned = true;
                 }
+                    break;
+                
+                case drawingHeader:
+                    drawHeader(superTask.headerText);
+                    result = State::push;
+                    phase = idle;
                     break;
             }
         }
@@ -2270,23 +2358,24 @@ UIclass::State MainQwerty::update(Trigger trigger)
                         break;
 
                     default:
-                        if (theKey != currentKey)
+                        if (theKey != currentKey && !isLifted) // record key on touch
                         {
                             currentKey = theKey;
                             phase = drawingKey;
                         }
                         if (isLifted)
                         {
-// if (theKey >= ' ' || '\n' == theKey) Serial.print(theKey); // do something better here!
                             phase = drawingBlank;
-                            //currentKey = 0; // allow for double letters!
                         }
                         break;
 
                     case '\x12': // back-arrow
+                        currentKey = theKey;
+                        phase = drawingBlank;
                         break;
 
                     case '\x14': // cross
+                        unset(); // pretend we have no reason, return nothing
                         result = State::abandon;
                         superTask.popUI();
                         break;
@@ -2303,7 +2392,7 @@ UIclass::State MainQwerty::update(Trigger trigger)
                 }
 
                 if (isLifted)
-                    actionKey(theKey);
+                    actionKey(currentKey);
             }
         }
             break;

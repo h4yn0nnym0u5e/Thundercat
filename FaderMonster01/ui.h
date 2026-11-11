@@ -170,15 +170,19 @@ class UIclass
     static constexpr int TITLE_HEIGHT{30};
     struct UIshared
     {
+        // text entry (push / pop to Qwert UI)
+        char* text;
+        bool (*updateHeader)(const char* et, char* ht){nullptr};
+        enum Reason {none, nope, ctlName, renameFile, saveFile} reason {none};
+
         // colour picker
         float hueAngle{PI/2}, textLevel{0.66f}, bgLevel{0.66f};
 
         // MIDI settings
         int strip, control;
-        char* text;
 
         // scene filer
-        int scrollDemoPos;
+        int scrollDemoPos{-1};
     };
     static UIshared uiShared;        
 
@@ -943,15 +947,15 @@ class MainTestRects : public UIclass
 };
 
 //==================================================================
-//                                      888 888 88888888888                888    
-//                                      888 888     888                    888    
-//                                      888 888     888                    888    
-//    .d8888b   .d8888b 888d888 .d88b.  888 888     888   .d88b.  .d8888b  888888 
-//    88K      d88P"    888P"  d88""88b 888 888     888  d8P  Y8b 88K      888    
-//    "Y8888b. 888      888    888  888 888 888     888  88888888 "Y8888b. 888    
-//         X88 Y88b.    888    Y88..88P 888 888     888  Y8b.          X88 Y88b.  
-//     88888P'  "Y8888P 888     "Y88P"  888 888     888   "Y8888   88888P'  "Y888 
-// 
+//                                                8888888888 d8b 888                  
+//                                                888        Y8P 888                  
+//                                                888            888                  
+//    .d8888b   .d8888b .d88b.  88888b.   .d88b.  8888888    888 888  .d88b.  888d888 
+//    88K      d88P"   d8P  Y8b 888 "88b d8P  Y8b 888        888 888 d8P  Y8b 888P"   
+//    "Y8888b. 888     88888888 888  888 88888888 888        888 888 88888888 888     
+//         X88 Y88b.   Y8b.     888  888 Y8b.     888        888 888 Y8b.     888     
+//     88888P'  "Y8888P "Y8888  888  888  "Y8888  888        888 888  "Y8888  888     
+//
 class MainSceneFiler : public UIclass 
 {
     enum {idle, drawingScroll, drawingTouch, drawingHeader,
@@ -1080,9 +1084,10 @@ class MainColourPicker : public UIclass
 // 
 class MainQwerty : public UIclass 
 {
-    enum {idle, drawingKeyboard, drawingBlank, drawingKey, drawingBuffer};
+    enum {idle, drawingKeyboard, drawingBlank, drawingKey, 
+          drawingBuffer, drawingHeader};
     int kbd{0}, kbdTop;
-    char currentKey;    //!< last key pressed
+    char currentKey{0};    //!< last key pressed
     bool keyIsActioned{true}; //!< key has been actioned
     char entryBuffer[MAX_TEXT_LEN]{0};
     uint16_t* tempCmap{nullptr};
@@ -1092,7 +1097,7 @@ class MainQwerty : public UIclass
 
     void drawRow(const char* keys, int row, int off);
     void drawKeyboard(int& n);
-    void drawEntry(char* s);
+    bool drawEntry(char* s);
     char whichKey(int x, int y);
     const image_4bit_info* getKeyCap(char c);
     void blankTheChar(void) { pSprite->fillRect(xo,yo,xh,yh, colours.bg); }
@@ -1102,6 +1107,13 @@ class MainQwerty : public UIclass
     virtual State begin(TFT_eSprite& sprite, colours_t c);
     virtual State update(Trigger trigger);
     virtual InterTaskRequest& writeToDisplay(void) { return writeToMainLCD(); }
+    static void setup(UIshared::Reason reason, char* txt = nullptr, bool (*upd)(const char*,char*) = nullptr)
+    {
+        uiShared.reason = reason;
+        uiShared.text = txt;
+        uiShared.updateHeader = upd;
+    }
+    static void unset(void) { setup(UIshared::none); }
 };
 
 //------------------------------------------------------------------
@@ -1379,16 +1391,18 @@ class MainMIDIsettings : public UIclass
 
 //==================================================================
 class MainDummy : public UIclass {};
+class MainFlipLimit : public UIclass {};
 
 //     MAIN_UI_ENTRY(MainTestRects, testRects)
 
 #define MAIN_UI_LIST \
     MAIN_UI_ENTRY(MainColourPicker, colourPicker) \
     MAIN_UI_ENTRY(MainSceneFiler, testScroller) \
-    MAIN_UI_ENTRY(MainQwerty, qwerty) \
     MAIN_UI_ENTRY(MainExprTune, expr) \
     MAIN_UI_ENTRY(MainSceneLoad, scene) \
-    MAIN_UI_ENTRY(MainMIDIsettings, midiSet) 
+    MAIN_UI_ENTRY(MainMIDIsettings, midiSet) \
+    MAIN_UI_ENTRY(MainFlipLimit, flipLimit) \
+    MAIN_UI_ENTRY(MainQwerty, qwerty) 
 
 union MainUI
 {

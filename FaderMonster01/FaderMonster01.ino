@@ -200,7 +200,7 @@ InterTaskRequest::Result SuperTask::doProcessSmartKnob(void* pSKreport)
         if (skReport.max != 255) // don't use fine values for flipping UI
         {
           //Serial.printf("[%lu] : Position: %d\n", skReport.ms, skReport.position);
-          flipUI(skReport.position);
+          flipTo(skReport.position % MAIN_UI_MainFlipLimit);
         }
       }
       //else
@@ -346,13 +346,14 @@ bool SuperTask::processUI(void)
   bool wait = true;
 
   // test of changing UI classes on the fly
-  if (flipui) // set by power button brief press or call to flipUI(n)
+  if (flipui) // set by power button brief press or call to flipTo(n)
   {
     flipui = false; // this is kinda important!
     whichUI++;      // flip to the next UI
     touchADCtask.tuningPedal = false; // assume this
     switch (whichUI)
     {
+      case MAIN_UI_MainFlipLimit:
       default:
         whichUI = 0;
         // fall through
@@ -434,7 +435,7 @@ void SuperTask::pushUI(int ui)
   {
     UIstack[UIstackIndex] = whichUI;
     UIstackIndex++;
-    flipUI(ui);
+    flipTo(ui, true);
   }
 }
 
@@ -445,7 +446,7 @@ void SuperTask::popUI(void)
   if (UIstackIndex > 0)
   {
     UIstackIndex--;
-    flipUI(UIstack[UIstackIndex]);
+    flipTo(UIstack[UIstackIndex], true);
   }
 }
 

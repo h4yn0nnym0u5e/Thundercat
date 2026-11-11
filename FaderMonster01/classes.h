@@ -545,8 +545,8 @@ class SuperTask : public FaderMonsterTask
     {}
     
     void run(void) override;
-    void flipUI(void) { flipui = true; }
-    void flipUI(int ui) { whichUI = ui % MAIN_UI_COUNT; whichUI--; flipui = true; }
+    bool flipUI(bool force = false) { return (0 == UIstackIndex || force)?(flipui = true):false; }
+    void flipTo(int ui, bool force = false) { if (flipUI(force)) { whichUI = ui % MAIN_UI_COUNT; whichUI--; } }
     void pushUI(int ui);
     void popUI(void);
 
