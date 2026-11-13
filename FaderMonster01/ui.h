@@ -721,7 +721,7 @@ if (ScrollerResult::ok == res || ScrollerResult::last == res || ScrollerResult::
             lc{_lc}, lh{_lh}, ah{(lc+2)*lh}, maxLen{_maxLen},
             pElements{_pElements}, rawGetElement{_get}
             {}
-    void begin(TFT_eSprite& _anSpr, int initPos = 0);
+    void begin(TFT_eSprite& _anSpr, int& initPos);
     int  getScrollpos(void) { return scrollPos; }
     //int  getScrollError(void) { return scrollPos - (scrollPos/lh)*lh; }
     int  getScrollError(void) 

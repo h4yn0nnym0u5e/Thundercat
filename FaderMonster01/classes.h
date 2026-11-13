@@ -554,6 +554,8 @@ class SuperTask : public FaderMonsterTask
     // stuff for UI to do actions
     void loadSettings(char* name);
     void saveSettings(char* name);
+    void deleteSettings(char* name);
+    void renameSettings(FileMatch&);
     //------------------------------------------------------------------------
     // stuff to allow another task to make async requests:
     InterTaskRequest& updateMainTouch(InterTaskRequest& req, GTPoint& touchPoint, TickType_t timeout = 0);
@@ -887,9 +889,6 @@ class ScribbleTask : public FaderMonsterTask
 //  
 class MainLCDtask : public FaderMonsterTask
 { 
-  public:
-    struct FileMatch {char* path, *extn; };
-
   private:
     //------------------------------------------------------------------------
     // stuff to deal with async requests from another task:
@@ -906,6 +905,8 @@ class MainLCDtask : public FaderMonsterTask
     InterTaskRequest::Result doUpdateDirty(void* pScribble);
     InterTaskRequest::Result doSaveSettings(void* fileName);
     InterTaskRequest::Result doLoadSettings(void* fileName);
+    InterTaskRequest::Result doDeleteSettings(void* fileName);
+    InterTaskRequest::Result doRenameSettings(void* fileMatch);
     InterTaskRequest::Result doUpdateFileList(void* fileMatch);
     //------------------------------------------------------------------------
     // TFT-related stuff
@@ -972,6 +973,8 @@ class MainLCDtask : public FaderMonsterTask
     InterTaskRequest& updateDirty(InterTaskRequest& req, TFT_eSprite& scribble, TickType_t timeout = 0);
     InterTaskRequest& saveSettings(InterTaskRequest& req, char* fileName, TickType_t timeout = 0);
     InterTaskRequest& loadSettings(InterTaskRequest& req, char* fileName, TickType_t timeout = 0);
+    InterTaskRequest& deleteSettings(InterTaskRequest& req, char* fileName, TickType_t timeout = 0);
+    InterTaskRequest& renameSettings(InterTaskRequest& req, FileMatch& filesFromTo, TickType_t timeout = 0);
     InterTaskRequest& updateFileList(InterTaskRequest& req, FileMatch& match, TickType_t timeout = 0);
     
 };
@@ -1332,6 +1335,13 @@ class Settings
         char* p = strchr(dst, was);
         if (nullptr != p) *p = is;
         return dst;
+    }
+
+    static int safe_strlen(const char* s)
+    {
+        int result = -1;
+        if (nullptr != s) result = (int) strlen(s);
+        return result;
     }
 
 };

@@ -317,6 +317,8 @@ void TouchTask::initTouch(void)
 //    Y88b.  888  888      X88 888 "88b 
 //     "Y888 "Y888888  88888P' 888  888 
 // 
+#define SET_LED(colour)  rings.setPixel(1,10, colour, 10)
+
 void TouchTask::run(void)
 {
   uint32_t whichISR = 0;
@@ -330,33 +332,42 @@ void TouchTask::run(void)
 
   while (1)
   {
+SET_LED(xRED);
     reqQueue.executeRequest(*this, 0); // execute any pending requests (calibration)
+SET_LED(xORANGE);
 
     if (pdTRUE == xTaskNotifyWait(0UL, UINT32_MAX, &whichISR, 2)) // wait for notification from touch ISR
     {
+SET_LED(xYELLOW);
       // Pot touch chip triggered?
       if (0 != (whichISR & touchFlag))
         updateTouch(); // only does I²C if ISR fired
+SET_LED(xGREEN);
 
       // Main LCD touch screen triggered?
       if (0 != (whichISR & GT911Flag))
       {
+SET_LED(xCYAN);
         if (0 == updateGT911()) // no touches right now
         {
+SET_LED(xBLUE);
           // ...deal with being untouched
           lastTouch.reserved = UINT8_MAX;
           superTask.updateMainTouch(GT911req, lastTouch, 0);
         }
         else 
         {
+SET_LED(xPINK);
           processGT911(0); // just grab first touch point for now
           //Serial.printf("[%d]: %d, %d\n", lastTouchTime, lastTouch.x, lastTouch.y);
           superTask.updateMainTouch(GT911req, lastTouch, 0);
           //xTaskNotifyGive(handleMainLCD); // wake up Main LCD task to deal with touch
         }
+SET_LED(xPURPLE);
       }
     }
-
+    
+SET_LED(xWHITE);
     pollTouch(); // generate state outputs, e.g. time long presses
 
     if (countBits)

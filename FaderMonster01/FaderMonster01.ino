@@ -111,6 +111,22 @@ void printTaskStates(void)
 char dbgBuffer[200];
 bool dbgWritten;
 
+void  dw(int p, int v) { digitalWrite(p,v); }
+void dlus(uint32_t t) { delayMicroseconds(t); }
+#define WIRE1_HARDWARE LPI2C3_
+#define WIRE1_IRQNUM IRQ_LPI2C3
+#define WIRE_DUMP(hw) \
+  WIRE_ITEM(hw,MSR) 
+
+static void dumpWire1(void)
+{
+#define WIRE_ITEM(hw,reg) Serial.printf(#hw  #reg ": %08X\n", hw##reg);
+  WIRE_DUMP(WIRE1_HARDWARE)
+#undef WIRE_ITEM 
+  Serial.printf("IRQ priority: %d\n", NVIC_GET_PRIORITY(WIRE1_IRQNUM));
+  Serial.printf("Master1 state: %d; error: %d\n", Master1.state, Master1.error());
+}
+
 bool enableADCprint;
 //================================================================
 //                                                        888             
@@ -483,11 +499,17 @@ WHICHMEM
 void SuperTask::saveSettings(char* name)
 {
     if (name != fileName)
-    if (name != fileName)
         Settings::safe_strncpy(fileName, name, sizeof fileName - 1);
     mainLCDtask.saveSettings(saveSettingsRequest, fileName);
 }
     
+
+WHICHMEM
+void SuperTask::renameSettings(FileMatch& fromTo)
+{
+    mainLCDtask.renameSettings(saveSettingsRequest, fromTo);
+}
+
 
 WHICHMEM
 void SuperTask::loopFn(void)
@@ -562,6 +584,18 @@ void SuperTask::loopFn(void)
         break;
 
       case 'd':
+        {
+          char ch2 = Serial.read();
+          switch (ch2)
+          {
+            default:
+              break;
+
+            case 'i':
+              dumpWire1();
+              break;
+          }
+        }
       /*
         {
           DMAChannel& dma = SPIflex.getDMArx(); // only with debug change...
@@ -813,7 +847,7 @@ void setup()
 #endif // defined(configTEENSY_HEAP_ALLOCATION)
   Serial.flush();
   Serial.println("#################################################");
-*/
+//*/
   // some startup things are on the port expanders
   // do this before 6V, as it seems to power straight off sometimes!
   initDPEX();
@@ -841,7 +875,7 @@ void setup()
     printLibraryInfo();
   }
   // debug pins for scope:
-  /*
+  //*
   pinMode(DBG1, arduino::OUTPUT);
   pinMode(DBG2, arduino::OUTPUT);
   //Serial8.begin(2'000'000);

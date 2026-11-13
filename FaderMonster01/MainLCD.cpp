@@ -408,8 +408,6 @@ InterTaskRequest::Result MainLCDtask::doSaveSettings(void* _fileName)
 
   if (nullptr != fileName)
   {
-    Serial.printf("Save to '%s'\n", fileName);
-
 taskENTER_CRITICAL();
     File f = FRAMfs.open(fileName,FILE_WRITE_BEGIN); // overwrite
 taskEXIT_CRITICAL();
@@ -420,8 +418,11 @@ taskENTER_CRITICAL();
       f.truncate(f.position());
       f.close();
 taskEXIT_CRITICAL();
+      Serial.printf("Saved to '%s'\n", fileName);
       ok = true;
     }
+    else
+      Serial.printf("Failed to save '%s'\n", fileName);
   }
   else
     ok = true;
@@ -460,6 +461,60 @@ taskEXIT_CRITICAL();
   return result;
 }
 
+// delete CSV file of settings
+WHICHMEM
+InterTaskRequest::Result MainLCDtask::doDeleteSettings(void* _fileName)
+{
+  const char* fileName = (char*) _fileName;
+  InterTaskRequest::Result result = InterTaskRequest::Result::failed;
+  int fileNum = fileSys.getPathNumber(fileName+2); // find its file number, skipping the s/ folder name
+
+taskENTER_CRITICAL();
+  bool deleted = FRAMfs.remove(fileName);
+taskEXIT_CRITICAL();
+  if (deleted)
+  {
+    int fsc = fileSys.getCount() - 1; // there's one fewer, in reality!
+    if (0 == strcmp(fileName, faderMonsterLast.scene) // deleted last-loaded scene!
+     && fsc > 0) // but there is a fallback scene available
+    {
+      char buf[MAX_FILE_PATH+1];
+      if (fileNum >= fsc) // can't keep file number the same, we deleted the last one
+        fileNum--;
+
+      sprintf(buf,"s/%s",fileSys.getPath(fileNum)); // lie about last-loaded scene; best we can do
+      recordLastSetting(buf);
+    }
+Serial.printf("Deleted '%s'\n", fileName);
+    result = InterTaskRequest::Result::done;
+  }
+else Serial.printf("Failed to delete '%s'\n", fileName);
+
+  return result;
+}
+
+// rename CSV file of settings
+// we fail if the target file exists
+WHICHMEM
+InterTaskRequest::Result MainLCDtask::doRenameSettings(void* _fileMatch)
+{
+  const FileMatch& fileMatch = *((FileMatch*) _fileMatch); // hack: .path is old, .extn is new file name
+  InterTaskRequest::Result result = InterTaskRequest::Result::failed;
+
+taskENTER_CRITICAL();
+  bool renamed = FRAMfs.rename(fileMatch.path, fileMatch.extn);
+taskEXIT_CRITICAL();
+  if (renamed)
+  {
+    if (0 == strcmp(fileMatch.path, faderMonsterLast.scene)) // renamed last-loaded scene!
+      recordLastSetting(fileMatch.extn); // update our records
+Serial.printf("Renamed '%s' to '%s'\n", fileMatch.path, fileMatch.extn);
+    result = InterTaskRequest::Result::done;
+  }
+else Serial.printf("Failed to rename '%s'\n", fileMatch.path);
+
+  return result;
+}
 
 // re-load the file list
 WHICHMEM
@@ -534,6 +589,29 @@ InterTaskRequest& MainLCDtask::loadSettings(InterTaskRequest& req,  // request t
                                             TickType_t timeout)
 {
     requestPayload payload{&MainLCDtask::doLoadSettings, fileName};
+    opIsSave = false;
+    loadWasManual = true;
+    return sendPayload(req, payload, timeout);
+}
+
+
+WHICHMEM
+InterTaskRequest& MainLCDtask::deleteSettings(InterTaskRequest& req,  // request to be filled in
+                                            char* fileName,         // name for file
+                                            TickType_t timeout)
+{
+    requestPayload payload{&MainLCDtask::doDeleteSettings, fileName};
+    opIsSave = false;
+    return sendPayload(req, payload, timeout);
+}
+
+
+WHICHMEM
+InterTaskRequest& MainLCDtask::renameSettings(InterTaskRequest& req,  // request to be filled in
+                                            FileMatch& filesFromTo,   // old and new file names
+                                            TickType_t timeout)
+{
+    requestPayload payload{&MainLCDtask::doRenameSettings, &filesFromTo};
     opIsSave = false;
     loadWasManual = true;
     return sendPayload(req, payload, timeout);

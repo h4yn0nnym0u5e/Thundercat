@@ -44,6 +44,7 @@
 #define xORANGE 0xC02000
 #define xYELLOW 0xB09000
 #define xGREEN  0x00A000 // be a bit conservative here
+#define xCYAN   0x0080FF
 #define xBLUE   0x0000FF
 #define xPURPLE 0x2000C0
 #define xPINK   0xC00060

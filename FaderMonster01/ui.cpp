@@ -789,7 +789,7 @@ bool UIslider::isIn(GTPoint& pt)
 //         X88 Y88b.    888    Y88..88P 888 888 Y8b.     888     
 //     88888P'  "Y8888P 888     "Y88P"  888 888  "Y8888  888     
 //
-void UIscroller::begin(TFT_eSprite& _anSpr, int initPos)
+void UIscroller::begin(TFT_eSprite& _anSpr, int& initPos)
 {
     anSpr = &_anSpr;
     setFont(anSpr); // assumes font has been selected, but safe if not
@@ -805,7 +805,9 @@ void UIscroller::begin(TFT_eSprite& _anSpr, int initPos)
 //Serial.print("begin ... ");    
     int error = getScrollError();   // may be off a bit
     scrollPos += error;             // make it on the nose
-    setScrollpos(scrollPos, true); // force-draw all elements in the right place
+    setScrollpos(scrollPos, true);  // force-draw all elements in the right place
+
+    initPos = scrollPos;
 }
 
 /**
@@ -1253,8 +1255,9 @@ UIclass::State MainSceneFiler::begin(TFT_eSprite& sprite, colours_t c)
         uiShared.scrollDemoPos = fileSys.getPathNumber(faderMonsterLast.scene + 2) * lh;
     if (uiShared.scrollDemoPos < 0) // loaded not in list...
         uiShared.scrollDemoPos = 0; // ...just set to top
+
+    // N.B. uiShared.scrollDemoPos can be changed by begin()
     scroller.begin(mainLCDtask.getAnimationSprite(), uiShared.scrollDemoPos);
-    uiShared.scrollDemoPos = scroller.getScrollpos(); // can be changed by begin()
 
     // draw heading 
     drawHeader(superTask.headerText);
@@ -1270,24 +1273,49 @@ UIclass::State MainSceneFiler::begin(TFT_eSprite& sprite, colours_t c)
     phase = drawingScroll;
 
     // begin() called after file rename or name change on save?
-    // we've now set up all thre required information...
+    // we've now set up all the required information...
 Serial.printf("Shared text: %s; reason: %d\n", uiShared.text, uiShared.reason);
     if (nullptr != uiShared.text)
     {
+        FileMatch fileMatch{"s/", "csv"}, fileRename;
+        char buf[MAX_FILE_PATH+1];
+        char fileFrom[MAX_FILE_PATH+1];
+        sprintf(buf,"%s%s.%s", fileMatch.path, uiShared.text, fileMatch.extn);
+
         switch (uiShared.reason)
         {
             default: // oops: all the wrong reasons!
                 break;
 
             case UIshared::renameFile:
-Serial.printf("Rename '%s' to '%s'\n", scroller.getCurrentElement(), uiShared.text);
+            {
+                sprintf(fileFrom,"%s%s.%s", fileMatch.path, scroller.getCurrentElement(), fileMatch.extn);
+                fileRename = {fileFrom, buf};
+Serial.printf("Rename '%s' to '%s'\n", fileFrom, buf);
+                superTask.renameSettings(fileRename);
+            }
                 break;
 
             case UIshared::saveFile:
-Serial.printf("Save '%s'\n", uiShared.text);
+                superTask.saveSettings(buf);
                 break;
 
         }
+
+        // stuff has probably changed - take this into account
+        mainLCDtask.updateFileList(updateReq, fileMatch, 0);
+        while (!updateReq.isFinished())
+            vTaskDelay(2);
+        int fileNum = fileSys.getPathNumber(buf+strlen(fileMatch.path));
+Serial.printf("File list update took %dus; fileNum of %s is %d\n", 
+                        updateReq.responseTime(),
+                        uiShared.text, fileNum);
+        if (fileNum >= 0)
+        {
+            uiShared.scrollDemoPos = fileNum * lh;
+            scroller.begin(mainLCDtask.getAnimationSprite(), uiShared.scrollDemoPos);
+        }
+
         MainQwerty::unset();
     }
 
@@ -1369,35 +1397,63 @@ bool MainSceneFiler::buttonDoAction(UIbutton& but,  //<! button we're checking
 }
 
 WHICHMEM
+static int getFileNum(const char* fileName)
+{
+    char buf[MAX_FILE_PATH+1];
+    sprintf(buf, "%s.csv", fileName); // we know it's a CSV file
+    return fileSys.getPathNumber(buf); // does it exist?
+}
+
+
+WHICHMEM
 static bool renameFileCheck(const char* fileName, char* headerText)
 {
     bool result = false;
 
-    char buf[MAX_FILE_PATH+1];
-    sprintf(buf, "%s.csv", fileName); // we know it's a CSV file
-    int fileNum = fileSys.getPathNumber(buf); // does it exist?
-    char* star = strchr(headerText, '*');
+    if (nullptr != headerText) // can't update header if it doesn't exist!
+    {
+        Textifier t{headerText};
+        int fileNum = getFileNum(fileName); // does file exist?
+        int headerLen = strlen(headerText);
+        bool hasStar = headerLen > 0 && '*' == headerText[headerLen - 1];
 
-    if (fileNum < 0) // doesn't exist
-    {
-        if (nullptr != star) // currently have a star...
+        t.s(headerText); // initialise header text to what it already is
+
+        if (fileNum >= 0) // file already exists...
         {
-            *star = 0;      // ...remove it
-            result = true;
+            if (!hasStar) // ...but no star in header...
+                t.c('*'); // ...add one
         }
-    }
-    else // proposed name does exist 
-    {
-        if (nullptr == star) // no star...
+        else // file doesn't exist...
         {
-            star = headerText + strlen(headerText);
-            sprintf(star, "*"); // ...put one in
-            result = true;
+            if (hasStar) // ...but header has star...
+                t.del(); // ...remove it
         }
+
+        result = t.toTarget();
     }
 
     return result;
 }
+
+
+/**
+ * Change header text depending on whether save target exists
+ */
+WHICHMEM
+static bool saveFileCheck(const char* fileName, char* headerText)
+{
+    Textifier t{headerText};
+    int fileNum = getFileNum(fileName); // does it exist?
+
+    if (fileNum < 0) // doesn't exist
+        t.s("Save ");
+    else // proposed name does exist 
+        t.s("Overwrite ");
+
+    return t.s(fileName).toTarget();
+}
+
 
 WHICHMEM
 UIclass::State MainSceneFiler::update(Trigger trigger)
@@ -1447,14 +1503,23 @@ Serial.printf("Load %s\n", buf);
                 if (buttonDoAction(save, newPt, buf, result))
                 {
 Serial.printf("Save %s\n", buf);
-                    superTask.saveSettings(buf);
+                    if (0 == strcmp(buf, faderMonsterLast.scene)) // updating loaded scene?
+                        superTask.saveSettings(buf); // yes, just save it
+                    else
+                    {
+                        strcpy(superTask.enteredText, scroller.getCurrentElement()); // initial value
+                        MainQwerty::setup(UIshared::saveFile, superTask.enteredText, saveFileCheck);
+                        saveFileCheck(uiShared.text, superTask.headerText);
+                        superTask.pushUI(MAIN_UI_MainQwerty); // push to keyboard; will pop back with result
+                    }                        
                 }
 
                 if (buttonDoAction(rename, newPt, buf, result))
                 {
                     strcpy(superTask.enteredText, scroller.getCurrentElement()); // initial value
                     MainQwerty::setup(UIshared::renameFile, superTask.enteredText, renameFileCheck);
-                    sprintf(superTask.headerText, "Rename %s*", uiShared.text);
+                    sprintf(superTask.headerText, "Rename %s", uiShared.text); // only record of original filename for QWERTY UI!
+                    renameFileCheck(uiShared.text, superTask.headerText);
                     superTask.pushUI(MAIN_UI_MainQwerty); // push to keyboard; will pop back with result
                 }
 
@@ -2352,9 +2417,12 @@ UIclass::State MainQwerty::update(Trigger trigger)
                     case '\x13': // tick
                         //theKey = '\n';
 // Serial.println();
-                        strcpy(superTask.enteredText, entryBuffer);
-                        superTask.popUI();
-                        result = State::accept;
+                        if (isLifted)
+                        {
+                            strcpy(superTask.enteredText, entryBuffer);
+                            superTask.popUI();
+                            result = State::accept;
+                        }
                         break;
 
                     default:
@@ -2375,9 +2443,12 @@ UIclass::State MainQwerty::update(Trigger trigger)
                         break;
 
                     case '\x14': // cross
-                        unset(); // pretend we have no reason, return nothing
-                        result = State::abandon;
-                        superTask.popUI();
+                        if (isLifted)
+                        {
+                            unset(); // pretend we have no reason, return nothing
+                            result = State::abandon;
+                            superTask.popUI();
+                        }
                         break;
 
                     case '\x01':

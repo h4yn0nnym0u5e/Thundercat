@@ -598,6 +598,7 @@ void TouchADCtask::run(void)
             {
                 count = 50;
                 bits ^= 2;
+#if 0
                 //*
                 Serial.printf("%d, %.4f, %.4f, %.4f\n", 
                     ADCcount++,
@@ -608,6 +609,7 @@ void TouchADCtask::run(void)
                     expressionPedal.getValue(),
                     expressionPedal.getResponsiveValue()
                 );
+#endif
             }
         }
     }

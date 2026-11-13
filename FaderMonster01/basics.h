@@ -294,6 +294,8 @@ class FontSetter
 //                                     Y8b d88P          
 //                                      "Y88P"           
 //
+struct FileMatch {const char* path, *extn; };
+
 class PathPtr
 {
   public:
