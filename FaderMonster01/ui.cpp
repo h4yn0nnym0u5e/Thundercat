@@ -28,11 +28,21 @@ DMAMEM PB_SmartKnobConfig UIsmartConfig;
 //     "Y88888P"  8888888 "Y8888P 888 "Y888888  88888P'  88888P' 
 // 
 WHICHMEM
-void UIclass::drawHeader(const char* txt)
+void UIclass::drawHeader(const char* txt, int r /* -1 */)
 {
-    // draw heading 
-    pSprite->fillRect(0,0,pSprite->width(), TITLE_HEIGHT, TFT_BLACK);
-    drawHeaderText(txt);
+    // draw heading
+    if (r <= 0)
+    { 
+        pSprite->fillRect(0,0,pSprite->width(), TITLE_HEIGHT, TFT_BLACK);
+        drawHeaderText(txt);
+    }
+    else
+    { 
+        pSprite->fillRoundRect(0,0,pSprite->getViewportWidth(), TITLE_HEIGHT, r, TFT_BLACK);
+        pSprite->fillRect(0,TITLE_HEIGHT-r,pSprite->getViewportWidth(), r, TFT_BLACK);
+        drawHeaderText(txt, 2+r*3/4);
+    }
+
 }
 
 WHICHMEM
@@ -807,13 +817,21 @@ void UIscroller::begin(TFT_eSprite& _anSpr, int& initPos)
     scrollPos += error;             // make it on the nose
     setScrollpos(scrollPos, true);  // force-draw all elements in the right place
 
+    // did we attempt to scroll past the last item, e.g. after
+    // deleting a file? If so, scroll back to last item
+    if (lastItem >= 0 && scrollPos/lh > lastItem)
+    {
+        scrollPos = lastItem*lh;
+        setScrollpos(scrollPos);
+    }
+
     initPos = scrollPos;
 }
 
 /**
  * Draw animation sprite into the rendering sprite
  */
-void UIscroller::draw(TFT_eSprite* pSprite)
+bool UIscroller::draw(TFT_eSprite* pSprite)
 {
     // animation sprite has extra lines top and bottom
     // to allow for partially-visible lines
@@ -834,6 +852,8 @@ void UIscroller::draw(TFT_eSprite* pSprite)
     }
 
     pSprite->resetViewport();
+
+    return true;
 }
 
 
@@ -1135,6 +1155,122 @@ void MainTestRects::randomRect(void)
   pSprite->resetViewport();
 }
 
+
+//==================================================================
+//                               .d888 d8b                       
+//                              d88P"  Y8P                       
+//                              888                              
+//     .d8888b .d88b.  88888b.  888888 888 888d888 88888b.d88b.  
+//    d88P"   d88""88b 888 "88b 888    888 888P"   888 "888 "88b 
+//    888     888  888 888  888 888    888 888     888  888  888 
+//    Y88b.   Y88..88P 888  888 888    888 888     888  888  888 
+//     "Y8888P "Y88P"  888  888 888    888 888     888  888  888 
+// 
+WHICHMEM
+bool MainConfirm::buttonDoAction(UIbutton& but,  //<! button we're checking
+                                 GTPoint& newPt, //<! screen touch info
+                                 State& result)  //<! UI state 
+{
+    bool retVal = false;
+
+    if (but.isIn(newPt))
+    {
+        if (but.isLifted())
+        {
+            retVal = true;
+            result = State::push;
+        }
+        phase = pollButtons;
+    }     
+    return retVal;
+}
+
+
+WHICHMEM
+UIclass::State MainConfirm::begin(TFT_eSprite& sprite, colours_t c)
+{
+    UIclass::begin(sprite, c);
+
+    // set up screen sprite...
+    // rounded rectangle
+    pSprite->setViewport(boxX,boxY,boxW,boxH, true); // datum is viewport top left
+    pSprite->fillRoundRect(0,0, boxW,boxH,boxR, TFT_BLACK);
+    pSprite->fillRoundRect(2,2, boxW-4,boxH-4,boxR, colours.bg);
+
+    // draw heading 
+    drawHeader(superTask.headerText,boxR);
+    //headerX = pSprite->getCursorX();
+    //headerY = pSprite->getCursorY();
+
+    // buttons...
+    yes.begin(*this);
+    no.begin(*this);
+
+    // ... need bodging to absolute co-ordinates:
+    bodgeButton(yes);
+    bodgeButton(no);
+
+    pSprite->resetViewport();
+
+    return (state = State::push); // need to update display
+}
+
+WHICHMEM
+UIclass::State MainConfirm::update(Trigger trigger)
+{
+    State result = State::done;
+
+    switch (trigger.type)
+    {
+        default: // we don't react to that trigger type
+            break;
+        //----------------------------------------------------------------------
+        case Trigger::eTriggerType::touchPoint:
+        {
+            GTPoint& newPt = trigger.trigger.touchPoint;
+            if (isNewTouch(trigger))
+            {
+                // Serial.printf("x: %d, y: %d; last: %.3f; ", newPt.x, newPt.y, last);
+
+                currentTrigger = trigger; // keep the trigger and value(s)
+                result = State::next;
+
+                if (buttonDoAction(yes, newPt, result)) // clear existing limits bar
+                {
+                    superTask.popUI();
+                    result = State::accept;
+                }
+
+                if (buttonDoAction(no, newPt, result)) // clear existing limits bar
+                {
+                    superTask.popUI();
+                    result = State::abandon;
+                } 
+            }
+        } 
+            break;
+
+        //----------------------------------------------------------------------
+        case Trigger::eTriggerType::nextPhase:
+            switch (phase)
+            {
+                // at least one button has changed: poll until we've done them all
+                case pollButtons:
+                    if (yes.draw(pSprite)) { result = State::push; break; }
+                    if (no.draw(pSprite)) { result = State::push; break; }
+                    // none left - back to idle and fall through
+                    phase = idle;                    
+                default:
+                    result = State::done;
+                    break;
+            }
+            break;
+
+    }
+    return (state = result); // save and return state
+}
+
+
 //==================================================================
 //                                                8888888888 d8b 888                  
 //                                                888        Y8P 888                  
@@ -1229,13 +1365,6 @@ ScrollerResult fileSysTextGen(int n,        //!< element number
     return result;
 }
 
-WHICHMEM
-void MainSceneFiler::buttonBegin(UIbutton& but)
-{
-    but.setColours(colours);
-    but.setFont(FontSetter::RADIO_LABEL);
-    but.draw(pSprite);
-}
 
 WHICHMEM
 UIclass::State MainSceneFiler::begin(TFT_eSprite& sprite, colours_t c)
@@ -1265,16 +1394,16 @@ UIclass::State MainSceneFiler::begin(TFT_eSprite& sprite, colours_t c)
     headerY = pSprite->getCursorY();
 
     // buttons
-    buttonBegin(load);
-    buttonBegin(save);
-    buttonBegin(rename);
-    buttonBegin(delFile);
+    load.begin(*this);
+    save.begin(*this);
+    rename.begin(*this);
+    delFile.begin(*this);
 
     phase = drawingScroll;
 
     // begin() called after file rename or name change on save?
     // we've now set up all the required information...
-Serial.printf("Shared text: %s; reason: %d\n", uiShared.text, uiShared.reason);
+//Serial.printf("Shared text: %s; reason: %d\n", uiShared.text, uiShared.reason);
     if (nullptr != uiShared.text)
     {
         FileMatch fileMatch{"s/", "csv"}, fileRename;
@@ -1291,7 +1420,7 @@ Serial.printf("Shared text: %s; reason: %d\n", uiShared.text, uiShared.reason);
             {
                 sprintf(fileFrom,"%s%s.%s", fileMatch.path, scroller.getCurrentElement(), fileMatch.extn);
                 fileRename = {fileFrom, buf};
-Serial.printf("Rename '%s' to '%s'\n", fileFrom, buf);
+//Serial.printf("Rename '%s' to '%s'\n", fileFrom, buf);
                 superTask.renameSettings(fileRename);
             }
                 break;
@@ -1300,22 +1429,34 @@ Serial.printf("Rename '%s' to '%s'\n", fileFrom, buf);
                 superTask.saveSettings(buf);
                 break;
 
+            case UIshared::deleteFile:
+                superTask.deleteSettings(buf);
+                break;
         }
 
         // stuff has probably changed - take this into account
+        // request mainLCDtask to regenerate file list
         mainLCDtask.updateFileList(updateReq, fileMatch, 0);
         while (!updateReq.isFinished())
             vTaskDelay(2);
+
+        // now figure out where to scroll to
         int fileNum = fileSys.getPathNumber(buf+strlen(fileMatch.path));
-Serial.printf("File list update took %dus; fileNum of %s is %d\n", 
-                        updateReq.responseTime(),
-                        uiShared.text, fileNum);
+//Serial.printf("File list update took %dus; fileNum of %s is %d\n", 
+//                        updateReq.responseTime(),
+//                        uiShared.text, fileNum);
+
+        bool doScrollBegin = UIshared::deleteFile == uiShared.reason;
         if (fileNum >= 0)
         {
             uiShared.scrollDemoPos = fileNum * lh;
-            scroller.begin(mainLCDtask.getAnimationSprite(), uiShared.scrollDemoPos);
+            doScrollBegin = true;
         }
 
+        if (doScrollBegin)
+            scroller.begin(mainLCDtask.getAnimationSprite(), uiShared.scrollDemoPos);
+
+        // unset the pushed UI's parameters, so we don't accidentally do stale stuff
         MainQwerty::unset();
     }
 
@@ -1495,14 +1636,10 @@ UIclass::State MainSceneFiler::update(Trigger trigger)
 
                 //------------------------------------------------------
                 if (buttonDoAction(load, newPt, buf, result))
-                {
-Serial.printf("Load %s\n", buf);
                     superTask.loadSettings(buf);
-                }
                 
                 if (buttonDoAction(save, newPt, buf, result))
                 {
-Serial.printf("Save %s\n", buf);
                     if (0 == strcmp(buf, faderMonsterLast.scene)) // updating loaded scene?
                         superTask.saveSettings(buf); // yes, just save it
                     else
@@ -1523,8 +1660,17 @@ Serial.printf("Save %s\n", buf);
                     superTask.pushUI(MAIN_UI_MainQwerty); // push to keyboard; will pop back with result
                 }
 
-                
-                
+                if (buttonDoAction(delFile, newPt, buf, result))
+                {
+                    // confirm dialogue needs to ask about the file to be deleted
+                    strcpy(superTask.enteredText, scroller.getCurrentElement());
+                    sprintf(superTask.headerText, "Delete %s?", superTask.enteredText);
+
+                    // when the UI pops back, we may want to delete this file
+                    MainQwerty::setup(UIshared::deleteFile, superTask.enteredText); // header won't change
+                    superTask.pushUI(MAIN_UI_MainConfirm); // push to confirm dialogue; will pop back with result
+                }
+                    
             }
         }
             break;

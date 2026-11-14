@@ -531,6 +531,7 @@ class SuperTask : public FaderMonsterTask
     int UIstackIndex{0};
     uint32_t doneFlags{UINT32_MAX}; // everything is done
     bool processUI(void);
+    void copyName(char* name);
 
   public:
     SuperTask(const char* _name, 

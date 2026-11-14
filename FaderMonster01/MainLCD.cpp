@@ -475,14 +475,15 @@ taskEXIT_CRITICAL();
   if (deleted)
   {
     int fsc = fileSys.getCount() - 1; // there's one fewer, in reality!
+    int newFileNum = fileNum+1;
     if (0 == strcmp(fileName, faderMonsterLast.scene) // deleted last-loaded scene!
      && fsc > 0) // but there is a fallback scene available
     {
       char buf[MAX_FILE_PATH+1];
-      if (fileNum >= fsc) // can't keep file number the same, we deleted the last one
-        fileNum--;
+      if (newFileNum >= fsc) // can't keep file number the same, we deleted the last one
+        newFileNum -= 2;
 
-      sprintf(buf,"s/%s",fileSys.getPath(fileNum)); // lie about last-loaded scene; best we can do
+      sprintf(buf,"s/%s",fileSys.getPath(newFileNum)); // lie about last-loaded scene; best we can do
       recordLastSetting(buf);
     }
 Serial.printf("Deleted '%s'\n", fileName);

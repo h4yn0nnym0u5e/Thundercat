@@ -9,3 +9,4 @@
 dox/*
 Python/images.cpp
 FaderMonster01/settings.csv
+.vscode/c_cpp_properties.json

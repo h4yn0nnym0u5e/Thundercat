@@ -124,7 +124,7 @@ static void dumpWire1(void)
   WIRE_DUMP(WIRE1_HARDWARE)
 #undef WIRE_ITEM 
   Serial.printf("IRQ priority: %d\n", NVIC_GET_PRIORITY(WIRE1_IRQNUM));
-  Serial.printf("Master1 state: %d; error: %d\n", Master1.state, Master1.error());
+  //Serial.printf("Master1 state: %d; error: %d\n", Master1.state, Master1.error());
 }
 
 bool enableADCprint;
@@ -393,6 +393,12 @@ bool SuperTask::processUI(void)
         new(_ui.space) MainQwerty; 
         break;
 
+      case MAIN_UI_MainConfirm:
+        if (0 == headerText[0])
+          sprintf(headerText,"Confirm Stuff!");
+        new(_ui.space) MainConfirm; 
+        break;
+
       case MAIN_UI_MainExprTune:
         new(_ui.space) MainExprTune; 
         touchADCtask.tuningPedal = true;
@@ -484,12 +490,18 @@ uint8_t bits;
 bool countBits;
 int ADCcount;
 
+WHICHMEM
+void SuperTask::copyName(char* name)
+{
+    if (name != fileName)
+        Settings::safe_strncpy(fileName, name, sizeof fileName - 1);
+}
+
 
 WHICHMEM
 void SuperTask::loadSettings(char* name)
 {
-    if (name != fileName)
-        Settings::safe_strncpy(fileName, name, sizeof fileName - 1);
+    copyName(name);
     mainLCDtask.loadSettings(saveSettingsRequest, fileName);
     doneFlags &= ~((1<<(NUM_POTS+1))-1); // clear the bottom 9 "done" flags
 }
@@ -498,8 +510,7 @@ void SuperTask::loadSettings(char* name)
 WHICHMEM
 void SuperTask::saveSettings(char* name)
 {
-    if (name != fileName)
-        Settings::safe_strncpy(fileName, name, sizeof fileName - 1);
+    copyName(name);
     mainLCDtask.saveSettings(saveSettingsRequest, fileName);
 }
     
@@ -508,6 +519,14 @@ WHICHMEM
 void SuperTask::renameSettings(FileMatch& fromTo)
 {
     mainLCDtask.renameSettings(saveSettingsRequest, fromTo);
+}
+
+
+WHICHMEM
+void SuperTask::deleteSettings(char* name)
+{
+    copyName(name);
+    mainLCDtask.deleteSettings(saveSettingsRequest, fileName);
 }
 
 

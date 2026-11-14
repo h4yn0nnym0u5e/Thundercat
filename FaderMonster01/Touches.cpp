@@ -316,9 +316,12 @@ void TouchTask::initTouch(void)
 //    888    .d888888 "Y8888b. 888888K  
 //    Y88b.  888  888      X88 888 "88b 
 //     "Y888 "Y888888  88888P' 888  888 
-// 
+//
+/* 
 #define SET_LED(colour)  rings.setPixel(1,10, colour, 10)
-
+/*/
+#define SET_LED(...)
+//*/
 void TouchTask::run(void)
 {
   uint32_t whichISR = 0;

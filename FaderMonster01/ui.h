@@ -64,6 +64,7 @@ struct Trigger
 //  
 class UIclass
 {
+    friend class UIelement;
     friend class UIbutton;
     friend class UIgraphicButton;
     friend class UIscroller;
@@ -100,7 +101,7 @@ class UIclass
                     const image_4bit_info& img, const uint16_t* cmap,
                     const char* txt, int xoff, int yoff);
     bool isNewTouch(Trigger trigger);
-    void drawHeader(const char* txt);
+    void drawHeader(const char* txt, int r = -1);
     void drawHeaderText(const char* txt, int x = 2, int y = 2);
     void shadeArea(int x, int y, int w, int h, uint16_t colour, uint8_t start, uint8_t end, bool vertical = true);
 
@@ -173,7 +174,8 @@ class UIclass
         // text entry (push / pop to Qwert UI)
         char* text;
         bool (*updateHeader)(const char* et, char* ht){nullptr};
-        enum Reason {none, nope, ctlName, renameFile, saveFile} reason {none};
+        enum Reason {none, nope, ctlName, renameFile, saveFile, deleteFile} 
+             reason {none};
 
         // colour picker
         float hueAngle{PI/2}, textLevel{0.66f}, bgLevel{0.66f};
@@ -223,6 +225,14 @@ class UIelement
           font{_f}, smoothFont{_s}
         {}
 
+    virtual void begin(UIclass& owner)
+    {
+        setColours(owner.colours);
+        setFont(FontSetter::RADIO_LABEL);
+        draw(owner.pSprite);
+    }
+
+    virtual bool draw(TFT_eSprite*) = 0;
     virtual void setColours(TFTcolours c) {colours = c;}
     virtual void setFont(const GFXfont* f) { font = f; }
     virtual void setFont(const uint8_t* f) { smoothFont = f; }
@@ -721,6 +731,7 @@ if (ScrollerResult::ok == res || ScrollerResult::last == res || ScrollerResult::
             lc{_lc}, lh{_lh}, ah{(lc+2)*lh}, maxLen{_maxLen},
             pElements{_pElements}, rawGetElement{_get}
             {}
+    void begin(UIclass& owner) { Serial.println("wrong UIscroller begin()!"); } // never called but must be implemented
     void begin(TFT_eSprite& _anSpr, int& initPos);
     int  getScrollpos(void) { return scrollPos; }
     //int  getScrollError(void) { return scrollPos - (scrollPos/lh)*lh; }
@@ -762,7 +773,7 @@ if (ScrollerResult::ok == res || ScrollerResult::last == res || ScrollerResult::
     }
 
     // methods that need a screen sprite or UIclass
-    void draw(TFT_eSprite* pSprite); // draw animation sprite into screen sprite
+    bool draw(TFT_eSprite* pSprite); // draw animation sprite into screen sprite
     void shadeEnds(UIclass& uiClass, uint16_t colour, uint8_t start, uint8_t end, int eh = -1);
 };
 
@@ -947,6 +958,39 @@ class MainTestRects : public UIclass
 };
 
 //==================================================================
+//                               .d888 d8b                       
+//                              d88P"  Y8P                       
+//                              888                              
+//     .d8888b .d88b.  88888b.  888888 888 888d888 88888b.d88b.  
+//    d88P"   d88""88b 888 "88b 888    888 888P"   888 "888 "88b 
+//    888     888  888 888  888 888    888 888     888  888  888 
+//    Y88b.   Y88..88P 888  888 888    888 888     888  888  888 
+//     "Y8888P "Y88P"  888  888 888    888 888     888  888  888 
+// 
+class MainConfirm : public UIclass 
+{
+    enum {idle,
+          pollButtons} phase{idle};
+    static constexpr int boxX{50}, boxY{50}, boxR{8},
+                         boxW{320-boxX*2}, boxH{240-boxY*2},
+                         bw{80}; 
+    
+    // button positions are box-relative
+    UIbutton yes {colours,      20,    50, bw,40, (char*) "Yes"};
+    UIbutton no  {colours, boxW-20-bw, 50, bw,40, (char*) "No"};
+
+  public:
+    virtual State begin(TFT_eSprite& sprite, colours_t c);
+    virtual State update(Trigger trigger);
+    virtual InterTaskRequest& writeToDisplay(void) { return writeToMainLCD(); }
+    bool buttonDoAction(UIbutton&, GTPoint&, State&);
+    void bodgeButton(UIbutton& but)
+    {
+        but.x += boxX; but.y += boxY;
+    }
+};
+
+//==================================================================
 //                                                8888888888 d8b 888                  
 //                                                888        Y8P 888                  
 //                                                888            888                  
@@ -983,7 +1027,7 @@ class MainSceneFiler : public UIclass
     UIbutton save   {colours, bx+bw+bg, by,       bw,bh, (char*) "Save"};
     UIbutton rename {colours, bx,       by+bh+bg, bw,bh, (char*) "Rename"};
     UIbutton delFile{colours, bx+bw+bg, by+bh+bg, bw,bh, (char*) "Delete"};
-    void buttonBegin(UIbutton&);
+
     bool buttonDoAction(UIbutton&, GTPoint&, char*, State&);
 
   public:
@@ -1402,6 +1446,7 @@ class MainFlipLimit : public UIclass {};
     MAIN_UI_ENTRY(MainSceneLoad, scene) \
     MAIN_UI_ENTRY(MainMIDIsettings, midiSet) \
     MAIN_UI_ENTRY(MainFlipLimit, flipLimit) \
+    MAIN_UI_ENTRY(MainConfirm, confirm)  \
     MAIN_UI_ENTRY(MainQwerty, qwerty) 
 
 union MainUI
