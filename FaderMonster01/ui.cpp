@@ -1243,6 +1243,7 @@ UIclass::State MainConfirm::update(Trigger trigger)
 
                 if (buttonDoAction(no, newPt, result)) // clear existing limits bar
                 {
+                    uiShared.unset();
                     superTask.popUI();
                     result = State::abandon;
                 } 
@@ -1457,7 +1458,7 @@ UIclass::State MainSceneFiler::begin(TFT_eSprite& sprite, colours_t c)
             scroller.begin(mainLCDtask.getAnimationSprite(), uiShared.scrollDemoPos);
 
         // unset the pushed UI's parameters, so we don't accidentally do stale stuff
-        MainQwerty::unset();
+        uiShared.unset();
     }
 
     return (state = State::push); // need to update display
@@ -1642,10 +1643,10 @@ UIclass::State MainSceneFiler::update(Trigger trigger)
                 {
                     if (0 == strcmp(buf, faderMonsterLast.scene)) // updating loaded scene?
                         superTask.saveSettings(buf); // yes, just save it
-                    else
+                    else // no, elsewhere: implement "save as" functionality
                     {
                         strcpy(superTask.enteredText, scroller.getCurrentElement()); // initial value
-                        MainQwerty::setup(UIshared::saveFile, superTask.enteredText, saveFileCheck);
+                        uiShared.setup(UIshared::saveFile, superTask.enteredText, saveFileCheck);
                         saveFileCheck(uiShared.text, superTask.headerText);
                         superTask.pushUI(MAIN_UI_MainQwerty); // push to keyboard; will pop back with result
                     }                        
@@ -1654,7 +1655,7 @@ UIclass::State MainSceneFiler::update(Trigger trigger)
                 if (buttonDoAction(rename, newPt, buf, result))
                 {
                     strcpy(superTask.enteredText, scroller.getCurrentElement()); // initial value
-                    MainQwerty::setup(UIshared::renameFile, superTask.enteredText, renameFileCheck);
+                    uiShared.setup(UIshared::renameFile, superTask.enteredText, renameFileCheck);
                     sprintf(superTask.headerText, "Rename %s", uiShared.text); // only record of original filename for QWERTY UI!
                     renameFileCheck(uiShared.text, superTask.headerText);
                     superTask.pushUI(MAIN_UI_MainQwerty); // push to keyboard; will pop back with result
@@ -1667,10 +1668,9 @@ UIclass::State MainSceneFiler::update(Trigger trigger)
                     sprintf(superTask.headerText, "Delete %s?", superTask.enteredText);
 
                     // when the UI pops back, we may want to delete this file
-                    MainQwerty::setup(UIshared::deleteFile, superTask.enteredText); // header won't change
+                    uiShared.setup(UIshared::deleteFile, superTask.enteredText); // header won't change
                     superTask.pushUI(MAIN_UI_MainConfirm); // push to confirm dialogue; will pop back with result
                 }
-                    
             }
         }
             break;
@@ -2591,7 +2591,7 @@ UIclass::State MainQwerty::update(Trigger trigger)
                     case '\x14': // cross
                         if (isLifted)
                         {
-                            unset(); // pretend we have no reason, return nothing
+                            uiShared.unset(); // pretend we have no reason, return nothing
                             result = State::abandon;
                             superTask.popUI();
                         }
@@ -2667,6 +2667,25 @@ UIclass::State MainExprTune::drawBarTo(float pos)
 }
 
 WHICHMEM
+bool MainExprTune::buttonDoAction(UIbutton& but,  //<! button we're checking
+                                 GTPoint& newPt, //<! screen touch info
+                                 State& result)  //<! UI state 
+{
+    bool retVal = false;
+
+    if (but.isIn(newPt))
+    {
+        if (but.isLifted())
+        {
+            retVal = true;
+            result = State::push;
+        }
+        phase = pollButtons;
+    }     
+    return retVal;
+}
+
+WHICHMEM
 UIclass::State MainExprTune::begin(TFT_eSprite& sprite, colours_t c)
 {
     State result = State::push;
@@ -2736,44 +2755,28 @@ UIclass::State MainExprTune::update(Trigger trigger)
                 currentTrigger = trigger; // keep the trigger and value(s)
                 result = State::next;
 
-                if (clear.isIn(newPt)) // clear existing limits bar
-                {
-                    if (clear.isLifted())
-                    {
-                        clearBar(); // needs pushing now
-                        result = State::push;
-                    }
-                    phase = pollButtons;
-                }
+                if (buttonDoAction(clear, newPt, result)) // clear existing limits bar
+                    clearBar(); // needs pushing now
 
-                if (autocal.isIn(newPt))
+                if (buttonDoAction(autocal, newPt, result))
                 {
-                    if (autocal.isLifted())
+                    int gain = touchADCtask.expressionPedal.autoCalibrate(0.97f, 0.01f);
+                    Serial.printf("Autocalibrate: gain=%d, value=%.3f\n", 
+                            gain, touchADCtask.expressionPedal.getValue());
+                    if (gain < 1)
                     {
-                        int gain = touchADCtask.expressionPedal.autoCalibrate(0.97f, 0.01f);
+                        gain = touchADCtask.expressionPedal.autoCalibrate(0.95f);
                         Serial.printf("Autocalibrate: gain=%d, value=%.3f\n", 
                                 gain, touchADCtask.expressionPedal.getValue());
-                        if (gain < 1)
-                        {
-                            gain = touchADCtask.expressionPedal.autoCalibrate(0.95f);
-                            Serial.printf("Autocalibrate: gain=%d, value=%.3f\n", 
-                                    gain, touchADCtask.expressionPedal.getValue());
-                        }
-                        last = touchADCtask.expressionPedal.getValue();
-                        clearBar();
-                        result = State::push;
                     }
-                    phase = pollButtons;
+                    last = touchADCtask.expressionPedal.getValue();
+                    clearBar();
                 }
 
-                if (set.isIn(newPt))
+                if (buttonDoAction(set, newPt, result))
                 {
-                    if (set.isLifted())
-                    {
-                        touchADCtask.expressionPedal.setScale(min+0.003f, max-0.003f);
-                        touchADCtask.saveSettings();
-                    }
-                    phase = pollButtons;
+                    touchADCtask.expressionPedal.setScale(min+0.003f, max-0.003f);
+                    touchADCtask.saveSettings();
                 }  
             }
             //interval = 0;

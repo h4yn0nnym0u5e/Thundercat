@@ -39,6 +39,7 @@ Many changes!
  - add async push of sprite to display
  - add 4-bit image push with transparency to sprite
  - make colour conversions `static`
+ - don't re-load vlw font if it's already loaded
 
 
 # cores #
@@ -103,9 +104,9 @@ https://github.com/h4yn0nnym0u5e/ResponsiveAnalogRead
 # Unchanged libraries #
 Also need to install these, they seem to work OK as-is:
 
-PacketSerial (1.4.0) - Arduino Library Manager
-nanopb
-TeensyTimerTool
+PacketSerial (1.4.0) - Arduino Library Manager <br>
+nanopb <br>
+TeensyTimerTool (1.5.0)
 
 # Submodules #
 See https://github.com/h4yn0nnym0u5e/submodules/tree/ThunderLibs

@@ -185,6 +185,14 @@ class UIclass
 
         // scene filer
         int scrollDemoPos{-1};
+
+        void setup(Reason reason, char* txt = nullptr, bool (*upd)(const char*,char*) = nullptr)
+        {
+            uiShared.reason = reason;
+            uiShared.text = txt;
+            uiShared.updateHeader = upd;
+        }
+        void unset(void) { setup(none); }
     };
     static UIshared uiShared;        
 
@@ -1151,13 +1159,6 @@ class MainQwerty : public UIclass
     virtual State begin(TFT_eSprite& sprite, colours_t c);
     virtual State update(Trigger trigger);
     virtual InterTaskRequest& writeToDisplay(void) { return writeToMainLCD(); }
-    static void setup(UIshared::Reason reason, char* txt = nullptr, bool (*upd)(const char*,char*) = nullptr)
-    {
-        uiShared.reason = reason;
-        uiShared.text = txt;
-        uiShared.updateHeader = upd;
-    }
-    static void unset(void) { setup(UIshared::none); }
 };
 
 //------------------------------------------------------------------
@@ -1189,6 +1190,7 @@ class MainExprTune : public UIclass
         pSprite->fillRect(barX, barY, barW, barH, colours.bg);
         max = min = last;
     }
+    bool buttonDoAction(UIbutton&, GTPoint&, State&);
 
     UIbutton set    {colours,   20,    180, 80,40, (char*) "Set"};
     UIbutton clear  {colours, 160- 40, 180, 80,40, (char*) "Clear"};

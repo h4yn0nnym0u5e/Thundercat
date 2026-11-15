@@ -103,7 +103,7 @@ taskEXIT_CRITICAL();
 
     count = 0;
 
-    Serial.printf("    Opened %s OK\n", path);
+// Serial.printf("    Opened %s OK\n", path);
     while (1)
     {
 taskENTER_CRITICAL();

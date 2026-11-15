@@ -108,11 +108,25 @@ void printTaskStates(void)
   }
 
 //================================================================
+//         888          888                        
+//         888          888                        
+//         888          888                        
+//     .d88888  .d88b.  88888b.  888  888  .d88b.  
+//    d88" 888 d8P  Y8b 888 "88b 888  888 d88P"88b 
+//    888  888 88888888 888  888 888  888 888  888 
+//    Y88b 888 Y8b.     888 d88P Y88b 888 Y88b 888 
+//     "Y88888  "Y8888  88888P"   "Y88888  "Y88888 
+//                                             888 
+//                                        Y8b d88P 
+//                                         "Y88P"  
+//  
 char dbgBuffer[200];
 bool dbgWritten;
 
 void  dw(int p, int v) { digitalWrite(p,v); }
 void dlus(uint32_t t) { delayMicroseconds(t); }
+#define noDBG_SERIAL_8
+void sb(uint8_t b) { Serial8.write(b); }
 #define WIRE1_HARDWARE LPI2C3_
 #define WIRE1_IRQNUM IRQ_LPI2C3
 #define WIRE_DUMP(hw) \
@@ -897,14 +911,18 @@ void setup()
   //*
   pinMode(DBG1, arduino::OUTPUT);
   pinMode(DBG2, arduino::OUTPUT);
-  //Serial8.begin(2'000'000);
-  //pinMode(34,arduino::INPUT);
+#if defined(DBG_SERIAL_8)  
+  Serial8.begin(2'000'000);
+  pinMode(34,arduino::INPUT);
+#endif // defined(DBG_SERIAL_8)  
   pinMode(DBG3, arduino::OUTPUT);
   //*/
 
   // MIDI serial
   // Initialise here because the Rx pin is used for something else
+#if !defined(DBG_SERIAL_8)
   MIDIbegin();
+#endif // defined(DBG_SERIAL_8)
 
   // enable 6V    
   pinMode(EN_6V, arduino::OUTPUT);
@@ -936,7 +954,9 @@ void setup()
 
   // "client" tasks
   StripTask::CreateTasks(); // ...the strip...
+#if !defined(DBG_SERIAL_8)
   midiTask.create(); // ...and MIDI tasks
+#endif // !defined(DBG_SERIAL_8)
   superTask.create();
 
   vTaskStartScheduler(); // start all tasks - the mayhem begins!
