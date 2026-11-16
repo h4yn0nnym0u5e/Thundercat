@@ -2,20 +2,42 @@
 
 #define WHICHMEM FLASHMEM
 
-const char* MIDIcontrolNames[]
-{
-#define MIDI_CONTROL(enm,txt,num) #txt,
-    MIDI_CONTROLS
-#undef MIDI_CONTROL    
-};
+//------------------------------------------------------------------
+// create a static string (character array) in Flash
+#define PROGSTRING(pfx,n,s) PROGMEM static const char pfx##n[]{s};
 
-#define F(s) s
-const char* MIDIsourceNames[]
+#define MIDI_SOURCES \
+    MIDI_SOURCE(0, "Pot") \
+    MIDI_SOURCE(1, "Fader") \
+    MIDI_SOURCE(2, "Button") \
+    MIDI_SOURCE(3, "Pedal") \
+    MIDI_SOURCE(4, "SmartKnob") \
+    MIDI_SOURCE(5, "Touch X") \
+    MIDI_SOURCE(6, "Touch Y") 
+
+#define MIDI_SOURCE(n,s) PROGSTRING(midisrc_,n,s)
+MIDI_SOURCES
+#undef MIDI_SOURCE
+
+#define MIDI_SOURCE(n,s) midisrc_##n,
+static const char* const MIDIsourceNames[] PROGMEM = 
 {
-    F("Pot"), F("Fader"), F("Button"),
-    F("Pedal"), F("SmartKnob"), F("Touch X"), F("Touch Y"),
+MIDI_SOURCES
 };
-#undef F
+#undef MIDI_SOURCE
+//------------------------------------------------------------------
+#define MIDI_CONTROL(enm,txt,num) PROGSTRING(midictl_,num,#txt)
+MIDI_CONTROLS
+#undef MIDI_CONTROL    
+
+
+#define MIDI_CONTROL(enm,txt,num) midictl_##num,
+const char* const MIDIcontrolNames[] PROGMEM =
+{
+    MIDI_CONTROLS
+};
+#undef MIDI_CONTROL    
+//------------------------------------------------------------------
 
 DMAMEM PB_SmartKnobConfig UIsmartConfig;
 
@@ -3158,6 +3180,7 @@ UIclass::State MainMIDIsettings::update(Trigger trigger)
                     if (sourceType < 4) // it's a strip: prepend strip number
                         t.s("Strip ").u( stripSelectButtons[0].getActive() + 1).s(": ");
                     t.s(MIDIsourceNames[sourceType]).s(" name").toTarget();
+// Serial.printf("%s at %08X\n", MIDIsourceNames[sourceType], MIDIsourceNames[sourceType]);
 
                     // initial value
                     strcpy(superTask.enteredText, pControl->name);

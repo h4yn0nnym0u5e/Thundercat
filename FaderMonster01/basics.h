@@ -336,7 +336,7 @@ class FileSys
 //                                                  "Y88P"           
 //
 #include <string.h>
-extern const char* MIDIcontrolNames[];
+extern const char* const MIDIcontrolNames[];
 /*
  * Configuration for a strip
  * This is outside the strip, as we want a convenient method to
