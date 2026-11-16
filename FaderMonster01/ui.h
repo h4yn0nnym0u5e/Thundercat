@@ -1300,6 +1300,7 @@ class MainMIDIsettings : public UIclass
     }; 
 
 
+    // control sources (pot / fader / button / pedal / smartknob / X / Y)
     uint32_t midiCtlFlags{0};
     UIradioButton ctlSelectButtons[numCtlSrcs]  
     {

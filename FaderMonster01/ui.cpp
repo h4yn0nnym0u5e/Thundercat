@@ -9,6 +9,14 @@ const char* MIDIcontrolNames[]
 #undef MIDI_CONTROL    
 };
 
+#define F(s) s
+const char* MIDIsourceNames[]
+{
+    F("Pot"), F("Fader"), F("Button"),
+    F("Pedal"), F("SmartKnob"), F("Touch X"), F("Touch Y"),
+};
+#undef F
+
 DMAMEM PB_SmartKnobConfig UIsmartConfig;
 
 /**
@@ -3144,10 +3152,17 @@ UIclass::State MainMIDIsettings::update(Trigger trigger)
                 // hack for control name entry
                 else if (isLifted && newPt.y < TITLE_HEIGHT)
                 {
-                    strcpy(superTask.enteredText, pControl->name); // initial value
+                    // header text
+                    int sourceType = ctlSelectButtons[0].getActive();
+                    Textifier t{superTask.headerText};
+                    if (sourceType < 4) // it's a strip: prepend strip number
+                        t.s("Strip ").u( stripSelectButtons[0].getActive() + 1).s(": ");
+                    t.s(MIDIsourceNames[sourceType]).s(" name").toTarget();
+
+                    // initial value
+                    strcpy(superTask.enteredText, pControl->name);
                     uiShared.text = superTask.enteredText;
-                    sprintf(superTask.headerText, "Strip %d name", 
-                            stripSelectButtons[0].getActive() + 1);
+
                     superTask.pushUI(MAIN_UI_MainQwerty); // push to keyboard; will pop back with result
                 }
 
