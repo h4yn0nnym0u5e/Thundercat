@@ -254,24 +254,25 @@ InterTaskRequest::Result SuperTask::doProcessSmartKnob(void* pSKreport)
 //    888                                                                                                 
 //
 TouchStatus powerButton;
+static bool hadLongPress = false, canPowerOff = false;
+
 WHICHMEM
 void pollPowerButton(void)
 {
-  static bool hadLongPress = false, canPowerOff = false;
   powerButton = !GET_BIT(SOFT_POWER);
   bool isChanged = powerButton.isChangedStatus();
   TouchStatus::eStatus e = powerButton.getExtendedStatus();
 
   if (isChanged)
   {
-// Serial.printf("Power button status is %d\n", e);
+//Serial.printf("Power button status is %d\n", e);
 
     switch (e)
     {
       default:
         break;
 
-      case TouchStatus::eStatus::LONG:
+      case TouchStatus::eStatus::JUST_UNLATCHED:
         if (canPowerOff)
         {
           hadLongPress = true;
@@ -281,59 +282,76 @@ void pollPowerButton(void)
         break;
 
       case TouchStatus::eStatus::JUST_OFF:
-        superTask.flipUI();
+        superTask.flipTo();
         break;
 
       case TouchStatus::eStatus::OFF: // released after power-up etc.
         if (hadLongPress)
         {
-          Serial.print(" ... ");
-          vTaskDelay(1000);
+          superTask.requestPowerOff();
+          hadLongPress = false; // do it once only!
+        }
+        break;
+    }
+  }
 
-          Serial.print("6V ... ");
-          digitalWriteFast(EN_6V, arduino::LOW); // 6V supply off
-          vTaskDelay(1);
+  // not entirely certain if button comes up 
+  // in "off" state, so we have to poll this 
+  if (!canPowerOff && TouchStatus::eStatus::LATCHED == e)
+  {
+    canPowerOff = true;
+    SET_BIT(POWER_LED,1); // set power LED B.1 output
+  }
+}
 
-          Serial.print("shutdown! ");
+void SuperTask::powerOff(void)
+{
+  Serial.print(" ... ");
+  vTaskDelay(1000);
 
+  Serial.print("6V ... ");
+  digitalWriteFast(EN_6V, arduino::LOW); // 6V supply off
+  vTaskDelay(1);
+
+  Serial.print("shutdown! ");
+  
+  elapsedMillis em = 0;
+  int state = 0;
+  for (int i=0;i<10;i++) // have seen it need 4 tries :(
+  {
+    state = 0;
+    em = 0;
+    while (state>=0)
+    {
+      switch (state)
+      {
+        case 3:
+        case 0:
+          Serial.print('\'');
+          SET_BIT(TOGGLE_POWER, 1); // shutdown!
+          state++;
+          break;
+        
+        case 1:
+          if (em > 30) // still alive ?!
           {
-            elapsedMillis em = 0;
-            int state = 0;
-            for (int i=0;i<10;i++) // have seen it need 4 tries :(
-            {
-              state = 0;
-              em = 0;
-              while (state>=0)
-              {
-                switch (state)
-                {
-                  case 3:
-                  case 0:
-                    Serial.print('\'');
-                    SET_BIT(TOGGLE_POWER, 1); // shutdown!
-                    state++;
-                    break;
-                  
-                  case 1:
-                    if (em > 30) // still alive ?!
-                    {
-                      Serial.print(" #");
-                      state++;
-                    }
-                    break;
-                    
-                  case 4:
-                    state = -10;
-                  case 2:   
-                    Serial.print('.');
-                    SET_BIT(TOGGLE_POWER, 0); // try again
-                    state++;
-                    break;
-                }
-                vTaskDelay(3);
-              }
-            }
+            Serial.print(" #");
+            state++;
           }
+          break;
+          
+        case 4:
+          state = -10;
+        case 2:   
+          Serial.print('.');
+          SET_BIT(TOGGLE_POWER, 0); // try again
+          state++;
+          break;
+      }
+      vTaskDelay(3);
+    }
+  }
+  
 /*
           SET_BIT(TOGGLE_POWER, 1); // shutdown!
           for (int i=0;i<100;i++)
@@ -341,20 +359,15 @@ void pollPowerButton(void)
             Serial.print('.');
             vTaskDelay(10);
           }
-*/            
-        }
+*/           
+}
 
-        break;
-    }
-  }
 
-  // not entirely certain if button comes up 
-  // in "off" state, so we have to poll this 
-  if (!canPowerOff && TouchStatus::eStatus::OFF == e)
-  {
-    canPowerOff = true;
-    SET_BIT(POWER_LED,1); // set power LED B.1 output
-  }
+void SuperTask::rearmPowerButton(void)
+{
+  powerButton.setLatch(true);
+  canPowerOff = false; // next poll will turn LED back on
+  powerOffRequested = false;
 }
 
 //                           d8b          888      .d8888b.  8888888b.  
@@ -376,10 +389,11 @@ bool SuperTask::processUI(void)
   bool wait = true;
 
   // test of changing UI classes on the fly
-  if (flipui) // set by power button brief press or call to flipTo(n)
+  if (flipui // set by power button brief press, call to flipTo(n), pushUI() or popUI()
+   && !ui.isPushResult()) // can't flip yet, we have a pending result to use
   {
     flipui = false; // this is kinda important!
-    whichUI++;      // flip to the next UI
+    whichUI = targetUI;      // flip to the next UI
     touchADCtask.tuningPedal = false; // assume this
     switch (whichUI)
     {
@@ -436,6 +450,18 @@ bool SuperTask::processUI(void)
   {     
       case UIclass::State::accept:
       case UIclass::State::abandon:
+/*
+Serial.printf("%s '%s'\n", 
+              UIclass::State::accept == ui.state ? "Accepted" : "Abandoned", 
+              enteredText);
+*/
+        if (powerOffRequested)
+        { 
+          if (UIclass::UIshared::Reason::powerOff == UIclass::uiShared.reason)
+            powerOff();
+          else
+            rearmPowerButton();            
+        }
         ui.state = UIclass::State::done;
         // fall through
       case UIclass::State::done: // ready for a new trigger
@@ -444,15 +470,15 @@ bool SuperTask::processUI(void)
             wait = true;
         break;
 
+      case UIclass::State::none: // should never happen
       case UIclass::State::next: // can do next phase, if any
-        if (UIclass::State::accept == ui.update({Trigger::eTriggerType::nextPhase}))
-          Serial.printf("Accepted '%s'\n", enteredText);
+        ui.update({Trigger::eTriggerType::nextPhase});
         wait = false; // have probably changed state - loop quickly
         break;
 
       case UIclass::State::push:
         if (ui.writeToDisplay().isInactive()  // will change state for us, or not
-        &&  UIclass::State::push != ui.state) // if not, was already busy
+         && UIclass::State::push != ui.state) // if not, was already busy
             wait = false; // active - wait for display task to finish
         break;
 
@@ -563,7 +589,17 @@ void SuperTask::loopFn(void)
     Serial.print(dbgBuffer);
   }
 
+  // deal with power button
   pollPowerButton();
+  if (powerOffRequested && MAIN_UI_MainConfirm != whichUI)
+  {
+    // always confirm for now; should be dependent on changed settings
+    strcpy(headerText, "Power off?");
+    strcpy(enteredText, "power off");
+    UIclass::uiShared.setup(UIclass::UIshared::Reason::powerOff);
+    pushUI(MAIN_UI_MainConfirm);
+  }
+
   if (processUI())
     vTaskDelay(2);
 
@@ -824,6 +860,10 @@ SuperTask superTask{"Super", 512, nullptr, 2,
 void SuperTask::run(void)
 {
   Serial.printf("[%d]: started supervisor task\n", micros());
+
+  // set up power button as a latching one; we only really care about the latch clear
+  powerButton.setLatchTriggers(TouchStatus::eStatus::LONG_LONG, TouchStatus::eStatus::LONG);
+  powerButton.setLatch(true); // start with it latched
 
   for (int i=0;i<200 && !mainLCDtask.tftInitComplete(); i++)
     vTaskDelay(10);

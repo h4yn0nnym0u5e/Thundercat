@@ -355,8 +355,11 @@ SET_LED(xCYAN);
         {
 SET_LED(xBLUE);
           // ...deal with being untouched
-          lastTouch.reserved = UINT8_MAX;
-          superTask.updateMainTouch(GT911req, lastTouch, 0);
+          if (UINT8_MAX != lastTouch.reserved) // was touched previously...
+          {
+            lastTouch.reserved = UINT8_MAX;    // ...say it isn't now...
+            superTask.updateMainTouch(GT911req, lastTouch, 0); // ...just the once
+          }
         }
         else 
         {

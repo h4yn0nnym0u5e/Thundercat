@@ -69,18 +69,44 @@ InterTaskRequest::Result StripTask::doPotChange(void* pNothing)
 
 InterTaskRequest::Result StripTask::doTouchChange(void* pTouchStatus)
 {
+    TouchStatus& theTouch = *(TouchStatus*) pTouchStatus;
+
     // Distinguish fader and pot touches
     if (pTouchStatus == &potTouch)
     {
-      ring.setPixel(10, potTouch?xWHITE:xBLACK,bright);
+      ring.setPixel(10, theTouch?xWHITE:xBLACK,bright);
       
       Trigger trigger{.type    = Trigger::eTriggerType::pTouchStatus, 
-                      .trigger = { .pTouchStatus = &potTouch }};
+                      .trigger = { .pTouchStatus = &theTouch }};
       ui.update(trigger);
     }
     else if (pTouchStatus == &faderTouch)
     {
-      ring.setPixel(10, faderTouch?xBLUE:xBLACK,bright);
+      uint32_t colour = xBLACK;
+
+      switch (theTouch.getExtendedStatus())
+      {
+        default:
+          break;
+
+        case TouchStatus::eStatus::ON:
+          colour = xBLUE;
+          break;
+
+        case TouchStatus::eStatus::JUST_LATCHED:
+          colour = xGREEN;
+          break;
+
+        case TouchStatus::eStatus::LATCHED:
+          colour = xYELLOW;
+          break;
+
+        case TouchStatus::eStatus::JUST_UNLATCHED:
+          colour = xRED;
+          break;
+      }
+
+      ring.setPixel(10, colour, bright);
     }
     return InterTaskRequest::Result::done;
 }    
@@ -117,6 +143,8 @@ void StripTask::run(void)
 {
   ring.clear();
   ring.setPattern(cfg.ringLEDs.pattern.getPointer()); // null pointer is OK here
+
+  faderTouch.setLatchTriggers(TouchStatus::eStatus::LONG, TouchStatus::eStatus::LONG);
 
   // for now, make background and text colours out of foreground:
   cfg.scribble.bg  = TFT_eSPI::alphaBlend( 70, cfg.scribble.fg, TFT_BLACK);
@@ -169,6 +197,7 @@ void StripTask::run(void)
                 wait = false; // already waited 10 ticks
             break;
 
+        case UIclass::State::none: // should never happen
         case UIclass::State::next: // can do next phase, if any
             ui.update({Trigger::eTriggerType::nextPhase});
             wait = false; // have probably changed state - loop quickly

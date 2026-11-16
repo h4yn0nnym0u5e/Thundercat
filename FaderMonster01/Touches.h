@@ -10,13 +10,26 @@ class TouchStatus
 {
   public:    
     enum class eStatus {OFF, JUST_OFF, JUST_OFF_LONG,  // off statuses
-                        ON=11, LONG, DOUBLE, SHORT_LONG, LONG_SHORT, LONG_LONG}; // on statuses
+                        ON=11, LONG, DOUBLE, SHORT_LONG, LONG_SHORT, LONG_LONG, // momentary on statuses
+                        JUST_LATCHED=21, LATCHED, JUST_UNLATCHED}; // toggled-on statuses
   private:    
     uint8_t status;
-    enum eStatus extendedStatus, lastReadStatus;
+    enum eStatus extendedStatus, latchStatus{eStatus::OFF}, 
+                 lastReadStatus; // current statuses
+    enum eStatus setLatchStatus{eStatus::OFF}, clearLatchStatus{eStatus::OFF}; // statuses thqat trigger / remove latched status
     uint32_t longTouch,     // longer than this is a long touch
              doubleTouch;   // re-touched within this is a double-touch
     elapsedMillis touchTime;
+
+    bool _isLatched(void)
+    {
+        /*
+        return eStatus::JUST_LATCHED   == latchStatus   // latch just started - we're latched
+            || eStatus::LATCHED        == latchStatus   // still latched
+            || eStatus::JUST_UNLATCHED == latchStatus;  // stay on until clear latch press ends
+            */
+        return eStatus::OFF != latchStatus; // simpler!
+    }
 
     // update status after time has possibly passed
     void updateExtendedStatus(void)
@@ -49,6 +62,58 @@ class TouchStatus
         }
     }
 
+    bool updateLatchStatus(void)
+    {
+        if (eStatus::OFF != setLatchStatus) // if it's possible to latch
+        {
+            // only unlatch or latch fully when press ends
+            if (0 == status)
+            {
+                switch (latchStatus)
+                {
+                    default:
+                        break;
+
+                    case eStatus::JUST_LATCHED:
+                        latchStatus = eStatus::LATCHED;
+                        break;
+
+                    case eStatus::JUST_UNLATCHED:
+                        latchStatus = eStatus::OFF;
+                        break;
+                }
+            }
+            else // during press - may go into transitional state
+            {
+                switch (latchStatus)
+                {
+                    default:
+                        break;
+
+                    case eStatus::OFF:
+                        if (setLatchStatus == extendedStatus)
+                            latchStatus = eStatus::JUST_LATCHED;
+                        break;
+
+                    case eStatus::LATCHED:
+                        if (clearLatchStatus == extendedStatus)
+                            latchStatus = eStatus::JUST_UNLATCHED;
+                        break;
+                }
+            }
+        }
+
+        return _isLatched();
+    }
+
+    // do complete status update - needs to be in a critical section
+    eStatus _updateStatus(void)
+    {
+        updateExtendedStatus();
+        return updateLatchStatus()?latchStatus:extendedStatus;
+    }
+
+
   public:
     TouchStatus() 
         : status{0}, extendedStatus{eStatus::OFF},
@@ -69,17 +134,37 @@ class TouchStatus
     eStatus getExtendedStatus(void)
     {
         taskENTER_CRITICAL();
-        updateExtendedStatus();
-        lastReadStatus = extendedStatus;
+        lastReadStatus = _updateStatus();
         taskEXIT_CRITICAL();
-        return extendedStatus;
+        return lastReadStatus;
+    }
+
+    bool isLatched(void)
+    {
+        eStatus oldStatus = lastReadStatus; // not really changing this
+        getExtendedStatus();
+        lastReadStatus = oldStatus;
+        return _isLatched();
+    }
+
+    void setLatchTriggers(eStatus set, eStatus clear)
+    {
+        setLatchStatus = set;
+        clearLatchStatus = clear;
+    }
+
+    void setLatch(bool value)
+    {
+        if (eStatus::OFF != setLatchStatus)
+            latchStatus = value
+                            ?eStatus::LATCHED
+                            :eStatus::OFF;
     }
 
     bool isChangedStatus(void) 
     { 
         taskENTER_CRITICAL();
-        updateExtendedStatus(); 
-        bool result = lastReadStatus != extendedStatus;
+        bool result = lastReadStatus != _updateStatus();
         taskEXIT_CRITICAL();
         
         return result;

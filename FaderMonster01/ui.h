@@ -134,7 +134,8 @@ class UIclass
     
   public:
     //! possible UI drawing states
-    enum class State {done, //!< UI update from currentTrigger is complete
+    enum class State {none, //!< no UI return value (yet)
+                      done, //!< UI update from currentTrigger is complete
                       next, //!< no change to display, can do next step    
                       push, //!< sprite changed, can push to display
                       busy, //!< busy pushing to display
@@ -161,6 +162,7 @@ class UIclass
 
     bool writeFinished(void);
     bool isDirty(void) { return pSprite->isDirty(); }
+    bool isPushResult(void) { return State::accept == state || State::abandon == state; }
     void debugPrint(void);
     static uint16_t* makeCmap(uint16_t* cmap, uint16_t fg, uint16_t bg);
 
@@ -174,7 +176,10 @@ class UIclass
         // text entry (push / pop to Qwert UI)
         char* text;
         bool (*updateHeader)(const char* et, char* ht){nullptr};
-        enum Reason {none, nope, ctlName, renameFile, saveFile, deleteFile} 
+        enum Reason {none, nope, 
+                     ctlName, 
+                     renameFile, saveFile, deleteFile,
+                     powerOff} 
              reason {none};
 
         // colour picker
@@ -986,6 +991,8 @@ class MainConfirm : public UIclass
     // button positions are box-relative
     UIbutton yes {colours,      20,    50, bw,40, (char*) "Yes"};
     UIbutton no  {colours, boxW-20-bw, 50, bw,40, (char*) "No"};
+
+    State returnState{UIclass::State::none}; // return value when user makes a choice
 
   public:
     virtual State begin(TFT_eSprite& sprite, colours_t c);

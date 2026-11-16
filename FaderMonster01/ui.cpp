@@ -1235,18 +1235,11 @@ UIclass::State MainConfirm::update(Trigger trigger)
                 currentTrigger = trigger; // keep the trigger and value(s)
                 result = State::next;
 
-                if (buttonDoAction(yes, newPt, result)) // clear existing limits bar
-                {
-                    superTask.popUI();
-                    result = State::accept;
-                }
+                if (buttonDoAction(yes, newPt, result)) // user says 'yes'
+                    returnState = State::accept;
 
-                if (buttonDoAction(no, newPt, result)) // clear existing limits bar
-                {
-                    uiShared.unset();
-                    superTask.popUI();
-                    result = State::abandon;
-                } 
+                if (buttonDoAction(no, newPt, result)) // user says 'no'
+                    returnState = State::abandon;
             }
         } 
             break;
@@ -1259,14 +1252,29 @@ UIclass::State MainConfirm::update(Trigger trigger)
                 case pollButtons:
                     if (yes.draw(pSprite)) { result = State::push; break; }
                     if (no.draw(pSprite)) { result = State::push; break; }
-                    // none left - back to idle and fall through
-                    phase = idle;                    
+
+                    switch (returnState) // all drawn: time to return?
+                    {
+                        case State::abandon:  // yes, but we didn't confirm whatever it was
+                            uiShared.unset();
+                        case State::accept:   // yes, we want to do it!
+                            superTask.popUI();
+                            result = returnState;
+                            break;
+
+                        default: // not time to return
+                            // back to idle
+                            result = State::done;
+                            phase = idle;                    
+                            break;
+                    }
+                    break;
+
                 default:
                     result = State::done;
                     break;
             }
             break;
-
     }
     return (state = result); // save and return state
 }

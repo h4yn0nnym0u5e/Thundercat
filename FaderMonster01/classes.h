@@ -526,12 +526,17 @@ class SuperTask : public FaderMonsterTask
     MainUIholder _ui;
     UIclass& ui;
     bool flipui;
-    int whichUI;
+    int whichUI, targetUI;
     int UIstack[MAIN_UI_STACK_SIZE];
     int UIstackIndex{0};
     uint32_t doneFlags{UINT32_MAX}; // everything is done
     bool processUI(void);
     void copyName(char* name);
+
+    // power
+    bool powerOffRequested{false};
+    void powerOff(void);
+    void rearmPowerButton(void);
 
   public:
     SuperTask(const char* _name, 
@@ -547,9 +552,19 @@ class SuperTask : public FaderMonsterTask
     
     void run(void) override;
     bool flipUI(bool force = false) { return (0 == UIstackIndex || force)?(flipui = true):false; }
-    void flipTo(int ui, bool force = false) { if (flipUI(force)) { whichUI = ui % MAIN_UI_COUNT; whichUI--; } }
+    void flipTo(int ui = -1, bool force = false) 
+    { 
+        if (ui < 0)
+            ui = whichUI+1;
+            
+        if (flipUI(force)) 
+        { 
+            targetUI = ui % MAIN_UI_COUNT; 
+        } 
+    }
     void pushUI(int ui);
     void popUI(void);
+    void requestPowerOff(void) { powerOffRequested = true; }
 
     //------------------------------------------------------------------------
     // stuff for UI to do actions
