@@ -317,7 +317,7 @@ void TouchTask::initTouch(void)
 //    Y88b.  888  888      X88 888 "88b 
 //     "Y888 "Y888888  88888P' 888  888 
 //
-/* 
+//* 
 #define SET_LED(colour)  rings.setPixel(1,10, colour, 10)
 /*/
 #define SET_LED(...)

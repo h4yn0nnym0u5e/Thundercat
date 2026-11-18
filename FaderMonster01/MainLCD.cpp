@@ -150,6 +150,11 @@ taskEXIT_CRITICAL();
   else
     count = -1;
 
+#if 1
+  if (count > 1)
+    KickSort<PathPtr>::quickSort(pPaths, count);
+#endif
+
   return count;    
 }
 
@@ -338,8 +343,12 @@ bool MainLCDtask::recordLastSetting(const char* fileName, int tries /* 3 */)
 
   while (0 != tries && !result)
   {
+Serial.print("Remove tmp ..."); Serial.flush();
 taskENTER_CRITICAL();
     FRAMfs.remove(settingsTmp); // just in case
+taskEXIT_CRITICAL();
+Serial.print("create tmp ..."); Serial.flush();
+taskENTER_CRITICAL();
     File f = FRAMfs.open(settingsTmp, FILE_WRITE_BEGIN);
 taskEXIT_CRITICAL();
     if (f)
@@ -348,12 +357,17 @@ taskEXIT_CRITICAL();
         fileName = "<pedal settings>";
       else
         Settings::safe_strncpy(faderMonsterLast.scene, fileName, sizeof faderMonsterLast.scene);
+Serial.printf("last used is %s ...", fileName); Serial.flush();
 
       // write to the file
       Settings::save(f, faderMonsterLast);
+Serial.print("saved to tmp ..."); Serial.flush();
 
 taskENTER_CRITICAL();
       f.close();
+taskEXIT_CRITICAL();
+Serial.print("closed tmp ..."); Serial.flush();
+taskENTER_CRITICAL();
       result = FRAMfs.remove(settingsRecord) && FRAMfs.rename(settingsTmp, settingsRecord);
 taskEXIT_CRITICAL();
     }
@@ -384,6 +398,7 @@ taskEXIT_CRITICAL();
 taskENTER_CRITICAL();
     f.close();
 taskEXIT_CRITICAL();
+Serial.printf("%s - %d fields; closed file\n", settingsRecord, fields); Serial.flush();
     badString = "field count";
     if (fields > 0)
     {
@@ -448,10 +463,11 @@ taskENTER_CRITICAL();
 taskEXIT_CRITICAL();
   if (f)
   {
-    Settings::load(f, faderMonsterSettings);
+    int fields = Settings::load(f, faderMonsterSettings);
 taskENTER_CRITICAL();
     f.close();
 taskEXIT_CRITICAL();
+Serial.printf("%s - %d fields; closed file\n", fileName, fields); Serial.flush();
     result = InterTaskRequest::Result::done;
 
     if (loadWasManual)

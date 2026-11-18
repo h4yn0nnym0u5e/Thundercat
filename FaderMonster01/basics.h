@@ -300,7 +300,46 @@ class PathPtr
 {
   public:
     char* path;
+#if 0
     bool operator<(const PathPtr& r)  const { return strcmp(path, r.path) < 0;}
+#else
+    // compare path to r.path
+#if 0    
+    // stricmp() isn't available, roll our own
+    bool operator<(const PathPtr& r)  const 
+    { 
+        bool result = false;
+
+        char* pl = path, *pr = r.path;
+        while (0 != *pl && 0 != *pr)
+        {
+            char tlp = tolower(*pl), tlr = tolower(*pr);
+            if (tlp < tlr)
+                result = true;
+            if (tlp != tlr)
+                break;
+            pl++;
+            pr++;                
+        }
+
+        if (0 == *pl && 0 != *pr) // while loop ended, result may be wrong
+            result = true;
+
+        return result;
+    }
+#else
+    // use naturalcompare library, modified (sigh)
+    // because it didn't have case-independence and put
+    // test files in a stupid place...
+    bool operator<(const PathPtr& r)  const 
+    { 
+        const char endCh = '.';
+        const char *pls =   path, *ple = strrchr(  path, endCh),
+                   *prs = r.path, *pre = strrchr(r.path, endCh);
+        return natural_compare(pls,ple,prs,pre,true) < 0;
+    }
+#endif
+#endif
     bool operator>(const PathPtr& r)  const { return r < *this; }
     bool operator<=(const PathPtr& r) const { return !(*this > r); } // (const PathPtr&)
     bool operator>=(const PathPtr& r) const { return !(r < *this); }

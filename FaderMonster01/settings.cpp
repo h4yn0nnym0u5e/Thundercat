@@ -229,8 +229,10 @@ int Settings::loadFromCSV(File& s,
 taskENTER_CRITICAL();
         avail += s.read(buf+offset, sizeof buf - offset); // ensure buffer is full
 taskEXIT_CRITICAL();
-        char* comma = (char*) memchr(buf, ',', sizeof buf);
-        char* eol   = (char*) memchr(buf, '\n', sizeof buf);
+if (avail < sizeof buf) buf[avail] = 0;        
+//Serial.printf("===\n%s\n---\n", buf); Serial.flush();
+        char* comma = (char*) memchr(buf, ',', avail);
+        char* eol   = (char*) memchr(buf, '\n', avail);
 
         if (nullptr == eol) // badly-formed file - give up
             break;
@@ -269,7 +271,7 @@ taskEXIT_CRITICAL();
         avail -= eol - buf + 1;       // how much we currently have
         if (avail < 5) break; // magic - 'n,1\n' could be a setting!
     } while (1);
-
+Serial.println("Load completed OK"); Serial.flush();
     return result; // count of fields loaded
 }
 

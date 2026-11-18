@@ -96,17 +96,25 @@ https://github.com/h4yn0nnym0u5e/DS_MCP4018_Library/tree/dev/ctor-Wire
 - made pointless 10ms delays optional
 
 # ResponsiveAnalogRead #
+https://github.com/h4yn0nnym0u5e/ResponsiveAnalogRead
+
 Teensyduino version is about 10 years out of date. We may not be using the 
 fixes, but better safe than sorry...
 
-https://github.com/h4yn0nnym0u5e/ResponsiveAnalogRead
+# naturalorder #
+https://github.com/h4yn0nnym0u5e/naturalsort/tree/dev/no-case-option 
+
+- Added case-independence
+- fixed bugs
+- add Arduino library files, including changes to folder structure
 
 # Unchanged libraries #
 Also need to install these, they seem to work OK as-is:
 
 PacketSerial (1.4.0) - Arduino Library Manager <br>
 nanopb <br>
-TeensyTimerTool (1.5.0)
+TeensyTimerTool (1.5.0) <br>
+KickSort (1.1.0)
 
 # Submodules #
 See https://github.com/h4yn0nnym0u5e/submodules/tree/ThunderLibs

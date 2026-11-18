@@ -14,6 +14,8 @@
 #include <ResponsiveAnalogRead.h>
 #include <ADC.h>
 #include <AnalogBufferDMA.h>
+#include <KickSort.h>
+#include <naturalorder.h>
 #include <ThunderFonts.h>
 
 
