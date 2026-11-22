@@ -4,9 +4,10 @@
 
 //==================================================================================
 #include <WS2812Serial.h>
+#include <SPI.h>
 
 const int numled = 20;
-const int pin = 20;
+const int pin = 14; // 20;
 
 // Usable pins:
 //   Teensy 4.1:  1, 8, 14, 17, 20, 24, 29, 35, 47, 53
@@ -29,30 +30,28 @@ static WS2812Serial buttonLEDstring(numled, displayMemory, buttonLEDmemory, pin,
 uint32_t colours[]{RED,GREEN,BLUE,YELLOW,PINK,ORANGE,WHITE,PURPLE};
 
 //==================================================================================
-class ButtonLED
-{
-    WS2812Serial& ledString;
-    uint8_t* ledMemory;
-    int num;
-  public:
-    ButtonLED(WS2812Serial& _string, uint8_t* mem, int n)
-        : ledString{_string}, ledMemory{mem}, num{n}
-        {}
-          
-    void setColour(uint32_t c)    { ledString.setPixel(num,c); }
-    void show(void)               { ledString.show(); }
-    void setBrightness(uint8_t n) { ledString.setBrightness(n); }
-};
-
+#include "ButtonTest.h"
 #define CREATE_BUTTON_LEDS // allow definition of button LEDs
-#include "expanders.h"
+#include "expanders.h"     // define them
+#include "dpex.h"
 //==================================================================================
 
 void setup() 
 {
+  initDPEX();
+  SET_BIT_NOW(POWER_LED, 1);
+
+
+#define EN_6V 25  
+  // enable 6V    
+  delay(1000);
+  pinMode(EN_6V, OUTPUT);
+  digitalWriteFast(EN_6V, HIGH);
+  delay(1000);
+
   buttonLEDstring.begin();
   //buttonLEDstring.setBrightness(9);
-  buttonLEDstring.setBrightness(50);
+  buttonLEDstring.setBrightness(10);
 }
 
 void loop() 
@@ -62,13 +61,23 @@ void loop()
   buttonLEDtest();
 }
 //==================================================================================
-
+int offset;
 void buttonLEDtest(void)
 {
-  buttonLED_PCB1.setColour(WHITE);
-  buttonLED_PCB2.setColour(WHITE);
-  buttonLED_PCB3.setColour(WHITE);
-  buttonLED_PCB4.setColour(WHITE);
+  static elapsedMillis em = 0;
+
+  if (em >= 500)
+  {
+    em = 0;
+    buttonLED_PCB1.setColour(colours[(offset + 0) % 8]);
+    buttonLED_PCB2.setColour(colours[(offset + 1) % 8]);
+    buttonLED_PCB3.setColour(colours[(offset + 2) % 8]);
+    buttonLED_PCB4.setColour(colours[(offset + 3) % 8]);
+    offset++;
+
+    U3.poll(); U5.poll();
+    Serial.printf("U3: %02X; U5: %02X\n", (U3.getGPIO()>>8)^0xFF, ((U5.getGPIO()>>8) | 0xC0)^0xFF);
+  }
 
   buttonLED_REAR_FN.setColour(PINK);
   buttonLED_MAIN_FN.setColour(PURPLE);
