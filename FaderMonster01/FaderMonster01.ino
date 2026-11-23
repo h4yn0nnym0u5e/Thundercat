@@ -873,6 +873,14 @@ void SuperTask::run(void)
   new(_ui.space) MainColourPicker; // placement new
   ui.begin(mainLCDtask.getSprite(), faderMonsterSettings.mainColours);
 
+  buttonWithLED_NAV_UP.setPixel(xRED);
+  buttonWithLED_NAV_DN.setPixel(xYELLOW);
+  buttonWithLED_NAV_OP.setPixel(xGREEN);
+  buttonWithLED_NAV_XY.setPixel(xCYAN);
+
+  buttonWithLED_MAIN_FN.setPixel(xPURPLE);
+  buttonWithLED_REAR_FN.setPixel(xPINK);
+  
   while (1)
   {
     static elapsedMillis em = 0;

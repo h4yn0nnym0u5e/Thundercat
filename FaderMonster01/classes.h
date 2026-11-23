@@ -112,31 +112,6 @@ public:
     }
 };
 
-//    888               888    888                     888      8888888888 8888888b.  
-//    888               888    888                     888      888        888  "Y88b 
-//    888               888    888                     888      888        888    888 
-//    88888b.  888  888 888888 888888 .d88b.  88888b.  888      8888888    888    888 
-//    888 "88b 888  888 888    888   d88""88b 888 "88b 888      888        888    888 
-//    888  888 888  888 888    888   888  888 888  888 888      888        888    888 
-//    888 d88P Y88b 888 Y88b.  Y88b. Y88..88P 888  888 888      888        888  .d88P 
-//    88888P"   "Y88888  "Y888  "Y888 "Y88P"  888  888 88888888 8888888888 8888888P"  
-//
-/*
-class ButtonLED
-{
-    WS2812Serial& ledString;
-    uint8_t* ledMemory;
-    int num;
-  public:
-    ButtonLED(WS2812Serial& _string, uint8_t* mem, int n)
-        : ledString{_string}, ledMemory{mem}, num{n}
-        {}
-          
-    void setColour(uint32_t c)    { ledString.setPixel(num,c); }
-    void show(void)               { ledString.show(); }
-    void setBrightness(uint8_t n) { ledString.setBrightness(n); }
-};
-*/
 
 //    888      8888888b.   .d8888b.  
 //    888      888   Y88b d88P  Y88b 
@@ -559,7 +534,7 @@ class SuperTask : public FaderMonsterTask
     { 
         if (ui < 0)
             ui = whichUI+1;
-            
+
         if (flipUI(force)) 
         { 
             targetUI = ui % MAIN_UI_COUNT; 
@@ -1065,7 +1040,7 @@ class StripTask : public FaderMonsterTask
                & faderTouch;  // and fader touch sensors...
     TFT_eSprite& scribble;    // ...scribble strip display...
     // Fader& fader;            // ...fader
-    // Button& button;          // ...button (control and LED)
+    ButtonWithLED& button;          // ...button (control and LED)
 
     static constexpr float POT_NOT_SET{-999.0f};
     static constexpr float sa{2*18.0f}, ea{360.0f - 2*18.0f}; // TFT_eSPI has zero at 6 o'clock
@@ -1091,13 +1066,15 @@ class StripTask : public FaderMonsterTask
               ContinuousPot& _pot, 
               TouchStatus& _potTouch, TouchStatus& _faderTouch,
               TFT_eSprite& _scribble,
+              ButtonWithLED& _button,
               StripColours& _cfg
             )
     : FaderMonsterTask{_name, _stackDepth, _params, _priority},
       reqQueue{_reqQlen}, cfg{_cfg},
       ring{LEDring{_rings,_num}}, pot{_pot}, 
       potTouch{_potTouch}, faderTouch{_faderTouch},
-      scribble{_scribble}, 
+      scribble{_scribble},
+      button{_button}, 
       ui{*((UIclass*) _ui.space)},
       num{_num}, bright{0},
       useRingPattern{false}

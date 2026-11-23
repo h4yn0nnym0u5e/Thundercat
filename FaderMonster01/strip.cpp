@@ -115,6 +115,7 @@ InterTaskRequest::Result StripTask::doTFTcolourChange(void* pNothing)
 {
   ui.begin(scribble, cfg.scribble, num); // update display
   setDotCurrent(); // and ring
+  button.setPixel(cfg.ringLEDs.colour);
 
   return InterTaskRequest::Result::done;
 }    
@@ -123,6 +124,7 @@ InterTaskRequest::Result StripTask::doSettingsChange(void* pNothing)
 {
   ui.begin(scribble, cfg.scribble, num); // update display
   setDotCurrent(); // and ring
+  button.setPixel(cfg.ringLEDs.colour);
 
   return InterTaskRequest::Result::done;
 }    
@@ -176,6 +178,8 @@ void StripTask::run(void)
     vTaskDelay(10);
   }
   
+  button.setPixel(cfg.ringLEDs.colour); // cheat - not yet set by chooser
+
   // set the initial UI presentation on the display
   if (99==num)
     new(_ui.space) ScribbleTestRects; // placement new
@@ -240,6 +244,7 @@ StripTask* StripTask::tasks[NUM_POTS];
 void StripTask::CreateTasks(void)
 {
     char buffer[5+10+1]; // max configMAX_TASK_NAME_LEN, really
+    int keySwIdx = BWL_KEYSW1_IDX;
 
     for (int i=0;i<COUNT_OF(StripTask::tasks);i++)
     {
@@ -252,8 +257,9 @@ void StripTask::CreateTasks(void)
                     5, // request queue length - just a guess
                     rings,               // task-specific stuff
                     potsTask.getPot(i), 
-                    TouchTask::keyStatuses[i], TouchADCtask::keyStatuses[i], 
+                    TouchTask::keyStatuses[i], TouchADCtask::keyStatuses[i],
                     scribble,
+                    *ButtonsWithLEDs[keySwIdx+i], 
                     faderMonsterSettings.stripsConfig.colours[i]}; 
 
         // now create the FreeRTOS task to run it

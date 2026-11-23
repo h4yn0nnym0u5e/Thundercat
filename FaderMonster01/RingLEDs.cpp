@@ -157,6 +157,7 @@ void RingLEDsTask::run(void)
     while (rings.busy())
       vTaskDelay(1);
 
+    buttonLEDstring.setBrightness(StripTask::globalBright);
     buttonLEDstring.show();
     while (buttonLEDstring.busy())
       vTaskDelay(1);

@@ -121,6 +121,25 @@
 // #define DPEX_MISO  1
 // #define DPEX_MOSI 26
 
+// List of buttons-with-LED
+// Similar but not identical to the one in expanders.h
+#define BUTTON_WITH_LED_LIST \
+	BUTTON_WITH_LED(REAR_FN) \
+	BUTTON_WITH_LED(NAV_UP) \
+	BUTTON_WITH_LED(NAV_DN) \
+	BUTTON_WITH_LED(NAV_OP) \
+	BUTTON_WITH_LED(NAV_XY) \
+	BUTTON_WITH_LED(MAIN_FN) \
+	BUTTON_WITH_LED(KEYSW1) \
+	BUTTON_WITH_LED(KEYSW2) \
+	BUTTON_WITH_LED(KEYSW3) \
+	BUTTON_WITH_LED(KEYSW4) \
+	BUTTON_WITH_LED(KEYSW5) \
+	BUTTON_WITH_LED(KEYSW6) \
+	BUTTON_WITH_LED(KEYSW7) \
+	BUTTON_WITH_LED(KEYSW8)
+
+
 // ============== Power board control ==============
 // mapped using 0R resistors
 // signal names from USB+power schematic:

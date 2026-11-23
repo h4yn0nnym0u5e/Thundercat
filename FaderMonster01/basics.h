@@ -669,4 +669,32 @@ class Textifier
 
 typedef enum {ok, same, last, sameLast, fail, sameFail} ScrollerResult;
 
+//================================================================
+//    888               888    888                             888      8888888888 8888888b.  
+//    888               888    888                             888      888        888  "Y88b 
+//    888               888    888                             888      888        888    888 
+//    88888b.  888  888 888888 888888 .d88b.  88888b.    888   888      8888888    888    888 
+//    888 "88b 888  888 888    888   d88""88b 888 "88b 8888888 888      888        888    888 
+//    888  888 888  888 888    888   888  888 888  888   888   888      888        888    888 
+//    888 d88P Y88b 888 Y88b.  Y88b. Y88..88P 888  888         888      888        888  .d88P 
+//    88888P"   "Y88888  "Y888  "Y888 "Y88P"  888  888         88888888 8888888888 8888888P"  
+//
+class ButtonWithLED : public TouchStatus
+{
+    ButtonLED& led; // LED control
+    DPex& Un;       // the port expander with the switch...
+    int bit;        // ...on this bit (active low)
+  public:
+    ButtonWithLED(ButtonLED& _butLED, DPex& _un, int _bit)
+    : led{_butLED}, Un{_un}, bit{_bit}
+    {}
+    void setPixel(uint32_t colour) { led.setPixel(colour); }
+};
+
+enum {
+#define BUTTON_WITH_LED(nm) BWL_##nm##_IDX,
+    BUTTON_WITH_LED_LIST
+#undef BUTTON_WITH_LED
+};
+
 #endif // !defined(_BASICS_H_)

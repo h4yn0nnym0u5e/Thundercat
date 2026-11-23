@@ -8,14 +8,14 @@
 // Port expander pin assignments
 // U#,GPIO,pin,cfg
 // cfg: U = input pullup, I = input, O = output
-#define KEYSWITCH_CHANNEL_1 U3,A,7,U
-#define KEYSWITCH_CHANNEL_2 U3,A,6,U
-#define KEYSWITCH_CHANNEL_3 U3,A,5,U
-#define KEYSWITCH_CHANNEL_4 U3,A,4,U
-#define KEYSWITCH_CHANNEL_5 U3,A,3,U
-#define KEYSWITCH_CHANNEL_6 U3,A,2,U
-#define KEYSWITCH_CHANNEL_7 U3,A,1,U
-#define KEYSWITCH_CHANNEL_8 U3,A,0,U
+#define KEYSW1 U3,A,7,U
+#define KEYSW2 U3,A,6,U
+#define KEYSW3 U3,A,5,U
+#define KEYSW4 U3,A,4,U
+#define KEYSW5 U3,A,3,U
+#define KEYSW6 U3,A,2,U
+#define KEYSW7 U3,A,1,U
+#define KEYSW8 U3,A,0,U
 // U3 port B is unused; available on H2
 
 #define MAIN_FN U5,A,0,U // aka FN1
@@ -53,10 +53,10 @@
 	BUTTON_LED(PCB4,0) \
 	BUTTON_LED(REAR_FN,1) \
 	BUTTON_LED(PCB3,2) \
-	BUTTON_LED(NAV_XY,3) \
-	BUTTON_LED(NAV_OP,4) \
-	BUTTON_LED(NAV_DN,5) \
-	BUTTON_LED(NAV_UP,6) \
+	BUTTON_LED(NAV_UP,3) \
+	BUTTON_LED(NAV_DN,4) \
+	BUTTON_LED(NAV_OP,5) \
+	BUTTON_LED(NAV_XY,6) \
 	BUTTON_LED(PCB2,7) \
 	BUTTON_LED(MAIN_FN,8) \
 	BUTTON_LED(PCB1,9) \
