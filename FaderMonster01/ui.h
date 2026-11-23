@@ -206,6 +206,39 @@ class UIclass
 };
 
 //==================================================================
+//                             888             
+//                             888             
+//                             888             
+//    888d888 .d88b.   .d8888b 888888 .d8888b  
+//    888P"  d8P  Y8b d88P"    888    88K      
+//    888    88888888 888      888    "Y8888b. 
+//    888    Y8b.     Y88b.    Y88b.       X88 
+//    888     "Y8888   "Y8888P  "Y888  88888P' 
+// 
+class AnyTestRects : public UIclass 
+{
+    enum {idle, drawingRect};
+    void randomRect(void);
+
+  public:
+    virtual State begin(TFT_eSprite& sprite, colours_t c);
+    virtual State update(Trigger trigger);
+    virtual uint32_t poll(void);
+};
+
+class MainTestRects : public AnyTestRects 
+{
+  public:
+    virtual InterTaskRequest& writeToDisplay(void) { return writeToMainLCD(); }
+};
+
+class ScribbleTestRects : public AnyTestRects 
+{
+  public:
+    virtual InterTaskRequest& writeToDisplay(void) { return writeToScribble(); }
+};
+
+//==================================================================
 //             888                                          888    
 //             888                                          888    
 //             888                                          888    
@@ -240,10 +273,13 @@ class UIelement
 
     virtual void begin(UIclass& owner)
     {
-        setColours(owner.colours);
+        setColours(ownerColours(owner));
         setFont(FontSetter::RADIO_LABEL);
-        draw(owner.pSprite);
+        draw(ownerSprite(owner));
     }
+
+    TFTcolours& ownerColours(UIclass& owner) { return owner.colours; }
+    TFT_eSprite* ownerSprite(UIclass& owner) { return owner.pSprite; }
 
     virtual bool draw(TFT_eSprite*) = 0;
     virtual void setColours(TFTcolours c) {colours = c;}
@@ -265,6 +301,46 @@ class UIelement
 
     virtual bool isIn(GTPoint& pt);
     bool isLifted(void) { return lifted; }
+};
+
+
+class UIbulgyTop : public UIelement
+{
+    int bulge;
+  public:
+    UIbulgyTop(TFTcolours& _c,
+            int _x = 0, int _y = 0 , int _w = 240, int _h = 68,
+            int _bulge = 12)
+        : UIelement{_c,_x,_y,_w,_h,nullptr,nullptr},
+          bulge{_bulge}
+        {}
+    bool draw(TFT_eSprite*);
+    void begin2(UIclass& owner, TFTcolours& c)
+    {
+        setColours(c); // could interpolate colours here
+        draw(ownerSprite(owner));
+    }
+
+};
+
+class UIpieSlice : public UIelement
+{
+    float zeroPos; //!< degrees clockwise from 6 o'clock (library zero); -ve starts from 12 o'clock
+    float value; //!< current value, ±1.0 
+  public:
+    UIpieSlice(TFTcolours& _c,
+            int _x = 9, int _y = 9 , int _r = 40,
+            float _zeroPos = 18.0f*2)
+        : UIelement{_c,_x,_y,_r*2,_r*2,nullptr,nullptr},
+          zeroPos{_zeroPos}, value{_zeroPos + 90.0f}
+        {}
+    bool draw(TFT_eSprite*);
+    void begin2(UIclass& owner, TFTcolours& c)
+    {
+        setColours(c); // could interpolate colours here
+        draw(ownerSprite(owner));
+    }
+
 };
 
 //==================================================================
@@ -419,7 +495,7 @@ class UIvGradButton : public UIbutton
 
 class UIradioButton : public UIgraphicButton
 {
-public:    
+  public:    
     uint16_t& selectedColour;
     uint32_t& groupFlags;
     int buttonNum;
@@ -863,6 +939,17 @@ void setFontAll(B* buttons, int count, F font)
 //         X88 Y88b.    888     888 888 d88P 888 d88P 888 Y8b.     
 //     88888P'  "Y8888P 888     888 88888P"  88888P"  888  "Y8888  
 // 
+//==================================================================
+//
+//    8888888b.          888           d8888                 
+//    888   Y88b         888          d88888                 
+//    888    888         888         d88P888                 
+//    888   d88P .d88b.  888888     d88P 888 888d888 .d8888b 
+//    8888888P" d88""88b 888       d88P  888 888P"  d88P"    
+//    888       888  888 888      d88P   888 888    888      
+//    888       Y88..88P Y88b.   d8888888888 888    Y88b.    
+//    888        "Y88P"   "Y888 d88P     888 888     "Y8888P 
+//
 class ScribblePotArc : public UIclass 
 {
     enum {idle, drawingTitle, drawingArc, drawingNumber, drawingTouch, drawingBackground};
@@ -924,11 +1011,49 @@ class ScribblePotArc : public UIclass
 };
 
 //==================================================================
+//
+//    88888888888 888                               8888888b.                  888    
+//        888     888                               888   Y88b                 888    
+//        888     888                               888    888                 888    
+//        888     88888b.  888d888 .d88b.   .d88b.  888   d88P 8888b.  888d888 888888 
+//        888     888 "88b 888P"  d8P  Y8b d8P  Y8b 8888888P"     "88b 888P"   888    
+//        888     888  888 888    88888888 88888888 888       .d888888 888     888    
+//        888     888  888 888    Y8b.     Y8b.     888       888  888 888     Y88b.  
+//        888     888  888 888     "Y8888   "Y8888  888       "Y888888 888      "Y888 
+//   
+class ScribbleThreePart : public UIclass 
+{
+
+    UIbulgyTop top{colours};
+    UIpieSlice pie{colours};
+public:
+    virtual State begin(TFT_eSprite& sprite, colours_t c, int _which);
+    virtual State update(Trigger trigger);
+    virtual InterTaskRequest& writeToDisplay(void) { return writeToScribble(); }
+};
+
+//==================================================================
+//==================================================================
 class ScribbleDummy : public UIclass {};
+
+#define SCRIBBLE_UI_LIST \
+    SCRIBBLE_UI_ENTRY(ScribbleTestRects, testRects) \
+    SCRIBBLE_UI_ENTRY(ScribblePotArc, potArc) \
+    SCRIBBLE_UI_ENTRY(ScribbleThreePart, threePart) 
+
 union ScribbleUI
 {
     ScribbleDummy  dummy;
-    ScribblePotArc potArc;
+#define SCRIBBLE_UI_ENTRY(typ, nam) typ nam;
+    SCRIBBLE_UI_LIST
+#undef SCRIBBLE_UI_ENTRY
+};
+
+enum {
+#define SCRIBBLE_UI_ENTRY(typ, nam) MAIN_UI_##typ,
+    SCRIBBLE_UI_LIST
+#undef SCRIBBLE_UI_ENTRY
+    SCRIBBLE_UI_COUNT
 };
 
 union ScribbleUIholder
@@ -937,6 +1062,8 @@ union ScribbleUIholder
     uint8_t space[sizeof(ScribbleUI)];
 };
 
+//==================================================================
+//==================================================================
 //==================================================================
 //
 //    888b     d888          d8b          888      .d8888b.  8888888b.  
@@ -948,28 +1075,6 @@ union ScribbleUIholder
 //    888   "   888 888  888 888 888  888 888     Y88b  d88P 888  .d88P 
 //    888       888 "Y888888 888 888  888 88888888 "Y8888P"  8888888P"  
 // 
-//==================================================================
-//                             888             
-//                             888             
-//                             888             
-//    888d888 .d88b.   .d8888b 888888 .d8888b  
-//    888P"  d8P  Y8b d88P"    888    88K      
-//    888    88888888 888      888    "Y8888b. 
-//    888    Y8b.     Y88b.    Y88b.       X88 
-//    888     "Y8888   "Y8888P  "Y888  88888P' 
-// 
-class MainTestRects : public UIclass 
-{
-    enum {idle, drawingRect};
-    void randomRect(void);
-
-  public:
-    virtual State begin(TFT_eSprite& sprite, colours_t c);
-    virtual State update(Trigger trigger);
-    virtual InterTaskRequest& writeToDisplay(void) { return writeToMainLCD(); }
-    virtual uint32_t poll(void);
-};
-
 //==================================================================
 //                               .d888 d8b                       
 //                              d88P"  Y8P                       
@@ -1451,6 +1556,7 @@ class MainFlipLimit : public UIclass {};
 
 #define MAIN_UI_LIST \
     MAIN_UI_ENTRY(MainColourPicker, colourPicker) \
+    MAIN_UI_ENTRY(MainTestRects, testRects) \
     MAIN_UI_ENTRY(MainSceneFiler, testScroller) \
     MAIN_UI_ENTRY(MainExprTune, expr) \
     MAIN_UI_ENTRY(MainSceneLoad, scene) \

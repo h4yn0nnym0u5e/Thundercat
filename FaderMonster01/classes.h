@@ -121,6 +121,7 @@ public:
 //    888 d88P Y88b 888 Y88b.  Y88b. Y88..88P 888  888 888      888        888  .d88P 
 //    88888P"   "Y88888  "Y888  "Y888 "Y88P"  888  888 88888888 8888888888 8888888P"  
 //
+/*
 class ButtonLED
 {
     WS2812Serial& ledString;
@@ -135,6 +136,8 @@ class ButtonLED
     void show(void)               { ledString.show(); }
     void setBrightness(uint8_t n) { ledString.setBrightness(n); }
 };
+*/
+
 //    888      8888888b.   .d8888b.  
 //    888      888   Y88b d88P  Y88b 
 //    888      888    888 888    888 

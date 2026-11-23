@@ -10,8 +10,12 @@
  code which is in the public domain. 
 */
 
+// header.h includes expanders.h, which knows about the buttons
+// and their LEDs. We create the button LED instances here
+#define CREATE_BUTTON_LEDS
 #include "header.h"
 
+//=========================================================================
 const int numled = LEDS_PER_RING*NUM_POTS + 20;
 const int pin = LED_DRIVE_PIN;
 
@@ -28,6 +32,15 @@ DMAMEM byte displayMemory[numled*12]; // 12 bytes per LED
 
 WS2812Serial leds(numled, displayMemory, drawingMemory, pin, WS2812_GRB);
 RingLEDs<NUM_POTS> rings(leds, drawingMemory, LEDS_PER_RING,LED_TOP_OFFSET);
+//=========================================================================
+const int numbut = KEYSW8_IDX+1;
+const int pinbut = BUTTONS_DIN;
+
+byte buttonLEDmemory[numbut*3];         //  3 bytes per LED
+DMAMEM byte displayMemoryBut[numbut*12]; // 12 bytes per LED
+
+WS2812Serial buttonLEDstring(numbut, displayMemoryBut, buttonLEDmemory, pinbut, WS2812_GRB);
+//=========================================================================
 
 int rainbow1[LEDS_PER_RING] = {
     // straight order: first entry is highest value
@@ -129,10 +142,28 @@ void RingLEDsTask::run(void)
     rings.setPixel(i,10,ringConfigs[i].colour);
   rings.show();
 
+  buttonLEDstring.begin();
+  buttonLEDstring.clear();
+  buttonLEDstring.setBrightness(64);
+  buttonLED_PCB4.setPixel(xGREEN);
+  buttonLED_REAR_FN.setPixel(xBLUE);
+  buttonLED_PCB3.setPixel(xRED);
+
   while (1)
   {
+    elapsedMillis em = 0;
+
     rings.show();
-    vTaskDelay(10); // every 10 ticks - should be triggered?
+    while (rings.busy())
+      vTaskDelay(1);
+
+    buttonLEDstring.show();
+    while (buttonLEDstring.busy())
+      vTaskDelay(1);
+
+    // loop every 10ms
+    if (em < 10)
+      vTaskDelay(10 - em);
   }
 }
 

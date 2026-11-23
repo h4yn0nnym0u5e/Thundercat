@@ -177,7 +177,10 @@ void StripTask::run(void)
   }
   
   // set the initial UI presentation on the display
-  new(_ui.space) ScribblePotArc; // placement new
+  if (99==num)
+    new(_ui.space) ScribbleTestRects; // placement new
+  else
+    new(_ui.space) ScribblePotArc; 
   ui.begin(scribble, cfg.scribble, num);
   
   while (1)

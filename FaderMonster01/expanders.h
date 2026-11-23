@@ -49,25 +49,25 @@
  /*
   * Since the port expanders are used to sense the RGB buttons, we'll map those here
   */
-
-#define PCB4_LED   0
-#define REAR_FN_LED  1
-#define PCB3_LED   2
-#define NAV_XY_LED   3
-#define NAV_OP_LED   4
-#define NAV_DN_LED   5
-#define NAV_UP_LED   6
-#define PCB2_LED   7
-#define MAIN_FN_LED  8
-#define PCB1_LED   9
-#define KEYSW1_LED  10
-#define KEYSW2_LED  11
-#define KEYSW3_LED  12
-#define KEYSW4_LED  13
-#define KEYSW5_LED  14
-#define KEYSW6_LED  15
-#define KEYSW7_LED  16
-#define KEYSW8_LED  17
+#define BUTTON_LED_LIST \
+	BUTTON_LED(PCB4,0) \
+	BUTTON_LED(REAR_FN,1) \
+	BUTTON_LED(PCB3,2) \
+	BUTTON_LED(NAV_XY,3) \
+	BUTTON_LED(NAV_OP,4) \
+	BUTTON_LED(NAV_DN,5) \
+	BUTTON_LED(NAV_UP,6) \
+	BUTTON_LED(PCB2,7) \
+	BUTTON_LED(MAIN_FN,8) \
+	BUTTON_LED(PCB1,9) \
+	BUTTON_LED(KEYSW1,10) \
+	BUTTON_LED(KEYSW2,11) \
+	BUTTON_LED(KEYSW3,12) \
+	BUTTON_LED(KEYSW4,13) \
+	BUTTON_LED(KEYSW5,14) \
+	BUTTON_LED(KEYSW6,15) \
+	BUTTON_LED(KEYSW7,16) \
+	BUTTON_LED(KEYSW8,17)
 
 
 
@@ -98,44 +98,33 @@ class MCP23S17_SETTINGS
 };
 
 class ButtonLED;
-extern ButtonLED buttonLED_PCB4;
-extern ButtonLED buttonLED_REAR_FN;
-extern ButtonLED buttonLED_PCB3;
-extern ButtonLED buttonLED_NAV_XY;
-extern ButtonLED buttonLED_NAV_OP;
-extern ButtonLED buttonLED_NAV_DN;
-extern ButtonLED buttonLED_NAV_UP;
-extern ButtonLED buttonLED_PCB2;
-extern ButtonLED buttonLED_MAIN_FN;
-extern ButtonLED buttonLED_PCB1;
-extern ButtonLED buttonLED_KEYSW1;
-extern ButtonLED buttonLED_KEYSW2;
-extern ButtonLED buttonLED_KEYSW3;
-extern ButtonLED buttonLED_KEYSW4;
-extern ButtonLED buttonLED_KEYSW5;
-extern ButtonLED buttonLED_KEYSW6;
-extern ButtonLED buttonLED_KEYSW7;
-extern ButtonLED buttonLED_KEYSW8;
+#define BUTTON_LED(nm,num) extern ButtonLED buttonLED_##nm;
+BUTTON_LED_LIST
+#undef BUTTON_LED
+enum {
+#define BUTTON_LED(nm,num) nm##_IDX=num,
+BUTTON_LED_LIST
+#undef BUTTON_LED
+};
+extern ButtonLED*  buttonLEDs[];
+extern ButtonLED** keySwLEDs;
 
 #if defined(CREATE_BUTTON_LEDS)
-ButtonLED buttonLED_PCB4{buttonLEDstring, buttonLEDmemory, 0};
-ButtonLED buttonLED_REAR_FN{buttonLEDstring, buttonLEDmemory, 1};
-ButtonLED buttonLED_PCB3{buttonLEDstring, buttonLEDmemory, 2};
-ButtonLED buttonLED_NAV_XY{buttonLEDstring, buttonLEDmemory, 3};
-ButtonLED buttonLED_NAV_OP{buttonLEDstring, buttonLEDmemory, 4};
-ButtonLED buttonLED_NAV_DN{buttonLEDstring, buttonLEDmemory, 5};
-ButtonLED buttonLED_NAV_UP{buttonLEDstring, buttonLEDmemory, 6};
-ButtonLED buttonLED_PCB2{buttonLEDstring, buttonLEDmemory, 7};
-ButtonLED buttonLED_MAIN_FN{buttonLEDstring, buttonLEDmemory, 8};
-ButtonLED buttonLED_PCB1{buttonLEDstring, buttonLEDmemory, 9};
-ButtonLED buttonLED_KEYSW1{buttonLEDstring, buttonLEDmemory, 10};
-ButtonLED buttonLED_KEYSW2{buttonLEDstring, buttonLEDmemory, 11};
-ButtonLED buttonLED_KEYSW3{buttonLEDstring, buttonLEDmemory, 12};
-ButtonLED buttonLED_KEYSW4{buttonLEDstring, buttonLEDmemory, 13};
-ButtonLED buttonLED_KEYSW5{buttonLEDstring, buttonLEDmemory, 14};
-ButtonLED buttonLED_KEYSW6{buttonLEDstring, buttonLEDmemory, 15};
-ButtonLED buttonLED_KEYSW7{buttonLEDstring, buttonLEDmemory, 16};
-ButtonLED buttonLED_KEYSW8{buttonLEDstring, buttonLEDmemory, 17};
+extern WS2812Serial buttonLEDstring;
+// Create one ButtonLED instance for each RGB button
+#define BUTTON_LED(nm,num) ButtonLED buttonLED_##nm{buttonLEDstring, num};
+BUTTON_LED_LIST
+#undef BUTTON_LED
+
+// Array of pointers to ButtonLEDs
+ButtonLED* buttonLEDs[] {
+#define BUTTON_LED(nm,num) &buttonLED_##nm, 
+BUTTON_LED_LIST
+#undef BUTTON_LED
+};
+
+// Pointer to first keyswitch LED
+ButtonLED** keySwLEDs{buttonLEDs + KEYSW1_IDX};
 #endif // defined(CREATE_BUTTON_LEDS)
 #undef CREATE_BUTTON_LEDS    
 

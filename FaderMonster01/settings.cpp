@@ -229,7 +229,7 @@ int Settings::loadFromCSV(File& s,
 taskENTER_CRITICAL();
         avail += s.read(buf+offset, sizeof buf - offset); // ensure buffer is full
 taskEXIT_CRITICAL();
-if (avail < sizeof buf) buf[avail] = 0;        
+if (avail < (int) sizeof buf) buf[avail] = 0;        
 //Serial.printf("===\n%s\n---\n", buf); Serial.flush();
         char* comma = (char*) memchr(buf, ',', avail);
         char* eol   = (char*) memchr(buf, '\n', avail);

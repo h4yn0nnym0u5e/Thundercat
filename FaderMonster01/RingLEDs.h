@@ -239,6 +239,7 @@ class RingLEDs
     }
 
     void show(void) { ledString.show(); }
+    bool busy(void) { return ledString.busy(); }
 
     bool debug;
 };
@@ -264,4 +265,16 @@ class LEDring
 
         bool& debug;
         int ring;        
+};
+
+class ButtonLED {
+    WS2812Serial& ledString;
+    int num;
+  public:
+    ButtonLED(WS2812Serial& _string, int _num) 
+    : ledString{_string}, num{_num}
+    {}
+    void setPixel(uint32_t colour) { ledString.setPixelColor(num, colour); }
+    void show(void) { ledString.show(); }
+    bool busy(void) { return ledString.busy(); }
 };

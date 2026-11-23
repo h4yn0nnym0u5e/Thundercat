@@ -27,9 +27,10 @@
 #include "smartknob.pb.h"
 #include <arduino_freertos.h>
 #include <queue.h>
+#include "RingLEDs.h" 
 #include "expanders.h"
 #include "DPex.h"
-#include "RingLEDs.h"
+//#include "RingLEDs.h" 
 #include "contPot.h"
 #include "Touches.h"
 #include "basics.h" // #includes settings.h

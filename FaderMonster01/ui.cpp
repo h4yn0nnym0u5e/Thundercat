@@ -479,7 +479,41 @@ void UIclass::setSmartKnobValue(int value)
 //==========================================================================
 InterTaskRequest UIclass::autoFail{InterTaskRequest::Result::failed};
 //==========================================================================
+bool UIbulgyTop::draw(TFT_eSprite* pSprite)
+{
+    // do the geometry:
+    float r = (float) w*w / bulge / 8.0f + (float) bulge / 2.0f;
+    float thetaDeg = asinf((float) w / 2.0f / r) * 180.0f / PI; // half angle
+    int x0 = w/2;
+    int y0 = h + bulge - r;
 
+    pSprite->drawSmoothArc(x0,y0,r,r-bulge,360.0f - thetaDeg, thetaDeg, colours.fg, colours.bg);
+    pSprite->fillRect(x,y,w,h,colours.fg);
+    
+    return true;
+}
+
+bool UIpieSlice::draw(TFT_eSprite* pSprite)
+{
+    float maxAngle = zeroPos>0
+                        ?(360.0f - 2*zeroPos)
+                        :-zeroPos;
+    float startAngle = zeroPos>0
+                        ?zeroPos
+                        :180.0f; 
+    pSprite->fillSmoothCircle(x+w,y+w,w/2,colours.fg,colours.bg);
+    if (zeroPos > 0)
+        pSprite->drawSmoothArc(x+w,y+w, w/2,0, startAngle,zeroPos+(value + 1.0f)/2.0f*(maxAngle), colours.fg,colours.bg);
+    else
+    {
+        if (value >= 0.0f)
+            pSprite->drawSmoothArc(x+w,y+w, w/2,0, startAngle, 180.0f+value*maxAngle, colours.txt,colours.fg);
+        else
+            pSprite->drawSmoothArc(x+w,y+w, w/2,0, 180.0f+value*maxAngle, startAngle, colours.txt,colours.fg);
+    }
+
+    return true;
+}
 //==================================================================
 //    888               888    888                     
 //    888               888    888                     
@@ -967,6 +1001,17 @@ void UIscroller::shadeEnds(UIclass& uiClass, uint16_t colour, uint8_t start, uin
 //         X88 Y88b.    888     888 888 d88P 888 d88P 888 Y8b.     
 //     88888P'  "Y8888P 888     888 88888P"  88888P"  888  "Y8888  
 //
+//==================================================================
+//
+//    8888888b.          888           d8888                 
+//    888   Y88b         888          d88888                 
+//    888    888         888         d88P888                 
+//    888   d88P .d88b.  888888     d88P 888 888d888 .d8888b 
+//    8888888P" d88""88b 888       d88P  888 888P"  d88P"    
+//    888       888  888 888      d88P   888 888    888      
+//    888       Y88..88P Y88b.   d8888888888 888    Y88b.    
+//    888        "Y88P"   "Y888 d88P     888 888     "Y8888P 
+//
 WHICHMEM
 bool ScribblePotArc::setScribbleText(bool force /* false */)
 {
@@ -1085,6 +1130,40 @@ UIclass::State ScribblePotArc::update(Trigger trigger)
 
 //==================================================================
 //
+//    88888888888 888                               8888888b.                  888    
+//        888     888                               888   Y88b                 888    
+//        888     888                               888    888                 888    
+//        888     88888b.  888d888 .d88b.   .d88b.  888   d88P 8888b.  888d888 888888 
+//        888     888 "88b 888P"  d8P  Y8b d8P  Y8b 8888888P"     "88b 888P"   888    
+//        888     888  888 888    88888888 88888888 888       .d888888 888     888    
+//        888     888  888 888    Y8b.     Y8b.     888       888  888 888     Y88b.  
+//        888     888  888 888     "Y8888   "Y8888  888       "Y888888 888      "Y888 
+//   
+UIclass::State ScribbleThreePart::begin(TFT_eSprite& sprite, colours_t c, int _which)
+{
+    UIclass::begin(sprite, c);
+Serial.println("ThreePart"); Serial.flush();
+    pSprite->fillScreen(TFT_BLACK);
+Serial.println("filled"); Serial.flush();
+
+    top.begin2(*this, c);
+Serial.println("top done"); Serial.flush();
+    pie.begin2(*this, c);
+Serial.println("pie cooked"); Serial.flush();
+
+    return State::push; // need to update display
+}
+
+
+UIclass::State ScribbleThreePart::update(Trigger trigger)
+{
+    UIclass::State result = UIclass::State::done;
+
+    return (state = result);
+}
+
+//==================================================================
+//
 //    888b     d888          d8b          888      .d8888b.  8888888b.  
 //    8888b   d8888          Y8P          888     d88P  Y88b 888  "Y88b 
 //    88888b.d88888                       888     888    888 888    888 
@@ -1106,7 +1185,7 @@ UIclass::State ScribblePotArc::update(Trigger trigger)
 //     "Y888 "Y8888   88888P'  "Y888 888   T88b "Y8888   "Y8888P  "Y888  88888P' 
 //
 WHICHMEM
-UIclass::State MainTestRects::begin(TFT_eSprite& sprite, colours_t c)
+UIclass::State AnyTestRects::begin(TFT_eSprite& sprite, colours_t c)
 {
     UIclass::begin(sprite, c);
     pSprite->fillScreen(colours.bg);
@@ -1116,7 +1195,7 @@ UIclass::State MainTestRects::begin(TFT_eSprite& sprite, colours_t c)
 }
 
 WHICHMEM
-uint32_t MainTestRects::poll(void)
+uint32_t AnyTestRects::poll(void)
 {
     uint32_t result = interval;
     if (intervalElapsed(100'000)) // every 100ms
@@ -1128,7 +1207,7 @@ uint32_t MainTestRects::poll(void)
 }
 
 WHICHMEM
-UIclass::State MainTestRects::update(Trigger trigger)
+UIclass::State AnyTestRects::update(Trigger trigger)
 {
     State result = State::push; 
 
@@ -1161,7 +1240,7 @@ UIclass::State MainTestRects::update(Trigger trigger)
 }
 
 WHICHMEM
-void MainTestRects::randomRect(void)
+void AnyTestRects::randomRect(void)
 {
   int x,y, w, h;
   w = random(140); h = random(80);

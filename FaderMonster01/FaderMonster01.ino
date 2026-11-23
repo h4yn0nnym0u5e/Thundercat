@@ -405,11 +405,11 @@ bool SuperTask::processUI(void)
       case MAIN_UI_MainColourPicker:
         new(_ui.space) MainColourPicker; // placement new
         break;
-/*
+//*
       case MAIN_UI_MainTestRects:
         new(_ui.space) MainTestRects; 
         break;
-*/
+//*/
       case MAIN_UI_MainSceneFiler:
         sprintf(headerText,"Select: ");
         new(_ui.space) MainSceneFiler; 
