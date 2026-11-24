@@ -9,9 +9,11 @@
 using namespace TeensyTimerTool;
 //================================================================================
 // Create all instances of buttons with RGB LEDs in them
+bool dummyFn(void) { return true; } 
 #define BITNUM_A(x) (x<<8)
 #define BITNUM_B(x) (x)
-#define _BUTTON_WITH_LED(vn,ln, u,p,b,o) ButtonWithLED vn{ln, u, BITNUM_##p(b)};
+//#define _BUTTON_WITH_LED(vn,ln, u,p,b,o) ButtonWithLED vn{ln, dummyFn};
+#define _BUTTON_WITH_LED(vn,ln, u,p,b,o) ButtonWithLED vn{ln, []()->bool { return !_DO_GET(getGPIObit, u,p,b,o); }};
 #define BUTTON_WITH_LED(nm) _BUTTON_WITH_LED(buttonWithLED_##nm, buttonLED_##nm, nm)
   BUTTON_WITH_LED_LIST
 #undef BUTTON_WITH_LED
@@ -27,8 +29,8 @@ ButtonWithLED* ButtonsWithLEDs[] {
 };
 
 //================================================================================
-static uint8_t NmbOfADC = 3;            // Number of ADCs in series. This can only be two as of right now (03/09/19)
-static ADS8688 bank = ADS8688(ADC_CS, ADC_SPI);  // Instantiate ADS8688 with PIN 7 as CS, default to SPI
+static uint8_t NmbOfADC = 3;                    // Number of ADCs in series.
+static ADS8688 bank = ADS8688(ADC_CS, ADC_SPI); // Instantiate ADS8688 chain with hardware from config.h
 
 ContinuousPot PotsTask::allPots[NUM_POTS]
   {

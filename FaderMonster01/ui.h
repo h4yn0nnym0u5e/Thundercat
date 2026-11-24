@@ -393,7 +393,9 @@ class UIbutton : public UIelement
         if (in)
         {
             if (drawnHit != state && drawnLatched != state)
+            {
                 state = setHit;
+            }
         }
 
         if (!in || lifted) // out, sideways or upwards!
@@ -1223,9 +1225,12 @@ class MainColourPicker : public UIclass
     bool isSameLevel(float level, float oldLevel, uint16_t hue, uint16_t top);                      
     void drawSettingsExample(void);
     void showColours(void);
+    bool buttonDoAction(UIgraphicButton&, GTPoint& newPt, State&);
+
     TFTcolours coloursButtons{TFT_DARKERGREY, TFT_BLACK, TFT_LIGHTGREY};
     UIgraphicButton buttonRing{coloursButtons, 0,0, (char*) "Ring", tl_button_info, &FreeSans9pt7b, -15,-25};
     UIgraphicButton buttonTFT{coloursButtons, 0,239-bl_button_info.height, (char*)"TFT", bl_button_info, &FreeSans9pt7b, -15,20};
+    UIgraphicButton buttonKey{coloursButtons, 239-br_button_info.width,239-br_button_info.height, (char*)"Key", br_button_info, &FreeSans9pt7b, +15,20};
 
   public:
     virtual State begin(TFT_eSprite& sprite, colours_t c);

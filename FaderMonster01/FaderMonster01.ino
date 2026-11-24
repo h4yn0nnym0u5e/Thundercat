@@ -569,6 +569,11 @@ void SuperTask::deleteSettings(char* name)
     mainLCDtask.deleteSettings(saveSettingsRequest, fileName);
 }
 
+void buttonUpdate(ButtonWithLED& but, const char* s)
+{
+  if (but.update().isChangedStatus())
+    Serial.printf("%s status: %d\n", s, (int) but.getExtendedStatus());
+}
 
 WHICHMEM
 void SuperTask::loopFn(void)
@@ -588,6 +593,13 @@ void SuperTask::loopFn(void)
     dbgWritten = false;
     Serial.print(dbgBuffer);
   }
+
+  buttonUpdate(buttonWithLED_NAV_UP, "Nav UP");
+  buttonUpdate(buttonWithLED_NAV_DN, "Nav DN");
+  buttonUpdate(buttonWithLED_NAV_OP, "Nav OP");
+  buttonUpdate(buttonWithLED_NAV_XY, "Nav XY");
+  buttonUpdate(buttonWithLED_MAIN_FN, "Main Fn");
+  buttonUpdate(buttonWithLED_REAR_FN, "Rear Fn");
 
   // deal with power button
   pollPowerButton();

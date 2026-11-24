@@ -682,13 +682,18 @@ typedef enum {ok, same, last, sameLast, fail, sameFail} ScrollerResult;
 class ButtonWithLED : public TouchStatus
 {
     ButtonLED& led; // LED control
-    DPex& Un;       // the port expander with the switch...
-    int bit;        // ...on this bit (active low)
+    bool (*getBit)(void);
   public:
-    ButtonWithLED(ButtonLED& _butLED, DPex& _un, int _bit)
-    : led{_butLED}, Un{_un}, bit{_bit}
+    // delete the impostors, leaving...
+    ButtonWithLED (const ButtonWithLED&) = delete;
+    ButtonWithLED& operator= (const ButtonWithLED&) = delete;
+
+    // ...the One True Constructor
+    ButtonWithLED(ButtonLED& _butLED, bool (*_getBit)(void))
+    : led{_butLED}, getBit{_getBit}
     {}
     void setPixel(uint32_t colour) { led.setPixel(colour); }
+    ButtonWithLED& update(void) { *((TouchStatus*) this) = getBit(); return *this; }    
 };
 
 enum {

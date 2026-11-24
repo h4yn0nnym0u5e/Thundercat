@@ -1052,6 +1052,14 @@ class StripTask : public FaderMonsterTask
     void setDot(float value, uint32_t colour);
     void setDotCurrent(void) { setDot(pot.getCurrent(), useRingPattern?RingLEDs<NUM_POTS>::USE_PATTERN:cfg.ringLEDs.colour); }
 
+    // 
+    void setKeyColour(void) 
+    { 
+        button.setPixel(0 == cfg.buttonLED.colour   // never been set...
+                          ? cfg.ringLEDs.colour     // ..use ring colour
+                          : cfg.buttonLED.colour);  // use configured colour
+    }
+
     // display UI
     ScribbleUIholder _ui;
     UIclass& ui;

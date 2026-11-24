@@ -602,7 +602,9 @@ bool UIgraphicButton::draw(TFT_eSprite* pSprite)
             state = drawnHit;
         }
         else
+        {
             state = drawnNormal;
+        }
 
         // graphic
         uint16_t cmap[16];
@@ -2148,6 +2150,25 @@ void MainColourPicker::showColours(void)
 }
 
 WHICHMEM
+bool MainColourPicker::buttonDoAction(UIgraphicButton& but,  //<! button we're checking
+                                 GTPoint& newPt, //<! screen touch info
+                                 State& result)  //<! UI state 
+{
+    bool retVal = false;
+
+    if (but.isIn(newPt,1))
+    {
+        if (but.isLifted())
+        {
+            retVal = true;
+        }
+        result = State::next;
+        phase = pollButtons;
+    }     
+    return retVal;
+}
+
+WHICHMEM
 UIclass::State MainColourPicker::begin(TFT_eSprite& sprite, colours_t c)
 {
     UIclass::begin(sprite, c);
@@ -2166,6 +2187,7 @@ UIclass::State MainColourPicker::begin(TFT_eSprite& sprite, colours_t c)
 
     buttonTFT.draw(pSprite);
     buttonRing.draw(pSprite);
+    buttonKey.draw(pSprite);
     return (state = State::push); // need to update display
 }
 
@@ -2232,43 +2254,48 @@ UIclass::State MainColourPicker::update(Trigger trigger)
             
 
             // change a strip's colour scheme?
-            if (buttonTFT.isIn(lastTouch, 1)) // will change drawing request state
+            if (buttonDoAction(buttonTFT, lastTouch, result)) // will change drawing request state
             {
-                if (buttonTFT.isLifted()) // not a duplicate, not slid out
+                colours = {hue,bgColour,textColour}; 
+                for (int i=0;i<NUM_POTS;i++)
                 {
-                    colours = {hue,bgColour,textColour}; 
-                    for (int i=0;i<NUM_POTS;i++)
+                    TouchStatus& stripTouch = StripTask::getStripPotTouch(i);
+                    if (TouchStatus::eStatus::LONG == stripTouch.getExtendedStatus())
                     {
-                        TouchStatus& stripTouch = StripTask::getStripPotTouch(i);
-                        if (TouchStatus::eStatus::LONG == stripTouch.getExtendedStatus())
-                        {
-                            faderMonsterSettings.stripsConfig.colours[i].scribble = colours;
-                            StripTask::getStripTask(i).tftColourChanged();
-                        }
+                        faderMonsterSettings.stripsConfig.colours[i].scribble = colours;
+                        StripTask::getStripTask(i).tftColourChanged();
                     }
                 }
-                phase = pollButtons;
-                result = State::next;
             }
 
             // change a ring LED's colour?
-            if (buttonRing.isIn(lastTouch, 1))
+            if (buttonDoAction(buttonRing, lastTouch, result))
             {
-                if (buttonRing.isLifted()) // not a duplicate
+                uint32_t LEDcolour = pSprite->color16to24(bgColour); // allow brightness control
+                for (int i=0;i<NUM_POTS;i++)
                 {
-                    uint32_t LEDcolour = pSprite->color16to24(bgColour); // allow brightness control
-                    for (int i=0;i<NUM_POTS;i++)
+                    TouchStatus& stripTouch = StripTask::getStripPotTouch(i);
+                    if (TouchStatus::eStatus::LONG == stripTouch.getExtendedStatus())
                     {
-                        TouchStatus& stripTouch = StripTask::getStripPotTouch(i);
-                        if (TouchStatus::eStatus::LONG == stripTouch.getExtendedStatus())
-                        {
-                            faderMonsterSettings.stripsConfig.colours[i].ringLEDs.colour = LEDcolour;
-                            StripTask::getStripTask(i).tftColourChanged();
-                        }
+                        faderMonsterSettings.stripsConfig.colours[i].ringLEDs.colour = LEDcolour;
+                        StripTask::getStripTask(i).tftColourChanged();
                     }
                 }
-                phase = pollButtons;
-                result = State::next;
+            }
+
+            // change a key LED's colour?
+            if (buttonDoAction(buttonKey, lastTouch, result))
+            {
+                uint32_t LEDcolour = pSprite->color16to24(bgColour); // allow brightness control
+                for (int i=0;i<NUM_POTS;i++)
+                {
+                    TouchStatus& stripTouch = StripTask::getStripPotTouch(i);
+                    if (TouchStatus::eStatus::LONG == stripTouch.getExtendedStatus())
+                    {
+                        faderMonsterSettings.stripsConfig.colours[i].buttonLED.colour = LEDcolour;
+                        StripTask::getStripTask(i).tftColourChanged();
+                    }
+                }
             }
         }
             break;
@@ -2280,6 +2307,7 @@ UIclass::State MainColourPicker::update(Trigger trigger)
                 case pollButtons:
                     if (buttonTFT.draw(pSprite)) { result = State::push; break; }
                     if (buttonRing.draw(pSprite)) { result = State::push; break; }
+                    if (buttonKey.draw(pSprite)) { result = State::push; break; }
                     phase = idle;
 
                 default:    // nothing pending
@@ -2785,8 +2813,8 @@ UIclass::State MainExprTune::drawBarTo(float pos)
 
 WHICHMEM
 bool MainExprTune::buttonDoAction(UIbutton& but,  //<! button we're checking
-                                 GTPoint& newPt, //<! screen touch info
-                                 State& result)  //<! UI state 
+                                  GTPoint& newPt, //<! screen touch info
+                                  State& result)  //<! UI state 
 {
     bool retVal = false;
 

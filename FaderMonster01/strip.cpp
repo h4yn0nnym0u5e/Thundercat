@@ -115,7 +115,7 @@ InterTaskRequest::Result StripTask::doTFTcolourChange(void* pNothing)
 {
   ui.begin(scribble, cfg.scribble, num); // update display
   setDotCurrent(); // and ring
-  button.setPixel(cfg.ringLEDs.colour);
+  setKeyColour();
 
   return InterTaskRequest::Result::done;
 }    
@@ -124,7 +124,7 @@ InterTaskRequest::Result StripTask::doSettingsChange(void* pNothing)
 {
   ui.begin(scribble, cfg.scribble, num); // update display
   setDotCurrent(); // and ring
-  button.setPixel(cfg.ringLEDs.colour);
+  setKeyColour();
 
   return InterTaskRequest::Result::done;
 }    
@@ -178,7 +178,7 @@ void StripTask::run(void)
     vTaskDelay(10);
   }
   
-  button.setPixel(cfg.ringLEDs.colour); // cheat - not yet set by chooser
+  setKeyColour(); // may cheat if not yet set by chooser
 
   // set the initial UI presentation on the display
   if (99==num)
