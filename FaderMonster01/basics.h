@@ -683,23 +683,28 @@ class ButtonWithLED : public TouchStatus
 {
     ButtonLED& led; // LED control
     bool (*getBit)(void);
+    const char* txt;
   public:
     // delete the impostors, leaving...
     ButtonWithLED (const ButtonWithLED&) = delete;
     ButtonWithLED& operator= (const ButtonWithLED&) = delete;
 
     // ...the One True Constructor
-    ButtonWithLED(ButtonLED& _butLED, bool (*_getBit)(void))
-    : led{_butLED}, getBit{_getBit}
+    ButtonWithLED(ButtonLED& _butLED, int _idx, const char* _txt, bool (*_getBit)(void))
+    : led{_butLED}, getBit{_getBit}, txt{_txt}, index{_idx}
     {}
     void setPixel(uint32_t colour) { led.setPixel(colour); }
+    const char* name(void) { return txt; }
     ButtonWithLED& update(void) { *((TouchStatus*) this) = getBit(); return *this; }    
+
+    const int index; //!< index number (BWL_nn_IDX value)
 };
 
 enum {
-#define BUTTON_WITH_LED(nm) BWL_##nm##_IDX,
+#define BUTTON_WITH_LED(nm, txt) BWL_##nm##_IDX,
     BUTTON_WITH_LED_LIST
 #undef BUTTON_WITH_LED
+    BUTTON_WITH_LED_COUNT
 };
 
 #endif // !defined(_BASICS_H_)

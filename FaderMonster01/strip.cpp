@@ -67,6 +67,21 @@ InterTaskRequest::Result StripTask::doPotChange(void* pNothing)
 }    
 
 
+InterTaskRequest::Result StripTask::doKeyChange(void* pButtonWithLED)
+{
+    ButtonWithLED& theKey = *(ButtonWithLED*) pButtonWithLED;
+
+    Trigger trigger{.type    = Trigger::eTriggerType::pButtonWithLED, 
+                    .trigger = { .pButtonWithLED = &theKey }};
+    ui.update(trigger);
+
+  if (theKey.isChangedStatus())
+    Serial.printf("%s status: %d\n", theKey.name(), (int) theKey.getExtendedStatus());
+    
+    return InterTaskRequest::Result::done;
+}
+
+
 InterTaskRequest::Result StripTask::doTouchChange(void* pTouchStatus)
 {
     TouchStatus& theTouch = *(TouchStatus*) pTouchStatus;
@@ -195,6 +210,7 @@ void StripTask::run(void)
     [[maybe_unused]] uint32_t pollInterval = ui.poll(); // allow UI to do internally-timed stuff
     switch (ui.state)
     {
+        case UIclass::State::reject:
         case UIclass::State::accept:
         case UIclass::State::abandon:
           ui.state = UIclass::State::done;

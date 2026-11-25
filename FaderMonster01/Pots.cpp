@@ -13,8 +13,8 @@ bool dummyFn(void) { return true; }
 #define BITNUM_A(x) (x<<8)
 #define BITNUM_B(x) (x)
 //#define _BUTTON_WITH_LED(vn,ln, u,p,b,o) ButtonWithLED vn{ln, dummyFn};
-#define _BUTTON_WITH_LED(vn,ln, u,p,b,o) ButtonWithLED vn{ln, []()->bool { return !_DO_GET(getGPIObit, u,p,b,o); }};
-#define BUTTON_WITH_LED(nm) _BUTTON_WITH_LED(buttonWithLED_##nm, buttonLED_##nm, nm)
+#define _BUTTON_WITH_LED(vn,ln,idx,txt,  u,p,b,o) ButtonWithLED vn{ln, idx, txt, []()->bool { return !_DO_GET(getGPIObit, u,p,b,o); }};
+#define BUTTON_WITH_LED(nm, txt) _BUTTON_WITH_LED(buttonWithLED_##nm, buttonLED_##nm, BWL_##nm##_IDX, txt, nm)
   BUTTON_WITH_LED_LIST
 #undef BUTTON_WITH_LED
 #undef _BUTTON_WITH_LED
@@ -23,7 +23,7 @@ bool dummyFn(void) { return true; }
 
 // And an array of pointers to them, too
 ButtonWithLED* ButtonsWithLEDs[] {
-#define BUTTON_WITH_LED(nm) &buttonWithLED_##nm,
+#define BUTTON_WITH_LED(nm, txt) &buttonWithLED_##nm,
   BUTTON_WITH_LED_LIST
 #undef BUTTON_WITH_LED
 };
@@ -319,6 +319,28 @@ static void CPsetup(ContinuousPot& cp, int range = 10000)
   }
 }
 
+//================================================================================
+void PotsTask::updateButtons(void) 
+{
+  for (int i=0;i<BUTTON_WITH_LED_COUNT;i++)
+  {
+    if (ButtonsWithLEDs[i]->update().isChangedStatus())
+    {
+      if (i<=BUTTON_LAST_MAIN) // a main control?
+        superTask.buttonChanged(*ButtonsWithLEDs[i]); // yes, tell supervisor task
+      else
+      {
+        int keyNum = i - BWL_KEYSW1_IDX;
+        if (keyNum>=0 && keyNum < NUM_POTS) // valid for a strip...
+        {
+          stripTasks[keyNum]->keyChanged(*ButtonsWithLEDs[i]); // ...notify the correct one
+          // TODO: need to tell MIDI task, too
+        }
+      }        
+    }
+  }
+}
+
 /*
  * ADC task.
  * Wait for power to be valid (due to user or another task),
@@ -349,7 +371,8 @@ void PotsTask::run(void)
   {
     ADCtoDo = 8;  // tell timer we're ready for new data...
     vTaskSuspend(nullptr); // ...suspend until it's available...
-    updateADCs(); // ...and process it  
+    updateADCs();          // ...and process the ADC...
+    updateButtons();       // ...and button results 
 
     if (countBits)
     {

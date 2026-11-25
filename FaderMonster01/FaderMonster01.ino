@@ -193,6 +193,22 @@ InterTaskRequest::Result SuperTask::doTouchChange(void* pTouch)
   return InterTaskRequest::Result::done;
 }
 
+//! start UI executing a button change message
+WHICHMEM
+InterTaskRequest::Result SuperTask::doButtonChange(void* pButtonWithLED)
+{
+  Trigger trigger{.type    = Trigger::eTriggerType::pButtonWithLED, 
+                  .trigger = { .pButtonWithLED = (ButtonWithLED*) pButtonWithLED }};
+
+  ui.update(trigger);
+ 
+//  ButtonWithLED& but = *((ButtonWithLED*) pButtonWithLED);
+//  if (but.isChangedStatus())
+//    Serial.printf("%s status: %d\n", but.name(), (int) but.peekExtendedStatus());
+
+  return InterTaskRequest::Result::done;
+}
+
 //----------------------------------------------------------------
 /**
  * Queue a request for the supervisor task to process a SmartKnob report.
@@ -462,6 +478,43 @@ Serial.printf("%s '%s'\n",
           else
             rearmPowerButton();            
         }
+        // fall through
+      case UIclass::State::reject: // UI didn't use it - can we?
+      {
+        Trigger theTrigger = ui.getCurrentTrigger();
+        switch (theTrigger.type)
+        {
+          default:
+            break;
+
+          case Trigger::eTriggerType::pButtonWithLED:
+          {
+            ButtonWithLED& but = *theTrigger.trigger.pButtonWithLED;
+//Serial.printf("button %d triggered; ", but.index);
+            // react to a new press (it feels slow otherwise)
+            // may need a clever strategy for long or double-presses
+            if (but.isChangedStatus() && TouchStatus::eStatus::ON == but.getExtendedStatus())
+            {
+//Serial.print("changed and ON");
+              switch (but.index)
+              {
+                default:
+                  break;
+
+                case BWL_NAV_DN_IDX:
+                  flipTo((whichUI + MAIN_UI_MainFlipLimit - 1) % MAIN_UI_MainFlipLimit);
+                  break;
+
+                case BWL_NAV_UP_IDX:
+                  flipTo((whichUI + 1) % MAIN_UI_MainFlipLimit);
+                  break;
+              }
+            }
+//Serial.println();
+          }
+            break;
+        }
+      }
         ui.state = UIclass::State::done;
         // fall through
       case UIclass::State::done: // ready for a new trigger
@@ -569,11 +622,6 @@ void SuperTask::deleteSettings(char* name)
     mainLCDtask.deleteSettings(saveSettingsRequest, fileName);
 }
 
-void buttonUpdate(ButtonWithLED& but, const char* s)
-{
-  if (but.update().isChangedStatus())
-    Serial.printf("%s status: %d\n", s, (int) but.getExtendedStatus());
-}
 
 WHICHMEM
 void SuperTask::loopFn(void)
@@ -593,13 +641,6 @@ void SuperTask::loopFn(void)
     dbgWritten = false;
     Serial.print(dbgBuffer);
   }
-
-  buttonUpdate(buttonWithLED_NAV_UP, "Nav UP");
-  buttonUpdate(buttonWithLED_NAV_DN, "Nav DN");
-  buttonUpdate(buttonWithLED_NAV_OP, "Nav OP");
-  buttonUpdate(buttonWithLED_NAV_XY, "Nav XY");
-  buttonUpdate(buttonWithLED_MAIN_FN, "Main Fn");
-  buttonUpdate(buttonWithLED_REAR_FN, "Rear Fn");
 
   // deal with power button
   pollPowerButton();

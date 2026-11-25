@@ -494,11 +494,12 @@ class SuperTask : public FaderMonsterTask
     InterTaskRequest::Result doUpdateMainTouch(void* pGTPoint);
     InterTaskRequest::Result doProcessSmartKnob(void* pSKreport);
     InterTaskRequest::Result doTouchChange(void* pTouch);
+    InterTaskRequest::Result doButtonChange(void* pButtonWithLED);
     //------------------------------------------------------------------------
 
     void loopFn(void);
     InterTaskRequest touchCalibrationRequest, saveSettingsRequest, generalRequest,
-                     touchReq;
+                     touchReq, buttonReq;
 
     // display UI
     MainUIholder _ui;
@@ -558,6 +559,14 @@ class SuperTask : public FaderMonsterTask
     {
         requestPayload payload{&SuperTask::doTouchChange, &touch};
         RequestQueue<SuperTask, requestPayload>::queueEntry entry{&touchReq, payload};
+
+        reqQueue.request(entry, 0);
+    }
+
+    void buttonChanged(ButtonWithLED& button)
+    {
+        requestPayload payload{&SuperTask::doButtonChange, &button};
+        RequestQueue<SuperTask, requestPayload>::queueEntry entry{&buttonReq, payload};
 
         reqQueue.request(entry, 0);
     }
@@ -1026,6 +1035,7 @@ class StripTask : public FaderMonsterTask
 
     InterTaskRequest::Result doPotChange(void* pNothing);
     InterTaskRequest::Result doTouchChange(void* pNothing);
+    InterTaskRequest::Result doKeyChange(void* pNothing);
     InterTaskRequest::Result doTFTcolourChange(void* pNothing);
     InterTaskRequest::Result doSettingsChange(void* pNothing);
     
@@ -1039,8 +1049,8 @@ class StripTask : public FaderMonsterTask
     TouchStatus& potTouch,    // ...and its pot 
                & faderTouch;  // and fader touch sensors...
     TFT_eSprite& scribble;    // ...scribble strip display...
-    // Fader& fader;            // ...fader
-    ButtonWithLED& button;          // ...button (control and LED)
+    // Fader& fader;          // ...fader
+    ButtonWithLED& button;    // ...button (control and LED)
 
     static constexpr float POT_NOT_SET{-999.0f};
     static constexpr float sa{2*18.0f}, ea{360.0f - 2*18.0f}; // TFT_eSPI has zero at 6 o'clock
@@ -1120,6 +1130,14 @@ class StripTask : public FaderMonsterTask
         reqQueue.request(entry, 0);
     }
 
+    void keyChanged(ButtonWithLED& key)
+    {
+        requestPayload payload{&StripTask::doKeyChange, &key};
+        RequestQueue<StripTask, requestPayload>::queueEntry entry{&keyReq, payload};
+
+        reqQueue.request(entry, 0);
+    }
+
     InterTaskRequest::Result tftColourChanged(void)
     {
         requestPayload payload{&StripTask::doTFTcolourChange, nullptr};
@@ -1142,7 +1160,7 @@ class StripTask : public FaderMonsterTask
     bool useRingPattern;
     InterTaskRequest displayReq,        // outgoing
                      potReq, touchReq,  // incoming
-                     uiReq;
+                     uiReq, keyReq;
 };
 
 //                      888             
@@ -1172,6 +1190,9 @@ class PotsTask : public FaderMonsterTask
     
     //! Update ADC readings
     void updateADCs(void);
+
+    //! Update button statuses
+    void updateButtons(void);
 
     //! Convert raw ADC reading to volts
     // \return voltage level

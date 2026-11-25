@@ -1076,7 +1076,7 @@ UIclass::State ScribblePotArc::update(Trigger trigger)
     switch (trigger.type)
     {
         default: // we don't react to that trigger type
-            result = State::done;
+            result = reject(trigger);
             break;
 
         //----------------------------------------------------------------------
@@ -1217,7 +1217,7 @@ UIclass::State AnyTestRects::update(Trigger trigger)
     {
         default: // we don't react to that trigger type
             // Serial.print("meh ");
-            result = State::done;
+            result = reject(trigger);
             break;
 
         //----------------------------------------------------------------------
@@ -1334,6 +1334,30 @@ UIclass::State MainConfirm::update(Trigger trigger)
     switch (trigger.type)
     {
         default: // we don't react to that trigger type
+            result = reject(trigger);
+            break;
+
+        //----------------------------------------------------------------------
+        case Trigger::eTriggerType::pButtonWithLED:
+        {
+            currentTrigger = trigger; // keep the trigger and value(s)
+            result = State::next;
+            phase = pollButtons;
+
+            ButtonWithLED& but = *trigger.trigger.pButtonWithLED;
+            if (but.isChangedStatus() && TouchStatus::eStatus::ON == but.getExtendedStatus())
+            {
+// Serial.printf("confirm button %d\n", but.index);
+                switch (but.index)
+                {
+                    default: result = State::done; phase = idle; break;
+                    case BWL_NAV_DN_IDX: returnState = State::accept;  break;
+                    case BWL_NAV_OP_IDX: returnState = State::abandon; break;
+                }
+            }
+            else 
+                result = State::done;
+        }
             break;
         //----------------------------------------------------------------------
         case Trigger::eTriggerType::touchPoint:
@@ -1724,6 +1748,7 @@ UIclass::State MainSceneFiler::update(Trigger trigger)
     switch (trigger.type)
     {
         default: // we don't react to that trigger type
+            result = reject(trigger);
             break;
         //----------------------------------------------------------------------
         case Trigger::eTriggerType::touchPoint:
@@ -2199,7 +2224,7 @@ UIclass::State MainColourPicker::update(Trigger trigger)
     switch (trigger.type)
     {
         default: // we don't react to that trigger type
-            result = State::done;
+            result = reject(trigger);
             break;
         //----------------------------------------------------------------------
         case Trigger::eTriggerType::touchPoint:
@@ -2584,7 +2609,7 @@ UIclass::State MainQwerty::update(Trigger trigger)
     switch (trigger.type)
     {
         default: // we don't react to that trigger type
-            result = State::done;
+            result = reject(trigger);
             break;
         //----------------------------------------------------------------------
         case Trigger::eTriggerType::nextPhase:
@@ -2888,6 +2913,7 @@ UIclass::State MainExprTune::update(Trigger trigger)
     switch (trigger.type)
     {
         default: // we don't react to that trigger type
+            result = reject(trigger);
             break;
         //----------------------------------------------------------------------
         case Trigger::eTriggerType::touchPoint:
@@ -3054,6 +3080,7 @@ UIclass::State MainSceneLoad::update(Trigger trigger)
     switch (trigger.type)
     {
         default: // we don't react to that trigger type
+            result = reject(trigger);
             break;
         //----------------------------------------------------------------------
         case Trigger::eTriggerType::touchPoint:
@@ -3189,6 +3216,7 @@ UIclass::State MainMIDIsettings::update(Trigger trigger)
     switch (trigger.type)
     {
         default: // we don't react to that trigger type
+            result = reject(trigger);
             break;
 
         //----------------------------------------------------------------------

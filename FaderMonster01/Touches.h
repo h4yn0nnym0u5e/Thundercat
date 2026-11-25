@@ -139,6 +139,14 @@ class TouchStatus
         return lastReadStatus;
     }
 
+    eStatus peekExtendedStatus(void)
+    {
+        taskENTER_CRITICAL();
+        eStatus result = _updateStatus();
+        taskEXIT_CRITICAL();
+        return result;
+    }
+
     bool isLatched(void)
     {
         eStatus oldStatus = lastReadStatus; // not really changing this

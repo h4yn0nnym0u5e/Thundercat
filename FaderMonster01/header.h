@@ -39,7 +39,7 @@ extern FaderMonsterSettings faderMonsterSettings; // needed for UI
 extern FaderMonsterLast faderMonsterLast;
 extern ScrollerResult lineNumTextGen(int n, char* buffer, int maxl);
 extern ScrollerResult fileSysTextGen(int n, char* buffer, int maxl);
-#define BUTTON_WITH_LED(nm) extern ButtonWithLED buttonWithLED_##nm;
+#define BUTTON_WITH_LED(nm, txt) extern ButtonWithLED buttonWithLED_##nm;
 BUTTON_WITH_LED_LIST
 #undef BUTTON_WITH_LED
 extern ButtonWithLED* ButtonsWithLEDs[];

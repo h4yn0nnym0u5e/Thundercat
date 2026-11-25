@@ -30,6 +30,7 @@
     TRIGGER_ITEM(SmartKnobReport, SKreport) \
     TRIGGER_ITEM(GTPoint,         touchPoint) \
     TRIGGER_ITEM(TouchStatus*,    pTouchStatus) \
+    TRIGGER_ITEM(ButtonWithLED*,  pButtonWithLED) \
     TRIGGER_ITEM(int,             settings)
     
 
@@ -70,6 +71,19 @@ class UIclass
     friend class UIscroller;
 
     static InterTaskRequest autoFail;
+
+  public:
+    //! possible UI drawing states
+    enum class State {none, //!< no UI return value (yet)
+                      reject, //!< UI doesn't use this trigger
+                      done, //!< UI update from currentTrigger is complete
+                      next, //!< no change to display, can do next step    
+                      push, //!< sprite changed, can push to display
+                      busy, //!< busy pushing to display
+                      abandon, //!< abandon UI, return no result to caller
+                      accept,  //!< accept UI result, return to caller
+                     } state;
+                     
   protected:
     TFT_eSprite* pSprite;
     colours_t    colours;
@@ -131,17 +145,11 @@ class UIclass
     void popSmartKnob(void);
     void setSmartKnobFine(const char* legend, int initValue);
     void setSmartKnobValue(int value);
-    
+
+    // general utilities
+    virtual State reject(Trigger t) { currentTrigger = t; return State::reject; }
+
   public:
-    //! possible UI drawing states
-    enum class State {none, //!< no UI return value (yet)
-                      done, //!< UI update from currentTrigger is complete
-                      next, //!< no change to display, can do next step    
-                      push, //!< sprite changed, can push to display
-                      busy, //!< busy pushing to display
-                      abandon, //!< abandon UI, return no result to caller
-                      accept,  //!< accept UI result, return to caller
-                     } state;
     virtual State begin(TFT_eSprite& sprite, colours_t c, int _which) 
         { 
             pSprite = &sprite; 
@@ -159,6 +167,7 @@ class UIclass
     virtual State update(Trigger trigger) { return (state = State::done); }
     virtual InterTaskRequest& writeToDisplay(void) { return autoFail; }
     virtual uint32_t poll(void) { uint32_t result = interval; interval = 0; return result; }
+    Trigger getCurrentTrigger(void) { return currentTrigger; }
 
     bool writeFinished(void);
     bool isDirty(void) { return pSprite->isDirty(); }
