@@ -501,12 +501,21 @@ Serial.printf("%s '%s'\n",
                 default:
                   break;
 
+/*
+ This is a bit rubbish. If we flip directly then tell the SmartKnob, 
+ we get stale reports and a lot of flickering, often ending up on 
+ the wrong UI screen. So for now we just force the SmartKnob position,
+ expecting the new position to appear after a few stale reports. This 
+ works, but it's very far from elegant...
+*/                  
                 case BWL_NAV_DN_IDX:
-                  flipTo((whichUI + MAIN_UI_MainFlipLimit - 1) % MAIN_UI_MainFlipLimit);
+                  if (whichUI < MAIN_UI_MainFlipLimit)
+                    smartKnobTask.setPosition(generalRequest, (whichUI + MAIN_UI_MainFlipLimit - 1) % MAIN_UI_MainFlipLimit);
                   break;
 
                 case BWL_NAV_UP_IDX:
-                  flipTo((whichUI + 1) % MAIN_UI_MainFlipLimit);
+                  if (whichUI < MAIN_UI_MainFlipLimit)
+                    smartKnobTask.setPosition(generalRequest, (whichUI + 1) % MAIN_UI_MainFlipLimit);
                   break;
               }
             }

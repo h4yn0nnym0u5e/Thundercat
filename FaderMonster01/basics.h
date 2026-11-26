@@ -68,6 +68,15 @@ class InterTaskRequest
     InterTaskRequest(Result r) : status{r} {}
     InterTaskRequest(void) : InterTaskRequest{inactive} {}
 
+    //! Mark request as executed immediately
+    InterTaskRequest& doImmediate(void)
+    {
+        requested = executed = finished = micros();
+        status = done;
+
+        return *this;
+    }
+
     //! force status to inactive
     void setInactive(void) { status = inactive; }
 

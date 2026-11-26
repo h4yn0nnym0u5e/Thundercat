@@ -175,6 +175,18 @@ InterTaskRequest::Result SmartKnobTask::doPushConfig(void* _PB_SmartKnobConfig)
     return result;
 }
 
+InterTaskRequest::Result SmartKnobTask::doSetPosition(void* pPosition)
+{
+    InterTaskRequest::Result result = InterTaskRequest::Result::failed;
+
+    SmartKnobConfigStackEntry& current = configStack[configStackPointer];
+    current.config.position = *(int32_t*) pPosition; // change stacked config's position to current
+
+    result = doSetConfig(&current.config);
+    
+    return result;
+}
+
 InterTaskRequest::Result SmartKnobTask::doPopConfig(void* nothing)
 {
     InterTaskRequest::Result result = InterTaskRequest::Result::failed;
@@ -235,6 +247,25 @@ InterTaskRequest& SmartKnobTask::popConfig(InterTaskRequest& req)
     RequestQueue<SmartKnobTask, requestPayload>::queueEntry entry{&req, payload};
 
     reqQueue.request(entry, 0);
+
+    return req;
+}
+
+InterTaskRequest& SmartKnobTask::setPosition(InterTaskRequest& req, const int32_t pos)
+{
+    last_position = pos; // force last position to that requested
+
+    SmartKnobConfigStackEntry& current = configStack[configStackPointer];
+
+    if (0 != current.config.min_position || 0 != current.config.max_position) // not return-to-centre
+    {
+        requestPayload payload{&SmartKnobTask::doSetPosition, (void*) &last_position};
+        RequestQueue<SmartKnobTask, requestPayload>::queueEntry entry{&req, payload};
+
+        reqQueue.request(entry, 0);
+    }
+    else
+        req.doImmediate();
 
     return req;
 }
@@ -304,26 +335,6 @@ void SmartKnobTask::run(void)
     {
         reqQueue.executeRequest(*this, 5);
         knobSerial.update(); // process all available packets
-        /*
-        if (0 == packetCount) // not getting packets
-        {            
-            if (lastConfigChange > 50)
-                knobSendConfig(configs[0]);
-        }
-        else 
-        {
-            if (configChangePending)
-            {
-                if (0 == strcmp(SKstate.config.text, pCurrentConfig->text))
-                    configChangePending = false;
-                else
-                {
-                    if (lastConfigChange > 50)
-                        knobSendConfig(*pCurrentConfig);
-                }                    
-            }
-        }
-            */
     }
 }
 

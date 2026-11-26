@@ -1267,6 +1267,7 @@ class SmartKnobTask : public FaderMonsterTask
     InterTaskRequest::Result doSetConfig(void* pCfg);
     InterTaskRequest::Result doPushConfig(void*);
     InterTaskRequest::Result doPopConfig(void*);
+    InterTaskRequest::Result doSetPosition(void*);
     InterTaskRequest toMIDI, toSuper;
     //------------------------------------------------------------------------
     static void knobPacketHandler(const uint8_t* buffer, size_t size);
@@ -1311,6 +1312,7 @@ class SmartKnobTask : public FaderMonsterTask
     InterTaskRequest& setConfig(InterTaskRequest& req, const PB_SmartKnobConfig& cfg);
     InterTaskRequest& pushConfig(InterTaskRequest& req, const PB_SmartKnobConfig& cfg);
     InterTaskRequest& popConfig(InterTaskRequest& req);
+    InterTaskRequest& setPosition(InterTaskRequest& req, const int32_t position);
 
     static PB_SmartKnobConfig configs[5];
     int whichConfig;
